@@ -7,9 +7,8 @@ import theano
 import theano.tensor as tt
 from theano.compile.ops import as_op
 
-from Emulator import *
-from PipeLine import *
-from Convergency_check import PlotMarginalLikelihood
+from EmulatorTheano2 import *
+from PipeLineTheano import *
 
 #trainning_x = np.arange(1, 4, 0.3).reshape(-1,1)
 
@@ -30,43 +29,34 @@ df = df[df.columns.drop(list(df.filter(regex='_Error')))]
 sim_data = df.drop(par_name, axis=1).as_matrix()
 sim_para = df[par_name].as_matrix()
 
-print(sim_para, sim_data, par_name, prior)
 
-"""
-A, B = 1.5, 2
-err = 0.25
-exp_result = np.array([0.5*A*math.pow(2, B), 0.5*A*math.pow(4,B), 0.5*A*math.pow(5,B)]) \
-             + (np.random.rand(3) - 0.5)*err
-"""
 df = pd.read_csv('ExpData.csv')
 error = df[list(df.filter(regex='_Error'))].as_matrix().flatten()
 exp_result = df[df.columns.drop(list(df.filter(regex='_Error')))].as_matrix().flatten()
+
+# switch everything to theano array
+sim_data = theano.shared(sim_data)
+sim_para = theano.shared(sim_para)
+exp_result = theano.shared(exp_result)
+
 # we need to normalized the observed points for better emulation
-pipe = PipeLine([('Normalize', Normalize()), ('PCA', PCA(3)), ('Normalized', Normalize())])
+pipe = PipeLineT([('Normalize', NormalizeT()), ('PCA', PCAT(3)), ('Normalized', NormalizeT())])
 pipe.Fit(sim_data)
-pipe2 = Normalize()
-pipe2.Fit(sim_para)
-
-print(error, exp_result)
-
 sim_emulate = pipe.Transform(sim_data)
 
+pipe_input = NormalizeT()
+pipe_input.Fit(sim_para)
+para_emulate = pipe_input.Transform(sim_para)
+
+get_sim_emulate = theano.function([], sim_emulate)
+get_para_emulate = theano.function([], para_emulate)
+get_mean = theano.function([], pipe_input.mean)
 # setting up emulator for training
-emulator = EmulatorMultiOutput(pipe2.Transform(sim_para), sim_emulate)
-emulator.SetCovariance(squared_exponential)
+emulator = EmulatorMultiOutputT(get_para_emulate(), get_sim_emulate())
 
-print(sim_para, sim_emulate)
+emulator.Train(0.5, 0.1, scales_rate=0.0001, nuggets_rate=0.0001, max_step=1000)
 
-"""
-initial_scales=0.5, initial_nuggets=1, 
-              scales_rate=0.001, nuggets_rate=0.01, max_step = 300):
-"""
-#def PlotMarginalLikelihood(emulator_function, scales_min=1e-2, scales_max=2, scales_num=40, nuggets_min=1e-2, nuggets_max=20, nuggets_num=40):
-#PlotMarginalLikelihood(emulator.emulator_list[0].MarginalLikelihood, nuggets_min=1e-4, nuggets_max=100, scales_max=50)
-emulator.Train(0.5, 0.1, scales_rate=0.001, nuggets_rate=0.001, max_step=1000)
-
-cov = pipe.TransformCov(np.diag(error))
-print(cov)
+print('mean', get_mean())
 
 
 class Beta(pm.Continuous):
@@ -75,16 +65,21 @@ class Beta(pm.Continuous):
         self.x = x
 
     def logp(self, value):
-        x = tt.stack(self.x)
-        return my_logp(x, value)
-
-@as_op(itypes=[tt.dvector, tt.dvector], otypes=[tt.dscalar])
-def my_logp(x, value):
-    value = pipe.Transform(value)
-    return emulator.LogLikelihood(pipe2.Transform(np.array(x)).reshape(1, -1), value, cov)
+        x = pipe_input.Transform(tt.stack(self.x).dimshuffle('x', 0))
+        value = pipe.Transform(value.dimshuffle('x', 0))
+        return emulator._LogLikelihood(x, value, cov)
 
 
 with pm.Model() as model:
+    pipe = PipeLineT([('Normalize', NormalizeT()), ('PCA', PCAT(3)), ('Normalized', NormalizeT())])
+    pipe.Fit(sim_data)
+    sim_emulate = pipe.Transform(sim_data)
+
+    cov = pipe.TransformCov(theano.shared(np.diag(error)))
+    
+    pipe_input = NormalizeT()
+    pipe_input.Fit(sim_para)
+
     a = []
     for column in prior:
         a.append(pm.Uniform(column, prior[column][0], prior[column][1]))
@@ -92,8 +87,8 @@ with pm.Model() as model:
     
 
     emulator_result = Beta('emulator', x=a, observed=exp_result)
-    step = pm.Metropolis()
-    trace = pm.sample(15000, step=step, njobs=20)
+    #step = pm.Metropolis()
+    trace = pm.sample(15000, init='advi', njobs=2)
 
     # plot the result in a nice matrix of histograms
     num_par = len(par_name)

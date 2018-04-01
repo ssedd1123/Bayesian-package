@@ -9,9 +9,6 @@ import theano.tensor.slinalg as linalg
 import theano.tensor.nlinalg as nlinalg
 import theano
 
-from Convergency_check import PlotMarginalLikelihood
-from Emulator import EmulatorMultiOutput, Emulator
-
 
 def square_cov(input_x, input_y, scale):
     dist = tensor.sum((input_x.dimshuffle('x', 0, 1) \
@@ -90,11 +87,6 @@ class EmulatorT:
 
 
     def __init__(self, input_, targets):
-        # Normalize the input range
-        self.mean = np.mean(input_, axis=0)
-        self.sigma = np.std(input_, axis=0)
-        input_ = (input_ - self.mean) / self.sigma
-
         self.y = theano.shared(targets)
         self.input_ = theano.shared(input_)
         self.scale = theano.shared(0.1)
@@ -153,13 +145,11 @@ class EmulatorT:
         
  
     def _Emulate(self, input_):
-        input_ = (input_ - self.mean) / self.sigma
         k_star = square_cov(input_, self.input_, self.scale)
         f_star = tensor.dot(k_star.T, self.alpha)
         return f_star
  
     def _Var(self, input_):
-        input_ = (input_ - self.mean) / self.sigma
         k_star = square_cov(input_, self.input_, self.scale)
         v = linalg.solve_symmetric(self.L, k_star)
         var = square_cov(input_, input_, self.scale) - tensor.dot(v.T, v)

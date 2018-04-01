@@ -1,12 +1,7 @@
-import theano
-import theano.tensor as tt
+import autograd.numpy as np
+import autograd.scipy.linalg as linalg
 
-def Cov(y1):
-    y1_mean = tt.mean(y1, axis=1)
-    y1_centered = y1 - y1_mean.dimshuffle(0, 'x')
-    return tt.sum(y1_centered.dimshuffle(1, 0, 'x')*y1_centered.dimshuffle(1, 'x', 0), axis=0)/(y1.shape[1] - 1)
-
-class PipeLineT:
+class PipeLine:
 
     
     def __init__(self, pipe_dict):
@@ -39,7 +34,7 @@ class PipeLineT:
 
 
 
-class NormalizeT:
+class Normalize:
     
     
     def __init__(self):
@@ -47,24 +42,24 @@ class NormalizeT:
         self.mean = None
 
     def Fit(self, data):
-        self.mean = tt.mean(data, axis=0)
-        self.sigma = tt.std(data, axis=0)
+        self.mean = np.mean(data, axis=0)
+        self.sigma = np.std(data, axis=0)
 
     def Transform(self, data):
         return (data - self.mean) / self.sigma
 
     def TransformCov(self, data_cov):
-        transform = tt.nlinalg.diag(tt.inv(self.sigma))
-        return tt.dot(transform.T, tt.dot(data_cov, transform))
+        transform = np.diag(np.reciprocal(self.sigma))
+        return transform.T.dot(data_cov).dot(transform)
 
     def TransformInv(self, data):
         return data*self.sigma + self.mean
  
     def TransformCovInv(self, data_cov):
-        transform_inv = tt.nlinalg.diag(self.sigma)
-        return tt.dot(transform_inv.T, tt.dot(data_cov, transform_inv))
+        transform_inv = np.diag(self.sigma)
+        return transform_inv.T.dot(data_cov).dot(transform_inv)
 
-class PCAT:
+class PCA:
 
 
     def __init__(self, component):
@@ -74,19 +69,27 @@ class PCAT:
         self.component = component
 
     def Fit(self, data):
-        self.cov = Cov(data.T)
-        self.eigval, self.eigvec = tt.nlinalg.eig(self.cov)
-        self.eigval = self.eigval[-self.component:]
-        self.eigvec = self.eigvec[:, -self.component:]
+        self.cov = np.cov(data.T)
+        if not self.cov.shape:
+            self.eigval = self.cov
+            self.eigvec = np.eye(1)
+        else:
+            self.eigval, self.eigvec = np.linalg.eigh(self.cov)
+            idx = self.eigval.argsort()[::-1]
+            self.eigval = self.eigval[idx]
+            self.eigvec = self.eigvec[:,idx]
+            assert self.component <= data.shape[1], "number of components cannot exceed number of variables"
+            self.eigval = self.eigval[0:self.component]
+            self.eigvec = self.eigvec[:, 0:self.component]
 
     def Transform(self, data):
-        return tt.dot(data, self.eigvec)
+        return np.dot(data, self.eigvec)
 
     def TransformCov(self, data_cov):
-        return tt.dot(self.eigvec.T, tt.dot(data_cov, self.eigvec))
+        return self.eigvec.T.dot(data_cov).dot(self.eigvec)
 
     def TransformInv(self, data):
-        return tt.dot(data, self.eigvec.T);
+        return np.dot(data, self.eigvec.T);
 
     def TransformCovInv(self, data_cov):
-        return tt.dot(self.eigvec, tt.dot(data_cov, self.eigvec.T))
+        return self.eigvec.dot(data_cov).dot(self.eigvec.T)
