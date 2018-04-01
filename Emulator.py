@@ -2,10 +2,12 @@ import autograd.numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import math
+
 from autograd import grad
 from functools import partial
 from autograd.scipy.linalg import solve_triangular
 from scipy.spatial import distance
+from autograd.scipy.stats import multivariate_normal as mvn
 
 from GradientDescent import GradientDescentForEmulator
 
@@ -14,8 +16,19 @@ def squared_exponential(xp, xq, scales):
     """ Accept 1D array for xp and xq
     will reshape them into corresponding 2D matrix inside
     """
-    distance_ = distance.cdist(xq, xp, 'euclidean')
-    return np.exp( - (0.5 / (scales*scales)) * np.square(distance_))
+    if xp.shape[0] > 1:
+        distance_ = distance.cdist(xq, xp, 'euclidean')
+        distance2 = np.square(distance_)
+    else:
+        """
+        this is for autograd
+        it does not work with cdist
+        so if we are only asking for 1 output at a time
+        """
+        distance_ = xp - xq
+        distance2 = distance_*distance_
+        distance2 = distance2.sum(axis=1).reshape(-1,1)
+    return np.exp( - (0.5 / (scales*scales) * distance2))
 
 class EmulatorMultiOutput:
 
@@ -49,17 +62,24 @@ class EmulatorMultiOutput:
         mean_list = []
         var_list = []
         for i in xrange(0, self.num_output):
-            (mean, var) = emulator_list[i].Emulate(input_)
+            print(self.num_output)
+            (mean, var) = self.emulator_list[i].Emulate(input_)
             mean_list.append(mean)
             var_list.append(var)
         return np.array(mean_list), np.array(var_list)
 
-    def LogLikelihood(self, input_, value):
+    def LogLikelihood(self, input_, value, value_cov):
         log_sum = 0
+        assert input_.shape[0] == 1, "LogLikelihood can only take 1 value at a time"
+        mean_list = []
+        cov_list = []
         for i in xrange(0, self.num_output):
            (mean, var) = self.emulator_list[i].Emulate(input_)
-           log_sum = log_sum + (- (value[i] - mean)**2 / (2*var) - np.log(var) - 0.5*np.log(2*np.pi)).sum()
-        return np.array(log_sum)
+           mean_list.append(mean[0])
+           cov_list.append(var[0][0])
+        mean = np.array(mean_list)
+        cov = np.diag(np.array(cov_list)) + value_cov
+        return np.array(mvn.logpdf(value, mean, cov))
         
 
 class Emulator:
@@ -68,12 +88,12 @@ class Emulator:
     def __init__(self, input_, target):
         self.input_ = input_
         self.target = target
-        self.covariance = None
+        self.covariance = squared_exponential
         self.scales = None
         self.nuggets = None
         self.cholesky = None
         self.alpha = None
-        self.cov_matrix = None
+        self.cov_matrix = None 
 
         assert self.input_.shape[0] == self.target.shape[0], \
                "Number of rows of input is %d, target is %d, and they should be the same" \
@@ -113,6 +133,7 @@ class Emulator:
         log_marginal_likelihood = - 0.5*np.dot(self.target.transpose(), self.alpha) \
                                   - np.log(np.diag(self.cholesky)).sum() \
                                   - self.cholesky.shape[0]*np.log(2*np.pi)
+        #print(self.target, self.alpha, self.cholesky)
         return log_marginal_likelihood.sum()
 
     def LOOCrossValidation(self, scales=None, nuggets=None):
@@ -138,4 +159,9 @@ class Emulator:
         predictive_variance = self.covariance(input_, input_, self.scales) - np.dot(np.transpose(v), v)
         return (predictive_mean, predictive_variance)
 
+    def LogLikelihood(self, input_, value):
+        (predictive_mean, predictive_variance) = self.Emulate(input_)
+        return mvn.logpdf(value, predictive_mean, predictive_variance)
+        #return -0.5*(np.log(predictive_variance) + np.square((input_ - value)/predictive_variance) + np.log(np.pi)).sum()
+        
 

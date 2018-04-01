@@ -1,4 +1,5 @@
 import autograd.numpy as np
+import sys
 from autograd import grad
 
 class GradientDescentForEmulator:
@@ -44,9 +45,10 @@ class GradientDescentForEmulator:
             history.append(hist)
             (scales, nuggets) = history[-1]
             mag = np.linalg.norm(grad*self.step_size)
-            print("Processing %i iteration, gradient magnitude = %f" % (i, mag))
-            if mag < tolerance:
-                break
+            sys.stdout.write("\rProcessing %i iteration, gradient magnitude = %f, scales = %f, nuggets = %f" % (i, mag, scales, nuggets))
+            sys.stdout.flush()
+            #if mag < tolerance:
+                #break
 
         return np.array(history)
         
