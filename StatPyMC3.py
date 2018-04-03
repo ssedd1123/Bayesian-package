@@ -1,3 +1,4 @@
+import cPickle as pickle
 import pymc3 as pm
 import numpy as np
 import pandas as pd
@@ -14,96 +15,115 @@ from Convergency_check import PlotMarginalLikelihood
 #trainning_x = np.arange(1, 4, 0.3).reshape(-1,1)
 
 """
-testing with model
-the model is simulation with
-v=0.5*a*x^b + uniform_err(-0.05,0.05)
-experimental data is v=0.5*x^2
+Loading prior of each variables
+will be used to load the parameter names
+such that when model data is read
+it can tell which one is input parameter and which one is output 
 """
-
 # load the prior
 prior = pd.read_csv('Prior.csv')
-
+# load the name of the variables in the prior
 par_name = list(prior)
 
+
+"""
+Loading model simulation data
+"""
+# read the model data
 df = pd.read_csv('ModelData.csv')
+# ignore the Error eolumn for the model
 df = df[df.columns.drop(list(df.filter(regex='_Error')))]
+# load the model output
 sim_data = df.drop(par_name, axis=1).as_matrix()
+# load the input space to which we obtain the output
 sim_para = df[par_name].as_matrix()
 
-print(sim_para, sim_data, par_name, prior)
-
 """
-A, B = 1.5, 2
-err = 0.25
-exp_result = np.array([0.5*A*math.pow(2, B), 0.5*A*math.pow(4,B), 0.5*A*math.pow(5,B)]) \
-             + (np.random.rand(3) - 0.5)*err
+Loading experiment output data
 """
+# rad the experiment result
 df = pd.read_csv('ExpData.csv')
+# load the experimental error
 error = df[list(df.filter(regex='_Error'))].as_matrix().flatten()
 exp_result = df[df.columns.drop(list(df.filter(regex='_Error')))].as_matrix().flatten()
-# we need to normalized the observed points for better emulation
+
+"""
+we need to normalized the observed points for better emulation
+We need to normalize both the output and input space
+for output space, PCA is also performed for dimension reduction
+"""
 pipe = PipeLine([('Normalize', Normalize()), ('PCA', PCA(3)), ('Normalized', Normalize())])
 pipe.Fit(sim_data)
 pipe2 = Normalize()
 pipe2.Fit(sim_para)
-
-print(error, exp_result)
-
-sim_emulate = pipe.Transform(sim_data)
+# form covariance matrix from the experimental error
+# will be added to variance from gaussian emulation prediction
+cov = pipe.TransformCov(np.diag(error))
 
 # setting up emulator for training
-emulator = EmulatorMultiOutput(pipe2.Transform(sim_para), sim_emulate)
+emulator = EmulatorMultiOutput(pipe2.Transform(sim_para), pipe.Transform(sim_data))
 emulator.SetCovariance(squared_exponential)
-
-print(sim_para, sim_emulate)
-
-"""
-initial_scales=0.5, initial_nuggets=1, 
-              scales_rate=0.001, nuggets_rate=0.01, max_step = 300):
-"""
-#def PlotMarginalLikelihood(emulator_function, scales_min=1e-2, scales_max=2, scales_num=40, nuggets_min=1e-2, nuggets_max=20, nuggets_num=40):
-#PlotMarginalLikelihood(emulator.emulator_list[0].MarginalLikelihood, nuggets_min=1e-4, nuggets_max=100, scales_max=50)
-emulator.Train(0.5, 0.1, scales_rate=0.001, nuggets_rate=0.001, max_step=1000)
-
-cov = pipe.TransformCov(np.diag(error))
-print(cov)
+emulator.Train(0.5, 0.2, scales_rate=0.01, nuggets_rate=0.01, max_step=1000)
 
 
-class Beta(pm.Continuous):
-    def __init__(self, x, *args, **kwargs):
-        super(Beta, self).__init__(*args, **kwargs)
-        self.x = x
+model = pm.Model()
 
-    def logp(self, value):
-        x = tt.stack(self.x)
-        return my_logp(x, value)
+with model:
 
-@as_op(itypes=[tt.dvector, tt.dvector], otypes=[tt.dscalar])
-def my_logp(x, value):
-    value = pipe.Transform(value)
-    return emulator.LogLikelihood(pipe2.Transform(np.array(x)).reshape(1, -1), value, cov)
-
-
-with pm.Model() as model:
-    a = []
-    for column in prior:
-        a.append(pm.Uniform(column, prior[column][0], prior[column][1]))
-    #b = pm.Uniform('b', 0.5, 3)
+    """
+    Interface for theano to talk to our emulator
+    pymc3 uses theano for calculation
+    this interface is necessary
+    """
+    class EmulatorLogLikelihood(pm.Continuous):
+        def __init__(self, x, *args, **kwargs):
+            super(EmulatorLogLikelihood, self).__init__(*args, **kwargs)
+            self.x = x
     
+        def logp(self, value):
+            x = tt.stack(self.x)
+            return my_logp(x, value)
+    
+    @as_op(itypes=[tt.dvector, tt.dvector], otypes=[tt.dscalar])
+    def my_logp(x, value):
+        value = pipe.Transform(value)
+        return emulator.LogLikelihood(pipe2.Transform(np.array(x)).reshape(1, -1), value, cov)
 
-    emulator_result = Beta('emulator', x=a, observed=exp_result)
+    parameters = []
+    # form random variables according to prior 
+    for column in prior:
+        parameters.append(pm.Uniform(column, prior[column][0], prior[column][1]))
+    
+    emulator_result = EmulatorLogLikelihood('emulator', x=parameters, observed=exp_result)
     step = pm.Metropolis()
-    trace = pm.sample(15000, step=step, njobs=20)
+    trace = pm.sample(2000, step=step, njobs=20)
 
     # plot the result in a nice matrix of histograms
     num_par = len(par_name)
     graph_num = 1
-    for namex in par_name:
-        for namey in par_name:
-            plt.subplot(num_par, num_par, graph_num)
-            graph_num = graph_num + 1
+    fig, axes2d = plt.subplots(num_par, num_par) 
+
+    for i, row in enumerate(axes2d):
+        for j, cell in enumerate(row):
+            namex = par_name[j]
+            namey = par_name[i]
             if namex == namey:
-                plt.hist(trace[namex], bins = 100)
+                cell.hist(trace[namex], bins = 100)
             else:
-                plt.hist2d(trace[namey], trace[namex], bins=100)
+                cell.hist2d(trace[namex], trace[namey], bins=100)
+            if i == num_par - 1:
+                cell.set_xlabel(namex)
+            if j == 0:
+                cell.set_ylabel(namey)
+            
+    df = pm.backends.tracetab.trace_to_dataframe(trace)
+    df.to_csv('trace.csv', sep='\t')
+    
     plt.show()
+
+with open('trace.pkl', 'wb') as buff:
+    pickle.dump({'model': emulator, 'trace': df, \
+                 'input_pipe': pipe2, 'output_pipe': pipe, \
+                 'exp_data': exp_result, 'exp_err': error, \
+                 'prior': prior}, buff)
+    

@@ -58,11 +58,34 @@ class EmulatorMultiOutput:
             emulator.SetNuggets(history[-1, 1])
             emulator.StartUp()
 
+    def GetScales(self):
+        scales = []
+        for emulator in self.emulator_list:
+            scales.append(emulator.scales)
+        return scales
+
+    def GetNuggets(self):
+        nuggets = []
+        for emulator in self.emulator_list:
+            nuggets.append(emulator.nuggets)
+        return nuggets
+
+    def SetScales(self, scales):
+        for emulator, value in zip(self.emulator_list, scales):
+            emulator.SetScales(value)
+
+    def SetNuggets(self, nuggets):
+        for emulator, value in zip(self.emulator_list, nuggets):
+            emulator.SetNuggets(value)
+
+    def StartUp(self):
+        for emulator in self.emulator_list:
+            emulator.StartUp()
+
     def Emulate(self, input_):
         mean_list = []
         var_list = []
         for i in xrange(0, self.num_output):
-            print(self.num_output)
             (mean, var) = self.emulator_list[i].Emulate(input_)
             mean_list.append(mean)
             var_list.append(var)
@@ -115,7 +138,7 @@ class Emulator:
         assert self.nuggets is not None, "You must SetNuggets first"
 
         K = self.covariance(self.input_, self.input_, self.scales)
-        K = K + self.nuggets*np.eye(K.shape[0])
+        K = K + self.nuggets*self.nuggets*np.eye(K.shape[0])
         L = np.linalg.cholesky(K)
         self.alpha = solve_triangular(L.transpose(), solve_triangular(L, self.target, lower=True))
         self.cholesky = L
