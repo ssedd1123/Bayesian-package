@@ -54,3 +54,6 @@ def PlotOutput(plot_prior=True):
     plt.hist2d(np.array(index_list).flatten(), np.concatenate(result_list).flatten(), bins=100, norm=mpl.colors.LogNorm())
     plt.errorbar(np.arange(num_output), exp_data, yerr=exp_err)
     plt.show()
+
+PlotOutput(True)
+PlotOutput(False)

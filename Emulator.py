@@ -16,19 +16,20 @@ def squared_exponential(xp, xq, scales):
     """ Accept 1D array for xp and xq
     will reshape them into corresponding 2D matrix inside
     """
-    if xp.shape[0] > 1:
-        distance_ = distance.cdist(xq, xp, 'euclidean')
-        distance2 = np.square(distance_)
-    else:
-        """
-        this is for autograd
-        it does not work with cdist
-        so if we are only asking for 1 output at a time
-        """
-        distance_ = xp - xq
-        distance2 = distance_*distance_
-        distance2 = distance2.sum(axis=1).reshape(-1,1)
-    return np.exp( - (0.5 / (scales*scales) * distance2))
+    #print(xp, xq)
+    #cdistance = distance.cdist(xp[:,0].reshape(-1,1), xq[:,0].reshape(-1,1), 'euclidean')
+    #cdistance = np.square(cdistance)
+    #print('cdist', cdistance)
+    #print('oldcdist', distance.cdist(xp, xq, 'euclidean'))
+    scale = scales[..., None, None]
+    y2 = np.expand_dims(xp.T, axis=1)
+    y3 = np.expand_dims(xq.T, axis=2)
+    #result = np.exp(-(np.square(y2 - y3)/(scale*scale)[0]))
+    #print('y2', ((y2 - y3)*(y2 - y3))[0] - cdistance)
+    #print('oldy2',np.sqrt(((y2 - y3)*(y2 - y3)).sum(axis=0))) 
+    #print('oldeig', np.linalg.cholesky(np.exp(-0.5*distance.cdist(xp, xq, 'euclidean'))))
+    #print('eig', np.linalg.cholesky(np.exp((0.5*(y3 - y2)*(y3 - y2)/(scale*scale)).sum(axis=0))))
+    return np.exp(-((y3 - y2)*(y3 - y2)/(scale*scale)).sum(axis=0))
 
 class EmulatorMultiOutput:
 
@@ -51,11 +52,11 @@ class EmulatorMultiOutput:
             gd = GradientDescentForEmulator(scales_rate, nuggets_rate)
             # trainning with marginallikelihood instead of LOOCV 
             gd.SetFunc(emulator.MarginalLikelihood)
-            history = gd.Descent(initial_scales, initial_nuggets, max_step)
+            history_scale, history_nuggets = gd.Descent(initial_scales, initial_nuggets, max_step)
             
             # use the last trained scales and nuggets
-            emulator.SetScales(history[-1, 0])
-            emulator.SetNuggets(history[-1, 1])
+            emulator.SetScales(history_scale[-1])
+            emulator.SetNuggets(history_nuggets[-1])
             emulator.StartUp()
 
     def GetScales(self):

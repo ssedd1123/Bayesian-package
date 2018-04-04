@@ -1,6 +1,6 @@
 import cPickle as pickle
 import pymc3 as pm
-import numpy as np
+import autograd.numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import math
@@ -21,7 +21,7 @@ such that when model data is read
 it can tell which one is input parameter and which one is output 
 """
 # load the prior
-prior = pd.read_csv('Prior.csv')
+prior = pd.read_csv('parameter_priors.csv')
 # load the name of the variables in the prior
 par_name = list(prior)
 
@@ -30,7 +30,7 @@ par_name = list(prior)
 Loading model simulation data
 """
 # read the model data
-df = pd.read_csv('ModelData.csv')
+df = pd.read_csv('e120_model.csv')
 # ignore the Error eolumn for the model
 df = df[df.columns.drop(list(df.filter(regex='_Error')))]
 # load the model output
@@ -42,7 +42,7 @@ sim_para = df[par_name].as_matrix()
 Loading experiment output data
 """
 # rad the experiment result
-df = pd.read_csv('ExpData.csv')
+df = pd.read_csv('e120_exp_result.csv')
 # load the experimental error
 error = df[list(df.filter(regex='_Error'))].as_matrix().flatten()
 exp_result = df[df.columns.drop(list(df.filter(regex='_Error')))].as_matrix().flatten()
@@ -63,7 +63,7 @@ cov = pipe.TransformCov(np.diag(error))
 # setting up emulator for training
 emulator = EmulatorMultiOutput(pipe2.Transform(sim_para), pipe.Transform(sim_data))
 emulator.SetCovariance(squared_exponential)
-emulator.Train(0.5, 0.2, scales_rate=0.01, nuggets_rate=0.01, max_step=1000)
+emulator.Train(np.array([0.5, 0.5, 0.5, 0.5]), 0.2, scales_rate=0.01, nuggets_rate=0.01, max_step=500)
 
 
 model = pm.Model()
