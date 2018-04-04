@@ -6,11 +6,17 @@ import matplotlib.pyplot as plt
 import math
 import theano
 import theano.tensor as tt
+import sys
 from theano.compile.ops import as_op
 
 from Emulator import *
 from PipeLine import *
 from Convergency_check import PlotMarginalLikelihood
+
+if len(sys.argv) != 4:
+    print('Use this script by entering: python %s Prior ModelData ExpData' % (sys.argv[0]))
+    sys.exit()
+
 
 #trainning_x = np.arange(1, 4, 0.3).reshape(-1,1)
 
@@ -21,7 +27,7 @@ such that when model data is read
 it can tell which one is input parameter and which one is output 
 """
 # load the prior
-prior = pd.read_csv('parameter_priors.csv')
+prior = pd.read_csv(sys.argv[1])
 # load the name of the variables in the prior
 par_name = list(prior)
 
@@ -30,7 +36,7 @@ par_name = list(prior)
 Loading model simulation data
 """
 # read the model data
-df = pd.read_csv('e120_model.csv')
+df = pd.read_csv(sys.argv[2])
 # ignore the Error eolumn for the model
 df = df[df.columns.drop(list(df.filter(regex='_Error')))]
 # load the model output
@@ -42,7 +48,7 @@ sim_para = df[par_name].as_matrix()
 Loading experiment output data
 """
 # rad the experiment result
-df = pd.read_csv('e120_exp_result.csv')
+df = pd.read_csv(sys.argv[3])
 # load the experimental error
 error = df[list(df.filter(regex='_Error'))].as_matrix().flatten()
 exp_result = df[df.columns.drop(list(df.filter(regex='_Error')))].as_matrix().flatten()
@@ -63,7 +69,7 @@ cov = pipe.TransformCov(np.diag(error))
 # setting up emulator for training
 emulator = EmulatorMultiOutput(pipe2.Transform(sim_para), pipe.Transform(sim_data))
 emulator.SetCovariance(squared_exponential)
-emulator.Train(np.array([0.5, 0.5, 0.5, 0.5]), 0.2, scales_rate=0.01, nuggets_rate=0.01, max_step=500)
+emulator.Train(np.ones(len(par_name)), 0.2, scales_rate=0.01, nuggets_rate=0.01, max_step=500)
 
 
 model = pm.Model()
