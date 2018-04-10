@@ -12,9 +12,11 @@ from theano.compile.ops import as_op
 from Emulator import *
 from PipeLine import *
 from Convergency_check import PlotMarginalLikelihood
+from Utilities import *
+from EarlyStoppingFunc import *
 
 if len(sys.argv) != 5:
-    print('Use this script by entering: python %s Prior ModelData ExpData Output_name' % (sys.argv[0]))
+    print('Use this script by entering: python %s Prior ModelData RunNumberToBeExcluded Output_name' % (sys.argv[0]))
     sys.exit()
 
 
@@ -38,44 +40,59 @@ Loading model simulation data
 # read the model data
 df = pd.read_csv(sys.argv[2])
 # ignore the Error eolumn for the model
-df = df[df.columns.drop(list(df.filter(regex='_Error')))]
+df_no_error = df[df.columns.drop(list(df.filter(regex='_Error')))]
 # load the model output
-sim_data = df.drop(par_name, axis=1).as_matrix()
+sim_data = df_no_error.drop(par_name, axis=1).as_matrix()
 # load the input space to which we obtain the output
-sim_para = df[par_name].as_matrix()
+sim_para = df_no_error[par_name].as_matrix()
 
 """
-Loading experiment output data
+Leave data out for validation and set it as "experiment result"
 """
-# rad the experiment result
-df = pd.read_csv(sys.argv[3])
-# load the experimental error
-error = df[list(df.filter(regex='_Error'))].as_matrix().flatten()
-exp_result = df[df.columns.drop(list(df.filter(regex='_Error')))].as_matrix().flatten()
+excluded_run = int(sys.argv[3])
+error = np.zeros(*df[list(df.filter(regex='_Error'))].as_matrix()[excluded_run].flatten().shape)
+exp_result = sim_data[excluded_run].flatten()
+
+"""
+delete exp data for validation
+"""
+sim_data = np.delete(sim_data, excluded_run, 0)
+sim_para = np.delete(sim_para, excluded_run, 0)
+
 
 """
 we need to normalized the observed points for better emulation
 We need to normalize both the output and input space
 for output space, PCA is also performed for dimension reduction
 """
-pipe = PipeLine([('Normalize', Normalize()), ('PCA', PCA(6)), ('Normalized', Normalize())])
-pipe.Fit(sim_data)
+pipe = PipeLine([('Normalize', Normalize()), ('PCA', PCA(4)), ('Normalized', Normalize())])
+
 pipe2 = Normalize()
-pipe2.Fit(sim_para)
+
 # form covariance matrix from the experimental error
 # will be added to variance from gaussian emulation prediction
-cov = pipe.TransformCov(np.square(np.diag(error)))
 #cov = np.diag([0,0,0,0])
 
-scales = np.load('Scales.npy')
-nuggets = np.load('Nuggets.npy')
+# setting up emulator for training
+
+#emulator.Train(np.array([0.1,0.3,0.3,0.3]), 0.2, scales_rate=0.02, nuggets_rate=0.01, max_step=1000)
+#validation_run = np.fromstring(sys.argv[4], dtype=np.int32, sep=',')
+#scales, nuggets = EarlyStopping(input_=sim_para, target=sim_data, validation_runs=validation_run,
+#              initial_scales=np.ones(len(par_name)), initial_nuggets=np.array(0.2),
+#              input_pipe=pipe2, output_pipe=pipe)
+#print(scales, nuggets)
+
+pipe.Fit(sim_data)
+pipe2.Fit(sim_para)
+cov = pipe.TransformCov(np.square(np.diag(np.zeros(*error.shape))))
+print('exp', exp_result)
 
 emulator = EmulatorMultiOutput(pipe2.Transform(sim_para), pipe.Transform(sim_data))
 emulator.SetCovariance(squared_exponential)
-#emulator.Train(np.full(len(par_name), 0.3), 0.2, scales_rate=0.005, nuggets_rate=0.01, max_step=1000)
-emulator.SetScales(scales)
-emulator.SetNuggets(nuggets)
-emulator.StartUp()
+emulator.Train(np.ones(len(par_name)), 0.2, scales_rate=0.02, nuggets_rate=0.01, max_step=1000)
+#emulator.SetScales(scales)
+#emulator.SetNuggets(nuggets)
+#emulator.StartUp()
 
 
 model = pm.Model()
@@ -108,38 +125,15 @@ with model:
     
     emulator_result = EmulatorLogLikelihood('emulator', x=parameters, observed=theano.shared(exp_result))
     step = pm.Metropolis()
-    trace = pm.sample(2000, step=step, njobs=20)
-
-    pm.traceplot(trace)
+    trace = pm.sample(4000, step=step, njobs=10)
 
     # plot the result in a nice matrix of histograms
-    num_par = len(par_name)
-    graph_num = 1
-    fig, axes2d = plt.subplots(num_par, num_par) 
-
-    for i, row in enumerate(axes2d):
-        for j, cell in enumerate(row):
-            namex = par_name[j]
-            namey = par_name[i]
-            if namex == namey:
-                cell.hist(trace[namex], bins = 50, range=np.array([prior[namex][0], prior[namex][1]]))
-                cell.set_xlim([prior[namex][0], prior[namex][1]])
-            else:
-                im = cell.hist2d(trace[namex], trace[namey], bins=50, range=np.array([(prior[namex][0], prior[namex][1]),(prior[namey][0], prior[namey][1])]))
-                cell.set_xlim([prior[namex][0], prior[namex][1]])
-                cell.set_ylim([prior[namey][0], prior[namey][1]])
-                fig.colorbar(im[3], ax=cell)
-            if i == num_par - 1:
-                cell.set_xlabel(namex, fontsize=30)
-            if j == 0:
-                cell.set_ylabel(namey, fontsize=30)
-            
+    PlotTrace(trace, par_name, prior)
     df = pm.backends.tracetab.trace_to_dataframe(trace)
-    df.to_csv('%s.csv' % sys.argv[4], sep='\t')
+    df.to_csv('%s.csv' % sys.argv[5], sep='\t')
     
-    plt.show()
 
-with open('%s.pkl' % sys.argv[4], 'wb') as buff:
+with open('%s.pkl' % sys.argv[5], 'wb') as buff:
     pickle.dump({'model': emulator, 'trace': df, \
                  'input_pipe': pipe2, 'output_pipe': pipe, \
                  'exp_data': exp_result, 'exp_err': error, \

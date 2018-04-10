@@ -31,6 +31,7 @@ def squared_exponential(xp, xq, scales):
     #print('eig', np.linalg.cholesky(np.exp((0.5*(y3 - y2)*(y3 - y2)/(scale*scale)).sum(axis=0))))
     return np.exp(-((y3 - y2)*(y3 - y2)/(scale*scale)).sum(axis=0))
 
+
 class EmulatorMultiOutput:
 
 

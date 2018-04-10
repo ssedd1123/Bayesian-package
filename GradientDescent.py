@@ -37,7 +37,7 @@ class GradientDescentForEmulator:
 
         return np.exp(scale_temp), np.exp(nuggets_temp), gradient_scales, gradient_nuggets
         
-    def Descent(self, scales, nuggets, nsteps=10, tolerance=1e-3):
+    def Descent(self, scales, nuggets, nsteps=10, tolerance=1e-5):
         history_scales = []
         history_nuggets = []
         scales = np.array(scales)
@@ -50,9 +50,10 @@ class GradientDescentForEmulator:
             (scales, nuggets) = history_scales[-1], history_nuggets[-1]
             mag = np.linalg.norm(grad_scales*self.step_scales_size + grad_nuggets*self.step_nuggets_size)
             sys.stdout.write("\rProcessing %i iteration, gradient magnitude = %f, nuggets = %f, scales = %s" % (i, mag, nuggets, np.array2string(scales)))
-            #sys.stdout.flush()
-            #if mag < tolerance:
-                #break
+            sys.stdout.flush()
+            if mag < tolerance:
+                break
 
+        print('')
         return np.array(history_scales), np.array(history_nuggets)
         
