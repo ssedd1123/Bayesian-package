@@ -26,3 +26,38 @@ def PlotTrace(trace, par_name, prior):
                 cell.set_ylabel(namey, fontsize=30)
 
     plt.show()
+
+class DataLoader:
+
+
+    def __init___(self, prior_filename, model_filename, exp_filename):
+        """
+        Loading prior of each variables
+        will be used to load the parameter names
+        such that when model data is read
+        it can tell which one is input parameter and which one is output 
+        """
+        # load the prior
+        self.prior = pd.read_csv(prior_filename)
+        # load the name of the variables in the prior
+        self.par_name = list(prior)
+
+        """
+        Loading experiment output data
+        """
+        df = pd.read_csv(model_filename)
+        self.sim_error = df[list(df.filter(regex='_Error'))].as_matrix()
+        df_no_error = df[df.columns.drop(list(df.filter(regex='_Error')))]
+        self.sim_data = df_no_error.drop(par_name, axis=1).as_matrix()
+        self.sim_para = df_no_error[par_name].as_matrix() 
+
+
+        """
+        Loading model result
+        """
+        # rad the experiment result
+        df = pd.read_csv(exp_filename)
+        # load the experimental error
+        error = df[list(df.filter(regex='_Error'))].as_matrix().flatten()
+        self.exp_result = df[df.columns.drop(list(df.filter(regex='_Error')))].as_matrix().flatten()
+        self.exp_cov = np.square(np.diag(error))
