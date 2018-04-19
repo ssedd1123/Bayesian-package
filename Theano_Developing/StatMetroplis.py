@@ -7,16 +7,16 @@ import math
 import theano
 import theano.tensor as tt
 import sys
+import os
 from theano.compile.ops import as_op
 
 from Emulator import *
 from PipeLine import *
 from Convergency_check import PlotMarginalLikelihood
-from Utilities import *
-from EarlyStoppingFunc import *
+from Utilities import PlotTrace
 
 if len(sys.argv) != 5:
-    print('Use this script by entering: python %s Prior ModelData RunNumberToBeExcluded Output_name' % (sys.argv[0]))
+    print('Use this script by entering: python %s Prior Training_file ExpData Output_name' % (sys.argv[0]))
     sys.exit()
 
 
@@ -33,66 +33,42 @@ prior = pd.read_csv(sys.argv[1])
 # load the name of the variables in the prior
 par_name = list(prior)
 
+"""
+Loading experiment output data
+"""
+# rad the experiment result
+df = pd.read_csv(sys.argv[3])
+# load the experimental error
+error = df[list(df.filter(regex='_Error'))].as_matrix().flatten()
+exp_result = df[df.columns.drop(list(df.filter(regex='_Error')))].as_matrix().flatten()
+cov = np.square(np.diag(error))
 
 """
-Loading model simulation data
+Use trained emulator
 """
-# read the model data
-df = pd.read_csv(sys.argv[2])
-# ignore the Error eolumn for the model
-df_no_error = df[df.columns.drop(list(df.filter(regex='_Error')))]
-# load the model output
-sim_data = df_no_error.drop(par_name, axis=1).as_matrix()
-# load the input space to which we obtain the output
-sim_para = df_no_error[par_name].as_matrix()
+with open(sys.argv[2], 'rb') as buff:
+    data = pickle.load(buff)
 
-"""
-Leave data out for validation and set it as "experiment result"
-"""
-excluded_run = int(sys.argv[3])
-error = np.zeros(*df[list(df.filter(regex='_Error'))].as_matrix()[excluded_run].flatten().shape)
-exp_result = sim_data[excluded_run].flatten()
-
-"""
-delete exp data for validation
-"""
-sim_data = np.delete(sim_data, excluded_run, 0)
-sim_para = np.delete(sim_para, excluded_run, 0)
-
+pipe2 = data['input_pipe']
+pipe = data['output_pipe']
+sim_data = data['input_data']
+sim_para = data['input_para']
+scales = data['scales']
+nuggets = data['nuggets']
 
 """
 we need to normalized the observed points for better emulation
 We need to normalize both the output and input space
 for output space, PCA is also performed for dimension reduction
 """
-pipe = PipeLine([('Normalize', Normalize()), ('PCA', PCA(4)), ('Normalized', Normalize())])
-
-pipe2 = Normalize()
-
-# form covariance matrix from the experimental error
-# will be added to variance from gaussian emulation prediction
-#cov = np.diag([0,0,0,0])
-
-# setting up emulator for training
-
-#emulator.Train(np.array([0.1,0.3,0.3,0.3]), 0.2, scales_rate=0.02, nuggets_rate=0.01, max_step=1000)
-#validation_run = np.fromstring(sys.argv[4], dtype=np.int32, sep=',')
-#scales, nuggets = EarlyStopping(input_=sim_para, target=sim_data, validation_runs=validation_run,
-#              initial_scales=np.ones(len(par_name)), initial_nuggets=np.array(0.2),
-#              input_pipe=pipe2, output_pipe=pipe)
-#print(scales, nuggets)
-
 pipe.Fit(sim_data)
 pipe2.Fit(sim_para)
-cov = pipe.TransformCov(np.square(np.diag(np.zeros(*error.shape))))
-print('exp', exp_result)
 
 emulator = EmulatorMultiOutput(pipe2.Transform(sim_para), pipe.Transform(sim_data))
 emulator.SetCovariance(squared_exponential)
-emulator.Train(np.ones(len(par_name)), 0.2, scales_rate=0.02, nuggets_rate=0.01, max_step=1000)
-#emulator.SetScales(scales)
-#emulator.SetNuggets(nuggets)
-#emulator.StartUp()
+emulator.SetScales(scales)
+emulator.SetNuggets(nuggets)
+emulator.StartUp()
 
 
 model = pm.Model()
@@ -115,8 +91,10 @@ with model:
     
     @as_op(itypes=[tt.dvector, tt.dvector], otypes=[tt.dscalar])
     def my_logp(x, value):
-        value = pipe.Transform(value)
-        return emulator.LogLikelihood(pipe2.Transform(np.array(x)).reshape(1, -1), value, cov)
+        mean, var = emulator.Emulate(pipe2.Transform(np.array(x)).reshape(1, -1))
+        mean = pipe.TransformInv(mean.flatten())
+        var = pipe.TransformCovInv(np.diag(var)) + cov
+        return np.array(mvn.logpdf(value, mean, var))
 
     parameters = []
     # form random variables according to prior 
@@ -125,15 +103,21 @@ with model:
     
     emulator_result = EmulatorLogLikelihood('emulator', x=parameters, observed=theano.shared(exp_result))
     step = pm.Metropolis()
-    trace = pm.sample(4000, step=step, njobs=10)
+    trace = pm.sample(2000, step=step, njobs=20)
+
+    pm.traceplot(trace)
 
     # plot the result in a nice matrix of histograms
+    num_par = len(par_name)
+    graph_num = 1
+    fig, axes2d = plt.subplots(num_par, num_par) 
+ 
     PlotTrace(trace, par_name, prior)
     df = pm.backends.tracetab.trace_to_dataframe(trace)
-    df.to_csv('%s.csv' % sys.argv[5], sep='\t')
-    
+    df.to_csv('%s.csv' % sys.argv[4], sep='\t')
 
-with open('%s.pkl' % sys.argv[5], 'wb') as buff:
+
+with open('%s.pkl' % sys.argv[4], 'wb') as buff:
     pickle.dump({'model': emulator, 'trace': df, \
                  'input_pipe': pipe2, 'output_pipe': pipe, \
                  'exp_data': exp_result, 'exp_err': error, \
