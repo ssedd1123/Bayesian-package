@@ -38,19 +38,19 @@ To use the code, follow the following steps: <br />
 &nbsp;&nbsp;&nbsp;&nbsp; <br />
 &nbsp;&nbsp;&nbsp;&nbsp;Most of our simulation results are stored in MADAI format, which is: <br />
 &nbsp;&nbsp;&nbsp;&nbsp;model_output <br />
-&nbsp;&nbsp;&nbsp;&nbsp;    | <br />
-&nbsp;&nbsp;&nbsp;&nbsp;    |-run0000 <br />
-&nbsp;&nbsp;&nbsp;&nbsp;    |    |-parameters.dat <br />
-&nbsp;&nbsp;&nbsp;&nbsp;    |    |-results.dat <br />
-&nbsp;&nbsp;&nbsp;&nbsp;    |-run0001 <br />
-&nbsp;&nbsp;&nbsp;&nbsp;    |    |-parameters.dat <br />
-&nbsp;&nbsp;&nbsp;&nbsp;    |    |-results.dat <br />
-&nbsp;&nbsp;&nbsp;&nbsp;    . <br />
-&nbsp;&nbsp;&nbsp;&nbsp;    . <br />
-&nbsp;&nbsp;&nbsp;&nbsp;    . <br />
-&nbsp;&nbsp;&nbsp;&nbsp;    |-run00xx <br />
-&nbsp;&nbsp;&nbsp;&nbsp;    |    |-parameters.dat <br />
-&nbsp;&nbsp;&nbsp;&nbsp;    |    |-results.dat <br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|-run0000 <br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;|-parameters.dat <br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;|-results.dat <br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|-run0001 <br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;|-parameters.dat <br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;|-results.dat <br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;. <br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;. <br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;. <br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|-run00xx <br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;|-parameters.dat <br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;|-results.dat <br />
  <br />
 &nbsp;&nbsp;&nbsp;&nbsp;Under directory DataReader, there is a read_data.py script which convert all of the above file structure into a single csv file. <br />
 &nbsp;&nbsp;&nbsp;&nbsp;To use the script, enter: <br />
