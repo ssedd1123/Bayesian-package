@@ -1,4 +1,5 @@
 from multiprocessing import Pool
+import glob
 import matplotlib as mpl
 import scipy
 import cPickle as pickle
@@ -13,7 +14,7 @@ import random
 from Emulator.Emulator import *
 from Preprocessor.PipeLine import *
 
-def PlotOutput(plot_prior=True):
+def PlotOutput(plot_prior, filename):
 
     """
     Function to plot both the posterior and prior point
@@ -21,7 +22,7 @@ def PlotOutput(plot_prior=True):
     otherwise it will load configuration from trace
     """
 
-    with open('result/test.pkl', 'rb') as buff:
+    with open(filename, 'rb') as buff:
         data = pickle.load(buff)
 
     emulator, trace  = data['model'], data['trace']
@@ -72,6 +73,14 @@ def PlotOutput(plot_prior=True):
     plt.plot(np.linspace(0, num_output - 1, interval[1].shape[0]), interval[1], linewidth=6, color='black')
     plt.show()
 
+if len(sys.argv) != 2:
+    #print('Use this script by entering: python %s Iutput_name' % (sys.argv[0]))
+    #sys.exit()
+    list_of_files = glob.glob('result/*')
+    filename = max(list_of_files, key=os.path.getctime)
+else:
+    filename = sys.argv[1]
 
-PlotOutput(True)
-PlotOutput(False)
+
+PlotOutput(True, filename)
+PlotOutput(False, filename)

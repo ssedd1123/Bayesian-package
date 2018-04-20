@@ -53,7 +53,7 @@ trace = pd.concat(trace, ignore_index=True)
 PlotTrace(trace, training_data.par_name, prior)
 plt.show()
 
-trace.to_csv('%s.csv' % sys.argv[2], sep='\t')
+trace.to_csv('result/%s.csv' % sys.argv[2], sep='\t')
 
 
 with open('result/%s.pkl' % sys.argv[2], 'wb') as buff:

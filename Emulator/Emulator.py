@@ -17,22 +17,9 @@ def RBF(xp, xq, scales):
     return np.exp(-((y3 - y2)*(y3 - y2)/(scales*scales)).sum(axis=0))
 
 def squared_exponential(xp, xq, scales):
-    """ Accept 1D array for xp and xq
-    will reshape them into corresponding 2D matrix inside
-    """
-    #print(xp, xq)
-    #cdistance = distance.cdist(xp[:,0].reshape(-1,1), xq[:,0].reshape(-1,1), 'euclidean')
-    #cdistance = np.square(cdistance)
-    #print('cdist', cdistance)
-    #print('oldcdist', distance.cdist(xp, xq, 'euclidean'))
     scale = scales[..., None, None]
     y2 = np.expand_dims(xp.T, axis=1)
     y3 = np.expand_dims(xq.T, axis=2)
-    #result = np.exp(-(np.square(y2 - y3)/(scale*scale)[0]))
-    #print('y2', ((y2 - y3)*(y2 - y3))[0] - cdistance)
-    #print('oldy2',np.sqrt(((y2 - y3)*(y2 - y3)).sum(axis=0))) 
-    #print('oldeig', np.linalg.cholesky(np.exp(-0.5*distance.cdist(xp, xq, 'euclidean'))))
-    #print('eig', np.linalg.cholesky(np.exp((0.5*(y3 - y2)*(y3 - y2)/(scale*scale)).sum(axis=0))))
     return np.exp(-((y3 - y2)*(y3 - y2)/(scale*scale)).sum(axis=0))
 
 
@@ -52,13 +39,13 @@ class EmulatorMultiOutput:
             emulator.SetCovariance(covariance)
 
     def Train(self, initial_scales=0.5, initial_nuggets=1, 
-              scales_rate=0.01, nuggets_rate=0.01, max_step = 300):
+              scales_rate=0.05, nuggets_rate=0.05, max_step = 300):
         scales = []
         nuggets = []
         for emulator in self.emulator_list:
             gd = GradientDescentForEmulator(scales_rate, nuggets_rate)
             # trainning with marginallikelihood instead of LOOCV 
-            gd.SetFunc(emulator.LOOCrossValidation)#MarginalLikelihood)
+            gd.SetFunc(emulator.MarginalLikelihood)
             history_scale, history_nuggets = gd.Descent(initial_scales, initial_nuggets, max_step)
             
             # use the last trained scales and nuggets
@@ -117,8 +104,6 @@ class Emulator:
         self.alpha = None
         self.cov_matrix = None 
 
-        print(input_)
-
         assert self.input_.shape[0] == self.target.shape[0], \
                "Number of rows of input is %d, target is %d, and they should be the same" \
                % (self.input_.shape[0], self.target.shape[0])
@@ -157,7 +142,6 @@ class Emulator:
         log_marginal_likelihood = - 0.5*np.dot(self.target.transpose(), self.alpha) \
                                   - np.log(np.diag(self.cholesky)).sum() \
                                   - self.cholesky.shape[0]*np.log(2*np.pi)
-        #print(self.target, self.alpha, self.cholesky)
         return log_marginal_likelihood.sum()
 
     def LOOCrossValidation(self, scales=None, nuggets=None):
@@ -195,8 +179,6 @@ class EmulatorMaster(EmulatorMultiOutput):
         input_pipe.Fit(input_)
         output_pipe.Fit(target)
 
-        print(input_)
- 
         input_ = input_pipe.Transform(input_)
         target = output_pipe.Transform(target)
 

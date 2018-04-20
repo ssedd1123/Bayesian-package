@@ -52,7 +52,7 @@ def GenerateTrace(emulator, exp_result, exp_cov, prior, id_):
     #pymc.numpy.random.seed(id_)
     parameters = []
     for column in prior:
-        parameters.append(pymc.Uniform(column, prior[column][0], prior[column][1]))
+        parameters.append(pymc.Uniform(column, prior[column][0], prior[column][1], value=0.5*(prior[column][0] + prior[column][1])))
     
     @pymc.stochastic(observed=True)
     def emulator_result(value=exp_result, x=parameters):

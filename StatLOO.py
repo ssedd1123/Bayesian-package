@@ -63,7 +63,7 @@ pool.close()
 pool.join()
 
 trace = pd.concat(trace, ignore_index=True)
-trace.to_csv('%s.csv' % sys.argv[3], sep='\t')
+trace.to_csv('result/%s.csv' % sys.argv[3], sep='\t')
 
 #trace = GenerateTrace(emulator, input_pipe=pipe2, output_pipe=pipe, exp_result=training_data.exp_result, exp_cov=training_data.exp_cov, prior=training_data.prior)
 par_name = training_data.par_name

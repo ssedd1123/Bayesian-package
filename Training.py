@@ -28,7 +28,7 @@ we need to normalized the observed points for better emulation
 We need to normalize both the output and input space
 for output space, PCA is also performed for dimension reduction
 """
-output_pipe = PipeLine([('Normalize', Normalize()), ('PCA', PCA(4)), ('Normalized', Normalize())])
+output_pipe = PipeLine([('Normalize', Normalize()), ('PCA', PCA(2)), ('Normalized', Normalize())])
 input_pipe = Normalize()
 
 #scales, nuggets = EarlyStopping(input_=sim_para, target=sim_data, validation_runs=validation_run,
