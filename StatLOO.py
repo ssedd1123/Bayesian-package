@@ -50,14 +50,15 @@ emulator.StartUp()
 
 prior=training_data.prior
 
-print(training_data.exp_result, training_data.exp_cov)
+print(training_data.exp_result)
+print(training_data.exp_cov)
 
-processes=7
+processes=14
 pool = Pool(processes=processes)
 
 result = []
 for i in xrange(processes):
-    result.append(pool.apply_async(GenerateTrace, (emulator, training_data.exp_result, training_data.exp_cov, prior, 100*i)))
+    result.append(pool.apply_async(GenerateTrace, (emulator, training_data.exp_result, training_data.exp_cov, prior, i, 10000)))
 trace = [r.get() for r in result]
 pool.close()
 pool.join()

@@ -35,3 +35,33 @@ class DataLoader:
         error = df[list(df.filter(regex='_Error'))].as_matrix().flatten()
         self.exp_result = df[df.columns.drop(list(df.filter(regex='_Error')))].as_matrix().flatten()
         self.exp_cov = np.square(np.diag(error))
+
+        """
+        Save the filenames so when it is printed, we know which files the data corresponds to
+        """
+        self.prior_filename = prior_filename
+        self.model_filename = model_filename
+        self.exp_filename = exp_filename
+
+    def __repr__(self):
+        return "Prior: %s\n%s\n\nModel: %s\nExperimental data: %s\n" % (self.prior_filename, repr(self.prior), self.model_filename, self.exp_filename)
+
+    def ChangeExp(self, exp_filename):
+        # rad the experiment result
+        df = pd.read_csv(exp_filename)
+        # load the experimental error
+        error = df[list(df.filter(regex='_Error'))].as_matrix().flatten()
+        self.exp_result = df[df.columns.drop(list(df.filter(regex='_Error')))].as_matrix().flatten()
+        self.exp_cov = np.square(np.diag(error))
+
+        self.exp_filename = exp_filename
+
+    def ChangePrior(self, prior_filename):
+        self.prior = pd.read_csv(prior_filename)
+        self.prior_filename = prior_filename
+        # check and see if number of variables is changed
+        # if so the new prior cannot be accepted. You must start a completely new training
+        if(set(self.par_name) != set(list(self.prior))):
+            print('Number of parameters in the new prior changes! You must start a completely new training for it. ')
+
+            

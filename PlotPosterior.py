@@ -39,7 +39,7 @@ def PlotOutput(plot_prior, filename):
     # storing the result
     result_list = []
 
-    for i, row in trace.iterrows():
+    for i, row in trace.iloc[::10, :].iterrows():
         par = []
         for par_name in list(prior):
             if plot_prior:
@@ -58,7 +58,7 @@ def PlotOutput(plot_prior, filename):
         index_list.append(index)
         result_list.append(np.interp(index, np.arange(num_output), result))
         
-        if i > 2000:
+        if i > 60000:
             break
     # plot the result
     result = np.stack(result_list)
@@ -71,6 +71,8 @@ def PlotOutput(plot_prior, filename):
     plt.errorbar(index, exp_data, yerr=exp_err)
     plt.plot(np.linspace(0, num_output - 1, interval[0].shape[0]), interval[0], linewidth=6, color='black')
     plt.plot(np.linspace(0, num_output - 1, interval[1].shape[0]), interval[1], linewidth=6, color='black')
+    plt.ylim([0.7, 1.6])
+    plt.xlim([-1, num_output])
     plt.show()
 
 if len(sys.argv) != 2:

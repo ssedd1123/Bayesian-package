@@ -40,7 +40,7 @@ pool = Pool(processes=processes)
 
 result = []
 for i in xrange(processes):
-    result.append(pool.apply_async(GenerateTrace, (emulator, training_data.exp_result, training_data.exp_cov, prior, i)))
+    result.append(pool.apply_async(GenerateTrace, (emulator, training_data.exp_result, training_data.exp_cov, prior, i, 50000)))
 trace = [r.get() for r in result]
 pool.close()
 pool.join()
@@ -53,7 +53,7 @@ trace = pd.concat(trace, ignore_index=True)
 PlotTrace(trace, training_data.par_name, prior)
 plt.show()
 
-trace.to_csv('result/%s.csv' % sys.argv[2], sep='\t')
+trace.to_csv('result/%s.csv' % sys.argv[2], sep=',')
 
 
 with open('result/%s.pkl' % sys.argv[2], 'wb') as buff:

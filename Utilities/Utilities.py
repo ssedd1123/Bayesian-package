@@ -1,11 +1,13 @@
 from multiprocessing import Pool
 import cPickle as pickle
 import pandas as pd
+from pandas.tools.plotting import scatter_matrix
 import sys
 import os
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
+import matplotlib.gridspec as gridspec
 import math
 
 from Emulator.Emulator import *
@@ -21,7 +23,6 @@ def PlotTrace(trace, par_name, prior):
     num_par = len(par_name)
     graph_num = 1
     fig, axes2d = plt.subplots(num_par, num_par)
-
     for i, row in enumerate(axes2d):
         for j, cell in enumerate(row):
             namex = par_name[j]
@@ -33,16 +34,37 @@ def PlotTrace(trace, par_name, prior):
                 im = cell.hist2d(trace[namex], trace[namey], bins=50, range=np.array([(prior[namex][0], prior[namex][1]),(prior[namey][0], prior[namey][1])]))#, norm=colors.LogNorm())
                 cell.set_xlim([prior[namex][0], prior[namex][1]])
                 cell.set_ylim([prior[namey][0], prior[namey][1]])
-                fig.colorbar(im[3], ax=cell)
+                #fig.colorbar(im[3], ax=cell)
+            # Modify axis labels such that the top and bottom label never show up
+            xlist = cell.get_xticks().tolist()
+            xlist[0] = ''
+            xlist[-1] = ''
+            #cell.set_xticklabels(xlist, rotation=45)
+
+            ylist = cell.get_yticks().tolist()
+            ylist[0] = ''
+            ylist[-1] = ''
+            cell.set_yticklabels(ylist)
+
+            cell.tick_params(axis='both', which='major', labelsize=20)
+
             if i == num_par - 1:
                 cell.set_xlabel(namex, fontsize=30)
+            else:
+                cell.set_xticklabels([])
             if j == 0:
                 cell.set_ylabel(namey, fontsize=30)
-
+            else:
+                cell.set_yticklabels([])
+            if i == 0 and j == 0:
+                cell.set_yticklabels(cell.get_xticks().tolist())
+ 
+            
+    plt.subplots_adjust(wspace=0, hspace=0)
     return fig, axes2d
 
 
-def GenerateTrace(emulator, exp_result, exp_cov, prior, id_):
+def GenerateTrace(emulator, exp_result, exp_cov, prior, id_, iter=10000):
     """
     The main function to generate pandas trace file after comparing the emulator with experimental value
     Uses pymc2 as it is found to be faster
@@ -52,12 +74,14 @@ def GenerateTrace(emulator, exp_result, exp_cov, prior, id_):
     #pymc.numpy.random.seed(id_)
     parameters = []
     for column in prior:
-        parameters.append(pymc.Uniform(column, prior[column][0], prior[column][1], value=0.5*(prior[column][0] + prior[column][1])))
+        parameters.append(pymc.Uniform(column, prior[column][0], prior[column][1], value=(0.5*prior[column][0] + 0.5*prior[column][1])))
     
     @pymc.stochastic(observed=True)
     def emulator_result(value=exp_result, x=parameters):
         mean, var = emulator.Emulate(np.array(x).reshape(1, -1))
+        #print(mean, var)
         var = var + exp_cov
+        #var = exp_cov
         return np.array(mvn.logpdf(value, mean, var))
     
     parameters.append(emulator_result)
@@ -70,7 +94,7 @@ def GenerateTrace(emulator, exp_result, exp_cov, prior, id_):
     # sample from our posterior distribution 50,000 times, but
     # throw the first 20,000 samples out to ensure that we're only
     # sampling from our steady-state posterior distribution
-    mcmc.sample(iter=20000, burn=5000)
+    mcmc.sample(iter, burn=1000)
     trace_dict = {}
     for column in prior:
         trace_dict[column] = mcmc.trace(column)[:]

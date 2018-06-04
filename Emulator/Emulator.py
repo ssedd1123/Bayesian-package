@@ -9,7 +9,7 @@ from autograd.scipy.linalg import solve_triangular
 from scipy.spatial import distance
 from autograd.scipy.stats import multivariate_normal as mvn
 
-from Utilities.GradientDescent import GradientDescentForEmulator
+from Utilities.GradientDescent import *# GradientDescentForEmulator
 
 def RBF(xp, xq, scales):
     y2 = np.expand_dims(xp.T, axis=1)
@@ -39,13 +39,14 @@ class EmulatorMultiOutput:
             emulator.SetCovariance(covariance)
 
     def Train(self, initial_scales=0.5, initial_nuggets=1, 
-              scales_rate=0.05, nuggets_rate=0.05, max_step = 300):
+              scales_rate=0.1, nuggets_rate=0.05, max_step = 300):
         scales = []
         nuggets = []
         for emulator in self.emulator_list:
-            gd = GradientDescentForEmulator(scales_rate, nuggets_rate)
+            gd = MomentumDescentForEmulator(scales_rate, nuggets_rate)#
+            #gd = GradientDescentForEmulator(scales_rate, nuggets_rate)
             # trainning with marginallikelihood instead of LOOCV 
-            gd.SetFunc(emulator.MarginalLikelihood)
+            gd.SetFunc(emulator.LOOCrossValidation)
             history_scale, history_nuggets = gd.Descent(initial_scales, initial_nuggets, max_step)
             
             # use the last trained scales and nuggets
@@ -185,6 +186,15 @@ class EmulatorMaster(EmulatorMultiOutput):
         self.input_pipe = input_pipe
         self.output_pipe = output_pipe
         EmulatorMultiOutput.__init__(self, input_, target)
+
+    def __repr__(self):
+        string = "Input Pipe:  "
+        string += repr(self.input_pipe)
+        string += "\n\nOutput Pipe:  "
+        string += repr(self.output_pipe)
+        string += "\n\nEmulator covariance function:  "
+        string += self.emulator_list[0].covariance.__name__
+        return string + "\n"
 
     def Emulate(self, input_):
         input_ = self.input_pipe.Transform(input_).reshape(1,-1)
