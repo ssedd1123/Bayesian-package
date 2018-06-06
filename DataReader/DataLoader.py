@@ -20,10 +20,10 @@ class DataLoader:
         Loading experiment output data
         """
         df = pd.read_csv(model_filename)
-        self.sim_error = df[list(df.filter(regex='_Error'))].as_matrix()
+        self.sim_error = df[list(df.filter(regex='_Error'))].values
         df_no_error = df[df.columns.drop(list(df.filter(regex='_Error')))]
-        self.sim_data = df_no_error.drop(self.par_name, axis=1).as_matrix()
-        self.sim_para = df_no_error[self.par_name].as_matrix() 
+        self.sim_data = df_no_error.drop(self.par_name, axis=1).values
+        self.sim_para = df_no_error[self.par_name].values 
 
 
         """
@@ -32,8 +32,8 @@ class DataLoader:
         # rad the experiment result
         df = pd.read_csv(exp_filename)
         # load the experimental error
-        error = df[list(df.filter(regex='_Error'))].as_matrix().flatten()
-        self.exp_result = df[df.columns.drop(list(df.filter(regex='_Error')))].as_matrix().flatten()
+        error = df[list(df.filter(regex='_Error'))].values.flatten()
+        self.exp_result = df[df.columns.drop(list(df.filter(regex='_Error')))].values.flatten()
         self.exp_cov = np.square(np.diag(error))
 
         """
@@ -50,8 +50,8 @@ class DataLoader:
         # rad the experiment result
         df = pd.read_csv(exp_filename)
         # load the experimental error
-        error = df[list(df.filter(regex='_Error'))].as_matrix().flatten()
-        self.exp_result = df[df.columns.drop(list(df.filter(regex='_Error')))].as_matrix().flatten()
+        error = df[list(df.filter(regex='_Error'))].values.flatten()
+        self.exp_result = df[df.columns.drop(list(df.filter(regex='_Error')))].values.flatten()
         self.exp_cov = np.square(np.diag(error))
 
         self.exp_filename = exp_filename

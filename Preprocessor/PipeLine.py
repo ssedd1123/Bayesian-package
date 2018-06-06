@@ -12,6 +12,13 @@ class PipeLine:
             pipe.Fit(data)
             data = pipe.Transform(data)
 
+    def __repr__(self):
+        string = "["
+        for pipe_name, pipe in self.pipe_dict:
+            string += " %s;" % repr(pipe)
+        string +="]"
+        return string
+
     def Transform(self, data):
         for pipe_name, pipe in self.pipe_dict:
             data = pipe.Transform(data) 
@@ -38,6 +45,9 @@ class Identity:
     def __init__(self):
         pass
 
+    def __repr__(self):
+        return "Identity"
+
     def Fit(self, data):
         pass
 
@@ -60,6 +70,9 @@ class Normalize:
     def __init__(self):
         self.sigma = None
         self.mean = None
+
+    def __repr__(self):
+        return "Normalize"
 
     def Fit(self, data):
         self.mean = np.mean(data, axis=0)
@@ -88,6 +101,9 @@ class PCA:
         self.eigvec = None
         self.component = component
         self.reconstruction_error = None
+
+    def __repr__(self):
+        return "PCA(%d)" % self.component
 
     def Fit(self, data):
         self.cov = np.cov(data.T)
