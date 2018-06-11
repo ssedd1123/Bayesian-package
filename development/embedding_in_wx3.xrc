@@ -1,0 +1,41 @@
+<?xml version="1.0" ?>
+<resource>
+  <object class="wxFrame" name="MainFrame">
+    <title>embedding_in_wx3</title>
+    <object class="wxPanel" name="MainPanel">
+      <object class="wxBoxSizer">
+        <orient>wxVERTICAL</orient>
+        <object class="sizeritem">
+          <object class="wxStaticText">
+            <label>Check out this whizz-bang stuff!</label>
+            <style>wxALIGN_CENTRE</style>
+          </object>
+          <option>0</option>
+          <flag>wxALL|wxEXPAND</flag>
+          <border>5</border>
+        </object>
+        <object class="sizeritem">
+          <object class="wxBoxSizer">
+            <orient>wxHORIZONTAL</orient>
+              <object class="sizeritem">
+              <object class="wxTextCtrl" name="bang_count">
+                <value>0</value>
+              </object>
+              <option>0</option>
+              <flag>wxEXPAND</flag>
+            </object>
+          </object>
+          <option>0</option>
+          <flag>wxLEFT|wxRIGHT|wxEXPAND</flag>
+          <border>5</border>
+        </object>
+        <object class="sizeritem">
+          <object class="wxPanel" name="grid_container_panel"/>
+          <option>1</option>
+          <flag>wxEXPAND</flag>
+        </object>
+        
+      </object>
+    </object>
+  </object>
+</resource>

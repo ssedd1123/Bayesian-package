@@ -1,0 +1,27 @@
+Source: human-icon-theme
+Section: x11
+Priority: optional
+Maintainer: Ubuntu Art Team <ubuntu-art@lists.ubuntu.com>
+Vcs-Bzr: http://bazaar.launchpad.net/~ubuntu-art-pkg/human-icon-theme/ubuntu
+Uploaders: Debian GNOME Maintainers <pkg-gnome-maintainers@lists.alioth.debian.org>
+Build-Depends: debhelper (>= 5.0.51~),
+               cdbs
+Build-Depends-Indep: libxml-parser-perl,
+                     hicolor-icon-theme,
+                     pkg-config (>= 0.19),
+                     icon-naming-utils (>= 0.8.1),
+                     libmagickcore-dev | libmagick9-dev,
+                     imagemagick (>= 5.5.7),
+                     librsvg2-dev (>= 2.12.3),
+                     lsb-release,
+                     intltool
+Standards-Version: 3.8.3
+
+Package: human-icon-theme
+Architecture: all
+Depends: ${misc:Depends}
+Replaces: ubuntu-artwork (<< 31)
+Description: Human Icon theme
+ Human is a nice and well polished icon theme for
+ the GNOME desktop.
+

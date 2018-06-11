@@ -1,9 +1,12 @@
 from multiprocessing import Pool
-import cPickle as pickle
-import pandas as pd
-from pandas.tools.plotting import scatter_matrix
 import sys
 import os
+if sys.version_info > (3, 0):
+    import pickle
+else:
+    import cPickle as pickle
+import pandas as pd
+from pandas.tools.plotting import scatter_matrix
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
@@ -64,7 +67,7 @@ def PlotTrace(trace, par_name, prior):
     return fig, axes2d
 
 
-def GenerateTrace(emulator, exp_result, exp_cov, prior, id_, iter=10000):
+def GenerateTrace(emulator, exp_result, exp_cov, prior, id_, iter):
     """
     The main function to generate pandas trace file after comparing the emulator with experimental value
     Uses pymc2 as it is found to be faster

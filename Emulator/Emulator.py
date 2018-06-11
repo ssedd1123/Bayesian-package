@@ -30,7 +30,7 @@ class EmulatorMultiOutput:
         self.num_output = target.shape[1]
         self.num_input = input_.shape[1]
         self.emulator_list = []
-        for i in xrange(0, self.num_output):
+        for i in range(0, self.num_output):
             emulator = Emulator(input_, target[:, i])
             self.emulator_list.append(emulator)
 
@@ -84,7 +84,7 @@ class EmulatorMultiOutput:
     def Emulate(self, input_):
         mean_list = []
         var_list = []
-        for i in xrange(0, self.num_output):
+        for i in range(0, self.num_output):
             (mean, var) = self.emulator_list[i].Emulate(input_)
             mean_list.append(mean)
             var_list.append(var[0][0])

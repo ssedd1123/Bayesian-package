@@ -1,9 +1,12 @@
-from multiprocessing import Pool
-import cPickle as pickle
-import numpy as np
-import pandas as pd
 import sys
 import os
+from multiprocessing import Pool
+if sys.version_info > (3, 0):
+    import pickle
+else:
+    import cPickle as pickle
+import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import math
 import argparse
@@ -38,7 +41,7 @@ if __name__=="__main__":
     Trace generation with multiple cores
     """
     processes=args['cores']
-    pool = Pool(processes=processes)
+    pool = Pool()
     result = []
     for i in xrange(processes):
         result.append(pool.apply_async(GenerateTrace, (emulator, training_data.exp_result, training_data.exp_cov, prior, i, args['steps'])))

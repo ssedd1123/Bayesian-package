@@ -1,8 +1,11 @@
 import os
-import cPickle as pickle
+import sys
+if sys.version_info > (3, 0):
+    import pickle
+else:
+    import cPickle as pickle
 import autograd.numpy as np
 import pandas as pd
-import sys
 import argparse
 
 from Emulator.Emulator import EmulatorMaster, RBF
