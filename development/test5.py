@@ -1,43 +1,52 @@
+import random
 import wx
-
-class MyFrame(wx.Frame):
+ 
+########################################################################
+class TabPanel(wx.Panel):
+    #----------------------------------------------------------------------
+    def __init__(self, parent):
+        """"""
+        wx.Panel.__init__(self, parent=parent)
+ 
+        colors = ["red", "blue", "gray", "yellow", "green"]
+        self.SetBackgroundColour(random.choice(colors))
+ 
+        btn = wx.Button(self, label="Press Me")
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(btn, 0, wx.ALL, 10)
+        self.SetSizer(sizer)
+ 
+########################################################################
+class DemoFrame(wx.Frame):
+    """
+    Frame that holds all other widgets
+    """
+ 
+    #----------------------------------------------------------------------
     def __init__(self):
-        wx.Frame.__init__(self, None, -1,"Popup Menu Example")
-        self.panel = p = wx.Panel(self)
-        menu = wx.Menu()
-        exit = menu.Append(-1, "Exit")
-        self.Bind(wx.EVT_MENU, self.OnExit, exit)
-                  
-        menuBar = wx.MenuBar()
-        menuBar.Append(menu, "Menu")
-        self.SetMenuBar(menuBar)
-
-        wx.StaticText(p, -1,"Right-click on the panel to show a popup menu",(25,25))
-
-        self.popupmenu = wx.Menu()
-        for text in "one two three four five".split():
-            item = self.popupmenu.Append(-1, text)
-            self.Bind(wx.EVT_MENU, self.OnPopupItemSelected, item)
-        p.Bind(wx.EVT_CONTEXT_MENU, self.OnShowPopup)
-
-
-    def OnShowPopup(self, event):
-        pos = event.GetPosition()
-        pos = self.panel.ScreenToClient(pos)
-        self.panel.PopupMenu(self.popupmenu, pos)
-        
-
-    def OnPopupItemSelected(self, event):
-        item = self.popupmenu.FindItemById(event.GetId())
-        text = item.GetText()
-        wx.MessageBox("You selected item '%s'" % text)
-        
-
-    def OnExit(self, event):
-        self.Close()
-        
-
-app = wx.PySimpleApp()
-frame = MyFrame()
-frame.Show()
-app.MainLoop()
+        """Constructor"""        
+        wx.Frame.__init__(self, None, wx.ID_ANY, 
+                          "Notebook Tutorial",
+                          size=(600,400)
+                          )
+        panel = wx.Panel(self)
+ 
+        notebook = wx.Notebook(panel)
+        tabOne = TabPanel(notebook)
+        notebook.AddPage(tabOne, "Tab 1")
+ 
+        tabTwo = TabPanel(notebook)
+        notebook.AddPage(tabTwo, "Tab 2")
+ 
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(notebook, 1, wx.ALL|wx.EXPAND, 5)
+        panel.SetSizer(sizer)
+        self.Layout()
+ 
+        self.Show()
+ 
+#----------------------------------------------------------------------
+if __name__ == "__main__":
+    app = wx.App(False)
+    frame = DemoFrame()
+    app.MainLoop()

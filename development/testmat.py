@@ -25,6 +25,9 @@ from __future__ import print_function
 #import wxversion
 #wxversion.ensureMinimal('2.8')
 
+import random
+import cPickle as pickle
+import pandas as pd
 import sys
 import time
 import os
@@ -35,6 +38,13 @@ import matplotlib.cm as cm
 import matplotlib.cbook as cbook
 from matplotlib.backends.backend_wxagg import Toolbar, FigureCanvasWxAgg
 from matplotlib.figure import Figure
+sys.path.append("..")
+from Emulator.Emulator import *
+
+#from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
+from matplotlib.backends.backend_wx import NavigationToolbar2Wx
+#from matplotlib.figure import Figure
+
 import numpy as np
 from copy import copy
 
@@ -56,6 +66,8 @@ ID_COLSIZE = 80
 ID_ROWSIZE = 20
 
 ID_PASTE_SPECIAL = 30
+ID_PLOT = 40
+ID_OPENFILE = 50
 
 
 matplotlib.rc('image', origin='lower')
@@ -93,6 +105,15 @@ class GridPopupMenu(wx.Menu):
         insert_top = self.Append(wx.ID_UP, 'Insert top')
         self.Bind(wx.EVT_MENU, self.OnInsertTop, insert_top)
 
+    def _RecordUndo(self, undo):
+        self.parent.stockUndo.append(undo)
+        toolbar = self.parent.parent.toolbar
+        if (toolbar.GetToolEnabled(ID_UNDO) == False):
+            toolbar.EnableTool(ID_UNDO, True)
+        if self.parent.stockRedo:
+            del self.parent.stockRedo[:]
+            toolbar.EnableTool(ID_REDO, False)
+
 
     def OnInsertBottom(self, event):
         coords = self.parent.selected_coords
@@ -108,13 +129,7 @@ class GridPopupMenu(wx.Menu):
         range_[1][0] = range_[1][0] - height
         undo.merge(self.parent.SetValue(range_, data_list))
 
-        stockUndo.append(undo)
- 
-        if stockRedo:
-            # this might be surprising, but it is a standard behaviour
-            # in all spreadsheets
-            del stockRedo[:]
-            self.parent.parent.toolbar.EnableTool(ID_REDO, False)
+        self._RecordUndo(undo)
         
 
     def OnInsertTop(self, event):
@@ -131,13 +146,7 @@ class GridPopupMenu(wx.Menu):
         range_[1][0] = range_[1][0] + height
         undo.merge(self.parent.SetValue(range_, data_list))
 
-        stockUndo.append(undo)
-
-        if stockRedo:
-            # this might be surprising, but it is a standard behaviour
-            # in all spreadsheets
-            del stockRedo[:]
-            self.parent.parent.toolbar.EnableTool(ID_REDO, False)
+        self._RecordUndo(undo)
 
     def OnInsertLeft(self, event):
         coords = self.parent.selected_coords
@@ -153,13 +162,7 @@ class GridPopupMenu(wx.Menu):
         range_[1][1] = range_[1][1] + width
         undo.merge(self.parent.SetValue(range_, data_list))
 
-        stockUndo.append(undo)
-
-        if stockRedo:
-            # this might be surprising, but it is a standard behaviour
-            # in all spreadsheets
-            del stockRedo[:]
-            self.parent.parent.toolbar.EnableTool(ID_REDO, False)
+        self._RecordUndo(undo)
 
     def OnInsertRight(self, event):
         coords = self.parent.selected_coords
@@ -175,11 +178,7 @@ class GridPopupMenu(wx.Menu):
         range_[1][1] = range_[1][1] - width
         undo.merge(self.parent.SetValue(range_, data_list))
 
-        stockUndo.append(undo)
-   
-        if stockRedo:
-            del stockRedo[:]
-            self.parent.parent.toolbar.EnableTool(ID_REDO, False)
+        self._RecordUndo(undo)
 
     def OnCopy(self, event):
         data = []
@@ -206,22 +205,14 @@ class GridPopupMenu(wx.Menu):
         first = [self.parent.GetGridCursorRow(), self.parent.GetGridCursorCol()]
         second = [self.parent.GetGridCursorRow() + len(data), self.parent.GetGridCursorCol()]
         undo = self.parent.SetValue([first, second], data)
-        stockUndo.append(undo)
 
-        if stockRedo:
-            del stockRedo[:]
-            self.parent.parent.toolbar.EnableTool(ID_REDO, False)
-            
+        self._RecordUndo(undo)
 
 
     def OnClear(self, event):
         selected = self.parent.selected_coords
         undo = self.parent.ClearRange(selected)
-        stockUndo.append(undo)
-
-        if stockRedo:
-            del stockRedo[:]
-            self.parent.parent.toolbar.EnableTool(ID_REDO, False)
+        self._RecordUndo(undo)
          
     def OnPasteSpecial(self, event):
         dataObj = wx.TextDataObject()
@@ -234,11 +225,7 @@ class GridPopupMenu(wx.Menu):
         first = [self.parent.GetGridCursorRow(), self.parent.GetGridCursorCol()]
         second = [self.parent.GetGridCursorRow() + len(data), self.parent.GetGridCursorCol() + len(data[0])]
         undo = self.parent.SetValue([first, second], data)
-        stockUndo.append(undo)
-
-        if stockRedo:
-            del stockRedo[:]
-            self.parent.parent.toolbar.EnableTool(ID_REDO, False)
+        self._RecordUndo(undo)
 
 class UndoText:
     def __init__(self, sheet, text1, text2, row, column):
@@ -275,9 +262,11 @@ class MyGrid(gridlib.Grid):
     #----------------------------------------------------------------------
     def __init__(self, parent):
         """Constructor"""
+        self.stockUndo = []
+        self.stockRedo = []
         #wx.Frame.__init__(self, parent, -1)
         #wx.Panel.__init__(self, parent)
-        gridlib.Grid.__init__(self, parent.panel)
+        gridlib.Grid.__init__(self, parent, size=(200, 300))
         self.num_row = 12
         self.num_col = 8
         self.CreateGrid(self.num_row, self.num_col)
@@ -330,8 +319,8 @@ class MyGrid(gridlib.Grid):
                     changed_row.append(row)
                     changed_col.append(col)
                     old_value.append(self.GetCellValue(row, col))
-                    new_value.append(element)
-                    self.SetCellValue(row, col, element)
+                    new_value.append(str(element))
+                    self.SetCellValue(row, col, str(element))
         undo = UndoText(self, old_value, new_value, changed_row, changed_col)
         return undo
 
@@ -356,10 +345,6 @@ class MyGrid(gridlib.Grid):
 
     def ShowMenu(self, event):
         pos = wx.GetMousePosition()
-        print(self.parent.panel.ScreenToClient(pos))
-        print(self.parent.ScreenToClient(pos))
-        print(self.ScreenToClient(pos))
-        print(self.parent.ScreenToClient(self.ScreenToClient(pos)))
         win = self.PopupMenu(GridPopupMenu(self), self.ScreenToClient(pos))
  
           
@@ -385,7 +370,7 @@ class MyGrid(gridlib.Grid):
  
     def OnLabelLeftClick(self, evt):
         pos = wx.GetMousePosition()
-        win = self.PopupMenu(LabelPopupMenu(self), self.parent.panel.ScreenToClient(pos))
+        win = self.PopupMenu(LabelPopupMenu(self), self.parent.ScreenToClient(pos))
         print("OnLabelLeftClick: (%d,%d) %s\n" % (evt.GetRow(),
                                                   evt.GetCol(),
                                                   evt.GetPosition()))
@@ -460,12 +445,12 @@ class MyGrid(gridlib.Grid):
         # self.text - text before change
         # text - text after change
         undo = UndoText(self, [event.GetString()], [text], [r], [c])
-        stockUndo.append(undo)
+        self.stockUndo.append(undo)
 
-        if stockRedo:
+        if self.stockRedo:
             # this might be surprising, but it is a standard behaviour
             # in all spreadsheets
-            del stockRedo[:]
+            del self.stockRedo[:]
             toolbar.EnableTool(ID_REDO, False)
 
  
@@ -537,66 +522,233 @@ class MyGrid(gridlib.Grid):
         print("OnEditorCreated: (%d, %d) %s\n" % (evt.GetRow(),
                                                   evt.GetCol(),
                                                   evt.GetControl()))
- 
 
-class Common(wx.Frame):
- 
-    def __init__(self, parent):
-        wx.Frame.__init__(self, parent, wx.NewId(), "Common")
-        self.panel = wx.Panel(self)
+class LeftPanel(wx.Panel):
+
+    def __init__(self, parent, plotpanel):
+        wx.Panel.__init__(self, parent)
+        self.plotpanel = plotpanel
+        self.parent = parent
+
         self.grid = MyGrid(self)
-
         sizer = wx.BoxSizer(wx.VERTICAL)
-        
-        # toolbar
-        save_ico = wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE, wx.ART_TOOLBAR, (16,16))
-        self.toolbar = wx.ToolBar(self.panel, id=100, style=wx.TB_HORIZONTAL | wx.NO_BORDER |
-                                        wx.TB_FLAT | wx.TB_TEXT)
-        self.toolbar.AddSimpleTool(ID_UNDO, save_ico,
-              'Undo', '')
-        self.toolbar.AddSimpleTool(ID_REDO, wx.Bitmap('/projects/hira/tsangc/GaussianEmulator/development/human-icon-theme/16x16/stock/generic/stock_exit.png'),
-              'Redo', '')
-        self.toolbar.EnableTool(ID_UNDO, False)
 
+     # toolbar
+        save_ico = wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE, wx.ART_TOOLBAR, (16,16))
+        self.toolbar = wx.ToolBar(self, id=100, style=wx.TB_HORIZONTAL | wx.NO_BORDER |
+                                        wx.TB_FLAT | wx.TB_TEXT)
+        self.toolbar.AddSimpleTool(ID_UNDO, save_ico, 'Undo', '')
+        self.toolbar.AddSimpleTool(ID_REDO, wx.Bitmap('/projects/hira/tsangc/GaussianEmulator/development/human-icon-theme/16x16/stock/generic/stock_exit.png'), 'Redo', '')
+        self.toolbar.AddSimpleTool(ID_PLOT, wx.Bitmap('/projects/hira/tsangc/GaussianEmulator/development/human-icon-theme/16x16/stock/generic/stock_exit.png'), 'plot', '')
+
+ 
+
+        self.toolbar.EnableTool(ID_UNDO, False)
         self.toolbar.EnableTool(ID_REDO, False)
         #self.toolbar.AddSeparator()
         #self.toolbar.AddSimpleTool(ID_EXIT, wx.Bitmap('/projects/hira/tsangc/GaussianEmulator/development/human-icon-theme/16x16/stock/generic/stock_exit.png'),'Quit', '')
         self.toolbar.Realize()
         self.toolbar.Bind(wx.EVT_TOOL, self.OnUndo, id=ID_UNDO)
         self.toolbar.Bind(wx.EVT_TOOL, self.OnRedo, id=ID_REDO)
+        self.toolbar.Bind(wx.EVT_TOOL, self.OnPlot, id=ID_PLOT)
         
         sizer.Add(self.toolbar, border=5)
-        
-        sizer.Add(self.grid, 1., wx.EXPAND, 5)
-        self.panel.SetSizer(sizer)
+        sizer.Add(self.grid, 1., wx.LEFT | wx.TOP | wx.GROW)
+        self.SetSizer(sizer)
         self.Fit()
 
     def OnUndo(self, event):
-        if len(stockUndo) == 0:
+        if len(self.grid.stockUndo) == 0:
             return
 
-        a = stockUndo.pop()
-        if len(stockUndo) == 0:
+        a = self.grid.stockUndo.pop()
+        if len(self.grid.stockUndo) == 0:
             self.toolbar.EnableTool(ID_UNDO, False)
 
         a.undo()
-        stockRedo.append(a)
+        self.grid.stockRedo.append(a)
         self.toolbar.EnableTool(ID_REDO, True)
 
     def OnRedo(self, event):
-        if len(stockRedo) == 0:
+        if len(self.grid.stockRedo) == 0:
             return
 
-        a = stockRedo.pop()
-        if len(stockRedo) == 0:
+        a = self.grid.stockRedo.pop()
+        if len(self.grid.stockRedo) == 0:
             self.toolbar.EnableTool(ID_REDO, False)
 
         a.redo()
-        stockUndo.append(a)
+        self.grid.stockUndo.append(a)
 
         self.toolbar.EnableTool(ID_UNDO, True)
 
-print('start')
+    def OnPlot(self, event):
+        range_ = self.grid.selected_coords
+        if range_ is None:
+            return
+         
+        data = self.grid.GetRange(range_)
+        data = np.array(data)
+
+        try:
+            data = data.astype(np.float)
+        except:
+            print ('This array cannot be converted into float. Abort')
+            return
+        
+        if data.shape[0] == 2:
+            self.plotpanel.SetData(data[0, :], data[1, :])
+        elif data.shape[1] == 2:
+            self.plotpanel.SetData(data[:, 0], data[:, 1])
+        else:
+            print(data, 'data shape not recognized')
+
+
+########################################################################
+class RightPanel(wx.Panel):
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent, -1)
+
+        self.fig = Figure((5, 4), 75)
+        self.canvas = FigureCanvasWxAgg(self, -1, self.fig)
+        self.toolbar = NavigationToolbar2Wx(self.canvas)  # matplotlib toolbar
+        self.toolbar.Realize()
+        # self.toolbar.set_active([0,1])
+
+        # Now put all into a sizer
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        # This way of adding to sizer allows resizing
+        sizer.Add(self.canvas, 1, wx.LEFT | wx.TOP | wx.GROW)
+        # Best to allow the toolbar to resize!
+        sizer.Add(self.toolbar, 0, wx.GROW)
+        self.SetSizer(sizer)
+        self.Fit()
+       
+        self.init_plot_data()
+
+    def init_plot_data(self):
+        a = self.fig.add_subplot(111)
+
+        x = np.arange(100.0) * 2 * np.pi / 60.0
+        y = np.arange(100.0) * 2 * np.pi / 50.0
+        self.lines = a.plot(x, y, 'ro')
+
+        self.toolbar.update()  # Not sure why this is needed - ADS
+
+    def GetToolBar(self):
+        # You will need to override GetToolBar if you are using an
+        # unmanaged toolbar in your frame
+        return self.toolbar
+
+    def SetData(self, xdata, ydata):
+        print(xdata, ydata)
+        self.lines[0].set_data(xdata, ydata)
+
+        self.canvas.draw()
+
+    def onEraseBackground(self, evt):
+        # this is supposed to prevent redraw flicker on some X servers...
+        pass
+
+class TabPanel(wx.Panel):
+    #----------------------------------------------------------------------
+    def __init__(self, parent):
+        """"""
+        wx.Panel.__init__(self, parent=parent)
+ 
+        colors = ["red", "blue", "gray", "yellow", "green"]
+        self.SetBackgroundColour(random.choice(colors))
+ 
+        btn = wx.Button(self, label="Press Me")
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(btn, 0, wx.ALL, 10)
+        self.SetSizer(sizer)
+ 
+
+class CommonToolBar(wx.ToolBar):
+
+    def __init__(self, parent, tab1, tab2, **args):
+        wx.ToolBar.__init__(self, parent, **args)
+        self.tab1 = tab1
+        self.tab2 = tab2
+        self.parent = parent
+        
+
+        save_ico = wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE, wx.ART_TOOLBAR, (16,16))
+        open_ico = wx.ArtProvider.GetBitmap(wx.ART_FILE_OPEN, wx.ART_TOOLBAR, (16,16))
+        self.AddSimpleTool(ID_OPENFILE, open_ico, 'Open', '')
+ 
+
+        self.Realize()
+        self.Bind(wx.EVT_TOOL, self.OnFile, id=ID_OPENFILE)
+
+    def OnFile(self, event):
+        """
+        Create and show the Open FileDialog
+        """
+        dlg = wx.FileDialog(
+            self, message="Choose a file",
+            defaultFile="",
+            style=wx.OPEN | wx.MULTIPLE | wx.CHANGE_DIR
+            )
+        if dlg.ShowModal() == wx.ID_OK:
+            paths = dlg.GetPaths()
+            print("You chose the following file(s):")
+            for path in paths:
+                print(path)
+        dlg.Destroy()
+
+        with open(path, 'rb') as buff:
+            data = pickle.load(buff)
+        prior = data['data'].prior
+        prior = [prior.columns.tolist()] + prior.values.tolist()
+        print(prior)
+        self.tab1.grid.SetValue([[0,0], [len(prior), len(prior[0])]], prior)
+
+
+class Common(wx.Frame):
+ 
+    def __init__(self, parent):
+        wx.Frame.__init__(self, parent, wx.NewId(), "Common", size=(1000,400))
+        
+        panel = wx.Panel(self)
+         
+        notebook = wx.Notebook(panel)
+
+        splitter = wx.SplitterWindow(notebook)
+        rightP = RightPanel(splitter)
+        leftP = LeftPanel(splitter, rightP)
+        splitter.SplitVertically(leftP, rightP, 200)
+        splitter.SetMinimumPaneSize(500)
+
+        notebook.AddPage(splitter, "Model result")
+
+        splitter = wx.SplitterWindow(notebook)
+        rightP = RightPanel(splitter)
+        leftP2 = LeftPanel(splitter, rightP)
+        splitter.SplitVertically(leftP2, rightP, 200)
+        splitter.SetMinimumPaneSize(500)
+        notebook.AddPage(splitter, "Exp data")
+
+        sizer = wx.BoxSizer(wx.VERTICAL)
+                
+        
+    # toolbar
+        self.toolbar = CommonToolBar(panel, tab1=leftP, tab2=leftP2, id=100, style=wx.TB_HORIZONTAL | wx.NO_BORDER |
+                                        wx.TB_FLAT | wx.TB_TEXT)
+
+        sizer.Add(self.toolbar, border=5)
+        
+        sizer.Add(notebook, 1, wx.EXPAND | wx.EXPAND, 5)
+        
+        panel.SetSizer(sizer)
+        self.Layout()
+        self.Show()
+
+    
+
+
+
 app = wx.App(0)
 frame = Common(None)
 frame.Show()
