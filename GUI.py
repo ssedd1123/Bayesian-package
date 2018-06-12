@@ -867,7 +867,7 @@ class CommonToolBar(wx.ToolBar):
             temp.flush()
             self.opened_data['data'].ChangePrior(temp.name)
 
-        exp = self.tab2.grid.GetAllValues()
+        exp = self.tab3.grid.GetAllValues()
         headers = exp.pop(0)
         exp = pd.DataFrame(exp, columns=headers)
         with tempfile.NamedTemporaryFile() as temp:
