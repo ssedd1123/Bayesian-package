@@ -35,7 +35,7 @@ if __name__=="__main__":
     emulator = data['emulator']
     training_data = data['data']
     prior=training_data.prior
-    
+
     
     """
     Trace generation with multiple cores

@@ -21,7 +21,9 @@ class DataLoader:
         """
         df = pd.read_csv(model_filename)
         self.sim_error = df[list(df.filter(regex='_Error'))].values
+       
         df_no_error = df[df.columns.drop(list(df.filter(regex='_Error')))]
+        self.var_name = list(df_no_error.drop(self.par_name, axis=1))
         self.sim_data = df_no_error.drop(self.par_name, axis=1).values
         self.sim_para = df_no_error[self.par_name].values 
 
