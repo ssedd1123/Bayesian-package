@@ -26,6 +26,8 @@ def PlotTrace(trace, par_name, prior):
     num_par = len(par_name)
     graph_num = 1
     fig, axes2d = plt.subplots(num_par, num_par)
+    if num_par == 1:
+        axes2d = [[axes2d]]
     for i, row in enumerate(axes2d):
         for j, cell in enumerate(row):
             namex = par_name[j]

@@ -22,6 +22,9 @@ def Training(args):
     """
     output_pipe = PipeLine([('Normalize', Normalize()), ('PCA', PCA(args['principalcomp'])), ('Normalized', Normalize())])
     input_pipe = Normalize()
+
+    print(data.sim_para, data.sim_data)
+    print(args)
     
     emulator = EmulatorMaster(data.sim_para, data.sim_data, input_pipe, output_pipe)
     if args['covariancefunc'] == 'RBF':

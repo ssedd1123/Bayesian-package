@@ -42,7 +42,7 @@ import tempfile
 
 
 from Training import Training
-
+from TrainingFrame import TrainingFrame
 
 #from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.backends.backend_wx import NavigationToolbar2Wx
@@ -836,12 +836,18 @@ class CommonToolBar(wx.ToolBar):
             args['Training_name'] = outFile[0]
             args['abs'] = True
             args['covariancefunc'] = 'ARD'
-            args['principalcomp'] = 3
+            args['principalcomp'] = 1
             args['initialscale'] = [0.5]
             args['initialnugget'] = 1
             args['scalerate'] = 0.003
             args['nuggetrate'] = 0.003
             args['maxsteps'] = 1000
+
+            frame = TrainingFrame()
+            res = frame.ShowModal()
+            if res == wx.ID_OK:
+                frame.AdditionalData(args)
+            frame.Destroy()
             
             Training(args)
 

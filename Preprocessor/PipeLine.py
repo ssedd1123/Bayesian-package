@@ -100,7 +100,7 @@ class PCA:
         self.eigval = None
         self.eigvec = None
         self.component = component
-        self.reconstruction_error = None
+        self.reconstruction_error = 0
 
     def __repr__(self):
         return "PCA(%d)" % self.component
@@ -110,6 +110,7 @@ class PCA:
         if not self.cov.shape:
             self.eigval = self.cov
             self.eigvec = np.eye(1)
+            self.cov = self.cov.reshape(-1,1)
         else:
             self.eigval, self.eigvec = np.linalg.eigh(self.cov)
             idx = self.eigval.argsort()[::-1]
@@ -117,6 +118,8 @@ class PCA:
             self.eigvec = self.eigvec[:,idx]
             assert self.component <= data.shape[1], "number of components cannot exceed number of variables"
             self.reconstruction_error = np.mean(self.eigval[self.component:])
+            if self.reconstruction_error is None:
+                self.reconstruction_error = 0
             self.eigval = self.eigval[0:self.component]
             self.eigvec = self.eigvec[:, 0:self.component]
 
