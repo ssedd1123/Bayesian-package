@@ -46,11 +46,10 @@ import wx
 #import wx.xrc as xrc
 import wx.grid as gridlib
 
-from GUI.ID import *
-from Training import Training
-from GUI.TrainingFrame import TrainingFrame
-from GUI.Grid import MyGrid
-from GUI.PlotFrame import PlotFrame
+from ID import *
+from ..Training import Training
+from TrainingFrame import TrainingFrame
+from Grid import MyGrid
 
 
 matplotlib.rc('image', origin='lower')
@@ -58,73 +57,39 @@ matplotlib.rc('image', origin='lower')
 
 class LeftPanel(wx.Panel):
 
-    def __init__(self, parent):
+    def __init__(self, parent, plotpanel):
         wx.Panel.__init__(self, parent)
+        self.plotpanel = plotpanel
         self.parent = parent
 
         self.grid = MyGrid(self)
         sizer = wx.BoxSizer(wx.VERTICAL)
 
      # toolbar
-        undo_ico = wx.ArtProvider.GetBitmap(wx.ART_UNDO, wx.ART_TOOLBAR, (16,16))
+        save_ico = wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE, wx.ART_TOOLBAR, (16,16))
         self.toolbar = wx.ToolBar(self, id=100, style=wx.TB_HORIZONTAL | wx.NO_BORDER |
                                         wx.TB_FLAT | wx.TB_TEXT)
-        self.toolbar.AddSimpleTool(ID_UNDO, undo_ico, 'Undo', '')
-        redo_ico = wx.ArtProvider.GetBitmap(wx.ART_REDO, wx.ART_TOOLBAR, (16,16))
-        self.toolbar.AddSimpleTool(ID_REDO, redo_ico, 'Redo', '')
+        self.toolbar.AddSimpleTool(ID_UNDO, save_ico, 'Undo', '')
+        self.toolbar.AddSimpleTool(ID_REDO, wx.Bitmap('/projects/hira/tsangc/GaussianEmulator/development/human-icon-theme/16x16/stock/generic/stock_exit.png'), 'Redo', '')
+        self.toolbar.AddSimpleTool(ID_PLOT, wx.Bitmap('/projects/hira/tsangc/GaussianEmulator/development/human-icon-theme/16x16/stock/generic/stock_exit.png'), 'plot', '')
         open_ico = wx.ArtProvider.GetBitmap(wx.ART_FILE_OPEN, wx.ART_TOOLBAR, (16,16))
         self.toolbar.AddSimpleTool(ID_INDOPENFILE, open_ico, 'Open csv', '')
-        print_ico = wx.ArtProvider.GetBitmap(wx.ART_PRINT, wx.ART_TOOLBAR, (16,16))
-        self.toolbar.AddSimpleTool(ID_PRINT, print_ico, 'Plot data', '')
  
 
         self.toolbar.EnableTool(ID_UNDO, False)
         self.toolbar.EnableTool(ID_REDO, False)
+        #self.toolbar.AddSeparator()
+        #self.toolbar.AddSimpleTool(ID_EXIT, wx.Bitmap('/projects/hira/tsangc/GaussianEmulator/development/human-icon-theme/16x16/stock/generic/stock_exit.png'),'Quit', '')
         self.toolbar.Realize()
         self.toolbar.Bind(wx.EVT_TOOL, self.OnUndo, id=ID_UNDO)
         self.toolbar.Bind(wx.EVT_TOOL, self.OnRedo, id=ID_REDO)
+        self.toolbar.Bind(wx.EVT_TOOL, self.OnPlot, id=ID_PLOT)
         self.toolbar.Bind(wx.EVT_TOOL, self.OnOpen, id=ID_INDOPENFILE)
-        self.toolbar.Bind(wx.EVT_TOOL, self.OnPrint, id=ID_PRINT)
         
         sizer.Add(self.toolbar, border=5)
         sizer.Add(self.grid, 1., wx.LEFT | wx.TOP | wx.GROW)
         self.SetSizer(sizer)
         self.Fit()
-
-    def OnPrint(self, event):
-        data = np.array(self.grid.selected_data)
-        if data is not None:
-            data = np.array(data)
-            data[data == ''] = np.nan
-    
-            try:
-                data = np.array([np.genfromtxt(line) for line in data])
-                #data = data[~np.isnan(data).any(axis=0)]
-            except:
-                print ('This array cannot be converted into float. Abort')
-                return
-    
-            if data.shape[0] == 1:
-                xdata = range(0, data.shape[1])
-                ydata = data[0, :]
-            elif len(data.shape) == 1:
-                xdata = range(0, data.shape[0])
-                ydata = data[:]
-            elif data.shape[1] == 1:
-                xdata = range(0, data.shape[0])
-                ydata = data[:, 0]
-            elif data.shape[0] == 2:
-                xdata = data[0, :]
-                ydata = data[1, :]
-            elif data.shape[1] == 2:
-                xdata = data[:, 0]
-                ydata = data[:, 1]
-    
-            frame = PlotFrame(None, xdata, ydata)
-            frame.Show()
-        else:
-            print('No data is selected')
-            
 
     def OnOpen(self, event):
         """
@@ -173,6 +138,97 @@ class LeftPanel(wx.Panel):
 
         self.toolbar.EnableTool(ID_UNDO, True)
 
+    def OnPlot(self, event):
+        range_ = self.grid.selected_coords
+        if range_ is None:
+            return
+         
+        data = self.grid.GetRange(range_)
+        data = np.array(data)
+        data[data == ''] = np.nan
+
+        try:
+            data = np.array([np.genfromtxt(line) for line in data])
+            #data = data[~np.isnan(data).any(axis=0)]
+        except:
+            print ('This array cannot be converted into float. Abort')
+            return
+        
+        if data.shape[0] == 1:
+            self.plotpanel.SetData(range(0, data.shape[1]), data[0, :])
+        elif len(data.shape) == 1:
+            self.plotpanel.SetData(range(0, data.shape[0]), data[:])
+        elif data.shape[1] == 1:
+            self.plotpanel.SetData(range(0, data.shape[0]), data[:, 0])
+        elif data.shape[0] == 2:
+            self.plotpanel.SetData(data[0, :], data[1, :])
+        elif data.shape[1] == 2:
+            self.plotpanel.SetData(data[:, 0], data[:, 1])
+        
+        else:
+            print(data, 'data shape not recognized')
+
+
+########################################################################
+class RightPanel(wx.Panel):
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent, -1)
+
+        self.fig = Figure((5, 4), 75)
+        self.canvas = FigureCanvasWxAgg(self, -1, self.fig)
+        self.toolbar = NavigationToolbar2Wx(self.canvas)  # matplotlib toolbar
+        self.toolbar.Realize()
+        # self.toolbar.set_active([0,1])
+
+        # Now put all into a sizer
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        # This way of adding to sizer allows resizing
+        sizer.Add(self.canvas, 1, wx.LEFT | wx.TOP | wx.GROW)
+        # Best to allow the toolbar to resize!
+        sizer.Add(self.toolbar, 0, wx.GROW)
+        self.SetSizer(sizer)
+        self.Fit()
+       
+        self.init_plot_data()
+
+    def init_plot_data(self):
+        a = self.fig.add_subplot(111)
+
+        x = np.arange(100.0) * 2 * np.pi / 60.0
+        y = np.arange(100.0) * 2 * np.pi / 50.0
+        self.lines = a.plot(x, y, 'ro')
+
+        self.toolbar.update()  # Not sure why this is needed - ADS
+
+    def GetToolBar(self):
+        # You will need to override GetToolBar if you are using an
+        # unmanaged toolbar in your frame
+        return self.toolbar
+
+    def SetData(self, xdata, ydata):
+        print(xdata, ydata)
+        self.lines[0].set_data(xdata, ydata)
+
+        self.canvas.draw()
+
+    def onEraseBackground(self, evt):
+        # this is supposed to prevent redraw flicker on some X servers...
+        pass
+
+class TabPanel(wx.Panel):
+    #----------------------------------------------------------------------
+    def __init__(self, parent):
+        """"""
+        wx.Panel.__init__(self, parent=parent)
+ 
+        colors = ["red", "blue", "gray", "yellow", "green"]
+        self.SetBackgroundColour(random.choice(colors))
+ 
+        btn = wx.Button(self, label="Press Me")
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(btn, 0, wx.ALL, 10)
+        self.SetSizer(sizer)
+ 
 
 class CommonToolBar(wx.ToolBar):
 
@@ -369,14 +425,26 @@ class Common(wx.Frame):
          
         notebook = wx.Notebook(panel)
 
-        leftP = LeftPanel(notebook)
-        notebook.AddPage(leftP, "Para prior")
+        splitter = wx.SplitterWindow(notebook)
+        rightP = RightPanel(splitter)
+        leftP = LeftPanel(splitter, rightP)
+        splitter.SplitVertically(leftP, rightP, 200)
+        splitter.SetMinimumPaneSize(500)
+        notebook.AddPage(splitter, "Para prior")
 
-        leftP2 = LeftPanel(notebook)
-        notebook.AddPage(leftP2, "Model result")
+        splitter = wx.SplitterWindow(notebook)
+        rightP = RightPanel(splitter)
+        leftP2 = LeftPanel(splitter, rightP)
+        splitter.SplitVertically(leftP2, rightP, 200)
+        splitter.SetMinimumPaneSize(500)
+        notebook.AddPage(splitter, "Model result")
 
-        leftP3 = LeftPanel(notebook)
-        notebook.AddPage(leftP3, "Exp data data")
+        splitter = wx.SplitterWindow(notebook)
+        rightP = RightPanel(splitter)
+        leftP3 = LeftPanel(splitter, rightP)
+        splitter.SplitVertically(leftP3, rightP, 200)
+        splitter.SetMinimumPaneSize(500)
+        notebook.AddPage(splitter, "Exp data data")
 
         sizer = wx.BoxSizer(wx.VERTICAL)
                 

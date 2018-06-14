@@ -1,0 +1,98 @@
+"""
+Copyright (C) 2003-2004 Andrew Straw, Jeremy O'Donoghue and others
+
+License: This work is licensed under the PSF. A copy should be included
+with this source code, and is also available at
+http://www.python.org/psf/license.html
+
+This is yet another example of using matplotlib with wx.  Hopefully
+this is pretty full-featured:
+
+  - both matplotlib toolbar and WX buttons manipulate plot
+  - full wxApp framework, including widget interaction
+  - XRC (XML wxWidgets resource) file to create GUI (made with XRCed)
+
+This was derived from embedding_in_wx and dynamic_image_wxagg.
+
+Thanks to matplotlib and wx teams for creating such great software!
+
+"""
+from __future__ import print_function
+
+# matplotlib requires wxPython 2.8+
+# set the wxPython version in lib\site-packages\wx.pth file
+# or if you have wxversion installed un-comment the lines below
+#import wxversion
+#wxversion.ensureMinimal('2.8')
+
+import random
+import cPickle as pickle
+import pandas as pd
+import sys
+import time
+import os
+import gc
+import matplotlib
+matplotlib.use('WXAgg')
+import matplotlib.cm as cm
+import matplotlib.cbook as cbook
+from matplotlib.backends.backend_wxagg import Toolbar, FigureCanvasWxAgg
+from matplotlib.figure import Figure
+import tempfile
+
+
+#from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
+from matplotlib.backends.backend_wx import NavigationToolbar2Wx
+#from matplotlib.figure import Figure
+
+import numpy as np
+from copy import deepcopy
+
+import wx
+#import wx.xrc as xrc
+import wx.grid as gridlib
+
+class PlotFrame(wx.Frame):
+    def __init__(self, parent, xdata, ydata):
+        wx.Frame.__init__(self, parent, wx.NewId())
+        panel = wx.Panel(self)
+
+        self.fig = Figure((5, 4), 75)
+        self.canvas = FigureCanvasWxAgg(self, -1, self.fig)
+        self.toolbar = NavigationToolbar2Wx(self.canvas)  # matplotlib toolbar
+        self.toolbar.Realize()
+
+        # Now put all into a sizer
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        # This way of adding to sizer allows resizing
+        sizer.Add(self.canvas, 1, wx.LEFT | wx.TOP | wx.GROW)
+        # Best to allow the toolbar to resize!
+        sizer.Add(self.toolbar, 0, wx.GROW)
+        self.SetSizer(sizer)
+        self.Fit()
+       
+        self.graph = self.fig.add_subplot(111)
+        self.lines = self.graph.plot(xdata, ydata, 'ro')
+
+        self.toolbar.update()  # Not sure why this is needed - ADS
+
+    def GetToolBar(self):
+        # You will need to override GetToolBar if you are using an
+        # unmanaged toolbar in your frame
+        return self.toolbar
+
+    def SetData(self, xdata, ydata):
+        self.lines[0].set_data(xdata, ydata)
+        self.canvas.draw()
+
+    def onEraseBackground(self, evt):
+        # this is supposed to prevent redraw flicker on some X servers...
+        pass
+
+if __name__ == "__main__":
+    app = wx.App(0)
+    x = np.linspace(0,2,100)
+    y = np.sin(x)
+    frame = PlotFrame(None, x, y)
+    frame.Show()
+    app.MainLoop()
