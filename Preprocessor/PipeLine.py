@@ -95,11 +95,12 @@ class Normalize:
 class PCA:
 
 
-    def __init__(self, component):
+    def __init__(self, component, percentage=None):
         self.cov = None
         self.eigval = None
         self.eigvec = None
         self.component = component
+        self.percentage = percentage
         self.reconstruction_error = 0
 
     def __repr__(self):
@@ -116,6 +117,12 @@ class PCA:
             idx = self.eigval.argsort()[::-1]
             self.eigval = self.eigval[idx]
             self.eigvec = self.eigvec[:,idx]
+            if self.percentage is not None:
+                total_val = sum(self.eigval)
+                running_fraction = np.cumsum(self.eigval)/total_val
+                self.component = np.searchsorted(running_fraction, self.percentage)
+
+            print('comp', self.component)
             assert self.component <= data.shape[1], "number of components cannot exceed number of variables"
             self.reconstruction_error = np.mean(self.eigval[self.component:])
             if self.reconstruction_error is None:

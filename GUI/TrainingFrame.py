@@ -20,62 +20,32 @@ class TrainingFrame(wx.Dialog):
          box1.Add(self.combo_cov_func, 1, wx.EXPAND|wx.ALIGN_LEFT|wx.ALL,5) 
          box.Add(box1)
 
-         box2 = wx.BoxSizer(wx.HORIZONTAL)
-         l1 = wx.StaticText(panel, -1, "Number of PCA Components")
-         box2.Add(l1, 1, wx.EXPAND|wx.ALIGN_LEFT|wx.ALL,5) 
-         self.pca_comp = wx.TextCtrl(panel, -1, '3')
-         box2.Add(self.pca_comp, 1, wx.EXPAND|wx.ALIGN_LEFT|wx.ALL,5) 
-         box.Add(box2)
+         list_textctrl = {'Number of PCA Components': '3', 'PCA Fraction': '0.99', 'Initial scale': '0.5', 'Initial nugget': '1', 'Scale learning rate': '0.003', 'Nugget learning rate': '0.003', 'Maximum iterations': '1000'}
+         self.output = {}
+         
+         for name, default_value in list_textctrl.iteritems():
+             box_new = wx.BoxSizer(wx.HORIZONTAL)
+             text = wx.StaticText(panel, -1, name)
+             box_new.Add(text, 1, wx.EXPAND|wx.ALIGN_LEFT|wx.ALL,5) 
+             textbox = wx.TextCtrl(panel, -1, default_value)
+             box_new.Add(textbox, 1, wx.EXPAND|wx.ALIGN_LEFT|wx.ALL,5) 
+             self.output[name] = textbox
+             box.Add(box_new)
 
-         box3 = wx.BoxSizer(wx.HORIZONTAL)
-         l2 = wx.StaticText(panel, -1, "Initial scale")
-         box3.Add(l2, 1, wx.EXPAND|wx.ALIGN_LEFT|wx.ALL,5)
-         self.init_scale = wx.TextCtrl(panel, -1, '0.5')
-         box3.Add(self.init_scale, 1, wx.EXPAND|wx.ALIGN_LEFT|wx.ALL,5)
-         box.Add(box3)
-
-         box4 = wx.BoxSizer(wx.HORIZONTAL)
-         l3 = wx.StaticText(panel, -1, "Initial nugget")
-         box4.Add(l3, 1, wx.EXPAND|wx.ALIGN_LEFT|wx.ALL,5)
-         self.init_nugget = wx.TextCtrl(panel, -1, '1')
-         box4.Add(self.init_nugget, 1, wx.EXPAND|wx.ALIGN_LEFT|wx.ALL,5)
-         box.Add(box4)
-
-         box5 = wx.BoxSizer(wx.HORIZONTAL)
-         l4 = wx.StaticText(panel, -1, "Scale learning rate")
-         box5.Add(l4, 1, wx.EXPAND|wx.ALIGN_LEFT|wx.ALL,5)
-         self.scalerate = wx.TextCtrl(panel, -1, '0.003')
-         box5.Add(self.scalerate, 1, wx.EXPAND|wx.ALIGN_LEFT|wx.ALL,5)
-         box.Add(box5)
-
-         box6 = wx.BoxSizer(wx.HORIZONTAL)
-         l5 = wx.StaticText(panel, -1, "Nugget learning rate")
-         box6.Add(l5, 1, wx.EXPAND|wx.ALIGN_LEFT|wx.ALL,5)
-         self.nuggetrate = wx.TextCtrl(panel, -1, '0.003')
-         box6.Add(self.nuggetrate, 1, wx.EXPAND|wx.ALIGN_LEFT|wx.ALL,5)
-         box.Add(box6)
-
-         box7 = wx.BoxSizer(wx.HORIZONTAL)
-         l6 = wx.StaticText(panel, -1, "Maximum iterations")
-         box7.Add(l6, 1, wx.EXPAND|wx.ALIGN_LEFT|wx.ALL,5)
-         self.maxsteps = wx.TextCtrl(panel, -1, '1000')
-         box7.Add(self.maxsteps, 1, wx.EXPAND|wx.ALIGN_LEFT|wx.ALL,5)
-         box.Add(box7)
-
-         box8 = wx.BoxSizer(wx.HORIZONTAL)
+         box_submit = wx.BoxSizer(wx.HORIZONTAL)
          self.submit = wx.Button(panel, wx.ID_OK, "Submit")
-         box8.Add(self.submit, 0, wx.ALIGN_CENTER)
-         box.Add(box8)
-
+         box_submit.Add(self.submit, 0, wx.ALIGN_CENTER)
+         box.Add(box_submit)
 
          panel.SetSizer(box)
 
     def AdditionalData(self,args):
         args['covariancefunc'] = self.Cov_func[self.combo_cov_func.GetSelection()]
-        args['principalcomp'] = int(self.pca_comp.GetValue())
-        args['initialscale'] = np.fromstring(self.init_scale.GetValue(), dtype=np.float, sep=',')
-        args['initialnugget'] = float(self.init_nugget.GetValue())
-        args['scalerate'] = float(self.scalerate.GetValue())
-        args['nuggetrate'] = float(self.nuggetrate.GetValue())
-        args['maxsteps'] = int(self.maxsteps.GetValue())
-
+        args['principalcomp'] = int(self.output['Number of PCA Components'].GetValue())
+        args['fraction'] = float(self.output['PCA Fraction'].GetValue())
+        args['initialscale'] = np.fromstring(self.output['Initial scale'].GetValue(), dtype=np.float, sep=',')
+        args['initialnugget'] = float(self.output['Initial nugget'].GetValue())
+        args['scalerate'] = float(self.output['Scale learning rate'].GetValue())
+        args['nuggetrate'] = float(self.output['Nugget learning rate'].GetValue())
+        args['maxsteps'] = int(self.output['Maximum iterations'].GetValue())
+        

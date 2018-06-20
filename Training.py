@@ -20,12 +20,9 @@ def Training(args):
     We need to normalize both the output and input space
     for output space, PCA is also performed for dimension reduction
     """
-    output_pipe = PipeLine([('Normalize', Normalize()), ('PCA', PCA(args['principalcomp'])), ('Normalized', Normalize())])
+    output_pipe = PipeLine([('Normalize', Normalize()), ('PCA', PCA(args['principalcomp'], args['fraction'])), ('Normalized', Normalize())])
     input_pipe = Normalize()
 
-    print(data.sim_para, data.sim_data)
-    print(args)
-    
     emulator = EmulatorMaster(data.sim_para, data.sim_data, input_pipe, output_pipe)
     if args['covariancefunc'] == 'RBF':
         emulator.SetCovariance(RBF)
@@ -69,6 +66,7 @@ if __name__=='__main__':
     parser.add_argument('-sr', '--scalerate', default=0.003, type=float, help='Rate at which scale will advance in 1 step (Default: 0.003)')
     parser.add_argument('-nr', '--nuggetrate', default=0.003, type=float, help='Rate at which nugget will advance in 1 step (Default: 0.003)')
     parser.add_argument('-ms', '--maxsteps', default=1000, type=int, help='Maximum training steps allowed (Default: 1000)')
+    parser.add_argument('-fr', '--fraction', default=None, type=float, help='Fraction of PCA variance used. Once set it will override pc (Default: None)')
     parser.add_argument('-a', '--abs', action='store_true', help='If selected, the output training name will be in absolute path')
     args = vars(parser.parse_args())
     

@@ -52,6 +52,8 @@ from GUI.TrainingFrame import TrainingFrame
 from GUI.Grid import MyGrid
 from GUI.PlotFrame import PlotFrame
 from GUI.EmulatorTest import EmulatorTest
+from GUI.EmulatorFrame import EmulatorFrame
+from StatParallel import StatParallel
 
 
 matplotlib.rc('image', origin='lower')
@@ -193,6 +195,8 @@ class CommonToolBar(wx.ToolBar):
         self.AddSimpleTool(ID_SAVEAS, new_ico, 'Save As', '')
         check_ico = wx.ArtProvider.GetBitmap(wx.ART_FIND, wx.ART_TOOLBAR, (16,16))
         self.AddSimpleTool(ID_EMULATORCHECK, check_ico, 'Check emulator', '')
+        exe_ico = wx.ArtProvider.GetBitmap(wx.ART_EXECUTABLE_FILE, wx.ART_TOOLBAR, (16,16))
+        self.AddSimpleTool(ID_EMULATE, exe_ico, 'Emulator', '')
  
 
         self.Realize()
@@ -200,6 +204,7 @@ class CommonToolBar(wx.ToolBar):
         self.Bind(wx.EVT_TOOL, self.OnSave, id=ID_SAVE)
         self.Bind(wx.EVT_TOOL, self.OnSaveNew, id=ID_SAVEAS)
         self.Bind(wx.EVT_TOOL, self.OnEmulatorCheck, id=ID_EMULATORCHECK)
+        self.Bind(wx.EVT_TOOL, self.OnEmulate, id=ID_EMULATE)
  
         self.opened_filename = None
         self.opened_data = None
@@ -210,6 +215,17 @@ class CommonToolBar(wx.ToolBar):
             data = pickle.load(buff)
         frame = EmulatorTest(None, data['emulator'], data['data'].prior)
         frame.Show()
+
+    def OnEmulate(self, event):
+        args = {}
+        args['Training_file'] = self.opened_filename
+        frame = EmulatorFrame()
+        res = frame.ShowModal()
+        if res == wx.ID_OK:
+            frame.AdditionalData(args)
+        frame.Destroy()
+        
+        StatParallel(args)
 
     def OnSaveNew(self, event):
 
@@ -273,7 +289,7 @@ class CommonToolBar(wx.ToolBar):
                 data = pickle.load(buff)
 
             self.opened_data = data
-            self.opened_filename = outFile
+            self.opened_filename = outFile[0]
         
 
     def OnSave(self, event):
