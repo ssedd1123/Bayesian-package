@@ -72,7 +72,7 @@ class MyGrid(gridlib.Grid):
         self.Bind(gridlib.EVT_GRID_SELECT_CELL, self.OnSelectCell)
  
 
-    def SetValue(self, coords, data):
+    def _SetValue(self, coords, data):
         changed_row = []
         changed_col = []
         old_value = []
@@ -90,7 +90,16 @@ class MyGrid(gridlib.Grid):
         undo = UndoText(self, old_value, new_value, changed_row, changed_col)
         return undo
 
-    def ClearRange(self, coords):
+    def SetValue(self, coords, data):
+        toolbar = self.parent.toolbar
+        undo = self._SetValue(coords, data)
+        self.stockUndo.append(undo)
+
+        if self.stockRedo:
+            del self.stockRedo[:]
+            toolbar.EnableTool(ID_REDO, False)
+
+    def _ClearRange(self, coords):
         changed_row = []
         changed_col = []
         old_value = []
@@ -106,7 +115,17 @@ class MyGrid(gridlib.Grid):
         undo = UndoText(self, old_value, new_value, changed_row, changed_col)
         return undo
 
-    
+    def ClearRange(self, coords):
+        toolbar = self.parent.toolbar
+        undo = self._ClearRange(coords)
+        self.stockUndo.append(undo)
+
+        if self.stockRedo:
+            del self.stockRedo[:]
+            toolbar.EnableTool(ID_REDO, False)
+
+    def ClearAll(self):
+        self.ClearRange([[0,0], [self.num_row-1, self.num_col-1]])
 
     def ShowMenu(self, event):
         pos = wx.GetMousePosition()

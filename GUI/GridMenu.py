@@ -66,13 +66,13 @@ class GridPopupMenu(wx.Menu):
  
         range_ = [[coords[0][0], 0], [coords[1][0], coords[1][1] - width]]
         data_list = self.parent.GetRange(range_)
-        undo = self.parent.ClearRange(coords)
-        undo.merge(self.parent.ClearRange(range_))
+        undo = self.parent._ClearRange(coords)
+        undo.merge(self.parent._ClearRange(range_))
 
         # move everything up
         range_[0][1] = range_[0][1] + width
         range_[1][1] = range_[1][1] + width
-        undo.merge(self.parent.SetValue(range_, data_list))
+        undo.merge(self.parent._SetValue(range_, data_list))
 
         self._RecordUndo(undo)
 
@@ -83,13 +83,13 @@ class GridPopupMenu(wx.Menu):
         range_ = [[coords[0][0], coords[0][1] + width], [coords[1][0], self.num_col - 1]]
         print('Left getrange ', range_)
         data_list = self.parent.GetRange(range_)
-        undo = self.parent.ClearRange(coords)
-        undo.merge(self.parent.ClearRange(range_))
+        undo = self.parent._ClearRange(coords)
+        undo.merge(self.parent._ClearRange(range_))
 
         range_[0][1] = range_[0][1] - width
         range_[1][1] = range_[1][1] - width
         print('Left dest', range_)
-        undo.merge(self.parent.SetValue(range_, data_list))
+        undo.merge(self.parent._SetValue(range_, data_list))
 
         self._RecordUndo(undo)
 
@@ -99,13 +99,13 @@ class GridPopupMenu(wx.Menu):
  
         range_ = [[coords[0][0] + height, coords[0][1]], [self.num_row - 1, coords[1][1]]]
         data_list = self.parent.GetRange(range_)
-        undo = self.parent.ClearRange(coords)
-        undo.merge(self.parent.ClearRange(range_))
+        undo = self.parent._ClearRange(coords)
+        undo.merge(self.parent._ClearRange(range_))
 
         # move everything up
         range_[0][0] = range_[0][0] - height
         range_[1][0] = range_[1][0] - height
-        undo.merge(self.parent.SetValue(range_, data_list))
+        undo.merge(self.parent._SetValue(range_, data_list))
 
         self._RecordUndo(undo)
 
@@ -116,13 +116,13 @@ class GridPopupMenu(wx.Menu):
         # move everything on top downwards
         range_ = [[0, coords[0][1]], [coords[0][0] - 1, coords[1][1]]]
         data_list = self.parent.GetRange(range_)
-        undo = self.parent.ClearRange(coords)
-        undo.merge(self.parent.ClearRange(range_))
+        undo = self.parent._ClearRange(coords)
+        undo.merge(self.parent._ClearRange(range_))
 
         # move everything down
         range_[0][0] = range_[0][0] + height
         range_[1][0] = range_[1][0] + height
-        undo.merge(self.parent.SetValue(range_, data_list))
+        undo.merge(self.parent._SetValue(range_, data_list))
 
         self._RecordUndo(undo)
         
@@ -132,12 +132,12 @@ class GridPopupMenu(wx.Menu):
         height = coords[1][0] - coords[0][0] + 1
         range_ = [[0, coords[0][1]], coords[1]]
         data_list = self.parent.GetRange(range_)
-        undo = self.parent.ClearRange(range_)
+        undo = self.parent._ClearRange(range_)
 
         # set data to new range
         range_[0][0] = range_[0][0] - height
         range_[1][0] = range_[1][0] - height
-        undo.merge(self.parent.SetValue(range_, data_list))
+        undo.merge(self.parent._SetValue(range_, data_list))
 
         self._RecordUndo(undo)
         
@@ -149,12 +149,12 @@ class GridPopupMenu(wx.Menu):
         data_list = self.parent.GetRange(range_)
 
         # empty the old range
-        undo = self.parent.ClearRange(range_)
+        undo = self.parent._ClearRange(range_)
 
         # set data to new range
         range_[0][0] = range_[0][0] + height
         range_[1][0] = range_[1][0] + height
-        undo.merge(self.parent.SetValue(range_, data_list))
+        undo.merge(self.parent._SetValue(range_, data_list))
 
         self._RecordUndo(undo)
 
@@ -165,12 +165,12 @@ class GridPopupMenu(wx.Menu):
         data_list = self.parent.GetRange(range_)
 
         # empty the old range
-        undo = self.parent.ClearRange(range_)
+        undo = self.parent._ClearRange(range_)
 
         # set data to new range
         range_[0][1] = range_[0][1] + width
         range_[1][1] = range_[1][1] + width
-        undo.merge(self.parent.SetValue(range_, data_list))
+        undo.merge(self.parent._SetValue(range_, data_list))
 
         self._RecordUndo(undo)
 
@@ -181,12 +181,12 @@ class GridPopupMenu(wx.Menu):
         data_list = self.parent.GetRange(range_)
 
         # empty the old range
-        undo = self.parent.ClearRange(range_)
+        undo = self.parent._ClearRange(range_)
 
         # set data to new range
         range_[0][1] = range_[0][1] - width
         range_[1][1] = range_[1][1] - width
-        undo.merge(self.parent.SetValue(range_, data_list))
+        undo.merge(self.parent._SetValue(range_, data_list))
 
         self._RecordUndo(undo)
 
@@ -214,14 +214,14 @@ class GridPopupMenu(wx.Menu):
        
         first = [self.parent.GetGridCursorRow(), self.parent.GetGridCursorCol()]
         second = [self.parent.GetGridCursorRow() + len(data), self.parent.GetGridCursorCol()]
-        undo = self.parent.SetValue([first, second], data)
+        undo = self.parent._SetValue([first, second], data)
 
         self._RecordUndo(undo)
 
 
     def OnClear(self, event):
         selected = self.parent.selected_coords
-        undo = self.parent.ClearRange(selected)
+        undo = self.parent._ClearRange(selected)
         self._RecordUndo(undo)
          
     def OnPasteSpecial(self, event):
@@ -234,7 +234,7 @@ class GridPopupMenu(wx.Menu):
         data = [[ele for ele in line.split('\t')] for line in dataObj.GetText().split('\n')]
         first = [self.parent.GetGridCursorRow(), self.parent.GetGridCursorCol()]
         second = [self.parent.GetGridCursorRow() + len(data), self.parent.GetGridCursorCol() + len(data[0])]
-        undo = self.parent.SetValue([first, second], data)
+        undo = self.parent._SetValue([first, second], data)
         self._RecordUndo(undo)
 
 

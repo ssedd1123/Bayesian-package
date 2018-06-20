@@ -51,6 +51,7 @@ from Training import Training
 from GUI.TrainingFrame import TrainingFrame
 from GUI.Grid import MyGrid
 from GUI.PlotFrame import PlotFrame
+from GUI.EmulatorTest import EmulatorTest
 
 
 matplotlib.rc('image', origin='lower')
@@ -190,16 +191,25 @@ class CommonToolBar(wx.ToolBar):
         self.AddSimpleTool(ID_OPENFILE, open_ico, 'Open', '')
         new_ico = wx.ArtProvider.GetBitmap(wx.ART_NEW, wx.ART_TOOLBAR, (16,16))
         self.AddSimpleTool(ID_SAVEAS, new_ico, 'Save As', '')
+        check_ico = wx.ArtProvider.GetBitmap(wx.ART_FIND, wx.ART_TOOLBAR, (16,16))
+        self.AddSimpleTool(ID_EMULATORCHECK, check_ico, 'Check emulator', '')
  
 
         self.Realize()
         self.Bind(wx.EVT_TOOL, self.OnFile, id=ID_OPENFILE)
         self.Bind(wx.EVT_TOOL, self.OnSave, id=ID_SAVE)
         self.Bind(wx.EVT_TOOL, self.OnSaveNew, id=ID_SAVEAS)
+        self.Bind(wx.EVT_TOOL, self.OnEmulatorCheck, id=ID_EMULATORCHECK)
  
         self.opened_filename = None
         self.opened_data = None
 
+
+    def OnEmulatorCheck(self, event):
+        with open(self.opened_filename, 'rb') as buff:
+            data = pickle.load(buff)
+        frame = EmulatorTest(None, data['emulator'], data['data'].prior)
+        frame.Show()
 
     def OnSaveNew(self, event):
 
@@ -328,6 +338,7 @@ class CommonToolBar(wx.ToolBar):
         with open(path[0], 'rb') as buff:
             data = pickle.load(buff)
 
+        self.opened_filename = path[0]
         self.opened_data = data
         """
         Loading prior
@@ -336,7 +347,10 @@ class CommonToolBar(wx.ToolBar):
         prior = [prior.columns.tolist()] + prior.values.tolist()
         if type(prior[0]) is not list:
             prior = [prior]
+        self.tab1.grid.ClearAll()
         self.tab1.grid.SetValue([[0,0], [len(prior) - 1, len(prior[0]) - 1]], prior)
+        del self.tab1.grid.stockUndo[:]
+        self.tab1.toolbar.EnableTool(ID_UNDO, False)
 
         """
         Loading model data
@@ -346,8 +360,11 @@ class CommonToolBar(wx.ToolBar):
         content = np.concatenate((training_data.sim_para, training_data.sim_data, training_data.sim_error), axis=1).tolist()
         if type(content[0]) is not list:
             content = [content]
+        self.tab2.grid.ClearAll()
         self.tab2.grid.SetValue([[0,0], [0, len(header[0]) - 1]], header)
         self.tab2.grid.SetValue([[1,0], [len(content), len(content[0]) - 1]], content)
+        del self.tab2.grid.stockUndo[:]
+        self.tab2.toolbar.EnableTool(ID_UNDO, False)
 
         """
         Loading exp data
@@ -356,8 +373,11 @@ class CommonToolBar(wx.ToolBar):
         content = np.concatenate((training_data.exp_result, np.sqrt(np.diag(training_data.exp_cov)))).tolist()
         if type(content[0]) is not list:
             content = [content]
+        self.tab3.grid.ClearAll()
         self.tab3.grid.SetValue([[0,0], [0, len(header[0]) - 1]], header)
         self.tab3.grid.SetValue([[1,0], [len(content), len(content[0]) - 1]], content)
+        del self.tab3.grid.stockUndo[:]
+        self.tab3.toolbar.EnableTool(ID_UNDO, False)
 
 
 class Common(wx.Frame):
