@@ -93,3 +93,8 @@ To use the code, follow the following steps: <br />
         python PlotPosterior.py <br />
     It will first show variables draw by sampling prior, then another plot with samples from posterior. The black contour represent the 95% confidence interval. <br />
      <br />
+<br />
+Before installing requirements.txt in a virtual environment, you need to:<br />
+ln -s /usr/lib/python2.7/dist-packages/wx.pth myPy/lib/python2.7/site-packages/<br />
+ln -s /usr/lib/python2.7/dist-packages/wx-3.0-gtk2 myPy/lib/python2.7/site-packages/<br />
+Because wx cannot be installed easily<br />
