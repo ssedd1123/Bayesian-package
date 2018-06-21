@@ -211,8 +211,17 @@ class CommonToolBar(wx.ToolBar):
 
 
     def OnEmulatorCheck(self, event):
+        if self.opened_filename is None:
+            wx.MessageBox('No file is associated with this data. You must save and train the emulator first', wx.OK | wx.ICON_ERROR)
+            return
+
         with open(self.opened_filename, 'rb') as buff:
             data = pickle.load(buff)
+
+        if not data['emulator']:
+            wx.MessageBox('Emulator not found in the current file. Have you trained the emulator?', wx.OK | wx.ICON_ERROR)
+            return 
+
         frame = EmulatorTest(None, data['emulator'], data['data'].prior)
         frame.Show()
 
@@ -223,23 +232,60 @@ class CommonToolBar(wx.ToolBar):
         res = frame.ShowModal()
         if res == wx.ID_OK:
             frame.AdditionalData(args)
+            StatParallel(args)
         frame.Destroy()
         
-        StatParallel(args)
+
+    def _CheckData(self, prior_headers, prior, model_headers, model, exp_headers, exp):
+        """
+        This function check if necessary variables are included for a successful emulation
+        """
+        if not set(prior_headers).issubset(set(model_headers)):
+            wx.MessageBox('Some variables in prior do not appear in model. Please check again', 'Error', wx.OK | wx.ICON_ERROR)
+            return False
+        if not set(exp_headers).issubset(set(model_headers)):
+            wx.MessageBox('Some variables in experiment result (including its error) do not appear in model. Please check again', 'Error', wx.OK | wx.ICON_ERROR)
+            return False
+        if set(exp_headers).union(set(prior_headers)) != set(model_headers):
+            wx.MessageBox('Some variables in model do not appear in either experiment or prior. Please check again', 'Error', wx.OK | wx.ICON_ERROR)
+            return False
+        if prior.shape[0] != 2:
+            wx.MessageBox('There could only be 2 rows in prior, one for lower bound and the other for higher, nothing more/less', 'Error', wx.OK | wx.ICON_ERROR)
+            return False 
+        if exp.shape[0] != 1:
+            wx.MessageBox('There could only be 1 rows for exp result, nothing more/less', 'Error', wx.OK | wx.ICON_ERROR)
+            return False 
+        if model.shape[0] < 3:
+            wx.MessageBox('Model data has less than 3 entries. I don\'t think this will work. Please check again', 'Error', wx.OK | wx.ICON_ERROR)
+            return False
+        if len(prior_headers) != prior.shape[1]:
+            wx.MessageBox('Number of variables and numerical columns in prior do not match.', 'Error', wx.OK | wx.ICON_ERROR)
+            return False 
+        if len(model_headers) != model.shape[1]:
+            wx.MessageBox('Number of variables and numerical columns in model do not match.', 'Error', wx.OK | wx.ICON_ERROR)
+            return False 
+        if len(exp_headers) != exp.shape[1]:
+            wx.MessageBox('Number of variables and numerical columns in exp do not match.', 'Error', wx.OK | wx.ICON_ERROR)
+            return False 
+        return True
+
+
 
     def OnSaveNew(self, event):
-
         model = self.tab2.grid.GetAllValues()
-        headers = model.pop(0)
-        model = pd.DataFrame(model, columns=headers)
+        model_headers = model.pop(0)
+        model = pd.DataFrame(model, columns=model_headers)
 
         prior = self.tab1.grid.GetAllValues()
-        headers = prior.pop(0)
-        prior = pd.DataFrame(prior, columns=headers)
+        prior_headers = prior.pop(0)
+        prior = pd.DataFrame(prior, columns=prior_headers)
 
         exp = self.tab3.grid.GetAllValues()
-        headers = exp.pop(0)
-        exp = pd.DataFrame(exp, columns=headers)
+        exp_headers = exp.pop(0)
+        exp = pd.DataFrame(exp, columns=exp_headers)
+
+        if not self._CheckData(prior_headers, prior, model_headers, model, exp_headers, exp):
+            return False
 
         """
         Create and show the Open FileDialog
@@ -294,10 +340,17 @@ class CommonToolBar(wx.ToolBar):
 
     def OnSave(self, event):
         
-        model = self.tab2.grid.GetAllValues()
-        headers = model.pop(0)
-        model = pd.DataFrame(model, columns=headers)
-        model.to_csv('/projects/hira/tsangc/GaussianEmulator/development/testing_model.csv', sep=',', index=False)
+        """
+        Every time the model data is changed, it needs to be trained again
+        It cannot be saved directly
+        Warn the user and ask them if they want to proceed
+        """
+        if self.tab2.stockUndo:
+            dlg = wx.MessageDialog(None, "Model data may have changed. Any change here will be discarded. You need to re-train the emulator. Do you want to continue saving?", wx.YES_NO | wx.ICON_QUESTION) 
+            result = dlg.ShowModal()
+
+            if result != wx.ID_YES:
+                return 
 
         prior = self.tab1.grid.GetAllValues()
         headers = prior.pop(0)
