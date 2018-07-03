@@ -24,8 +24,6 @@ def Training(args):
     input_pipe = Normalize()
 
     emulator = EmulatorMaster(data.sim_para, data.sim_data, input_pipe, output_pipe)
-    if args['covariancefunc'] == 'RBF':
-        emulator.SetCovariance(RBF)
     
     if len(args['initialscale']) == 1:
         initial_scale = np.full(len(data.par_name), args['initialscale'][0])
@@ -35,6 +33,10 @@ def Training(args):
     else:
         initial_scale = np.array(args['initialscale'])
     
+    if args['covariancefunc'] == 'RBF':
+        emulator.SetCovariance(RBF)
+        initial_scale = args['initialscale']
+
     scales, nuggets = emulator.Train(initial_scale, 
                                      args['initialnugget'], 
                                      max_step=args['maxsteps'], 

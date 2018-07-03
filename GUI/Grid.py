@@ -174,6 +174,8 @@ class MyGrid(gridlib.Grid):
         # remove trailing empty list
         while not data[-1]:
             data.pop()
+            if len(data) == 0:
+                break
         return data 
                 
         

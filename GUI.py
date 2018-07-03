@@ -1,22 +1,3 @@
-"""
-Copyright (C) 2003-2004 Andrew Straw, Jeremy O'Donoghue and others
-
-License: This work is licensed under the PSF. A copy should be included
-with this source code, and is also available at
-http://www.python.org/psf/license.html
-
-This is yet another example of using matplotlib with wx.  Hopefully
-this is pretty full-featured:
-
-  - both matplotlib toolbar and WX buttons manipulate plot
-  - full wxApp framework, including widget interaction
-  - XRC (XML wxWidgets resource) file to create GUI (made with XRCed)
-
-This was derived from embedding_in_wx and dynamic_image_wxagg.
-
-Thanks to matplotlib and wx teams for creating such great software!
-
-"""
 from __future__ import print_function
 
 # matplotlib requires wxPython 2.8+
@@ -99,20 +80,18 @@ class LeftPanel(wx.Panel):
         if data is not None:
             data = np.array(data)
             data[data == ''] = np.nan
-    
             try:
                 data = np.array([np.genfromtxt(line) for line in data])
                 #data = data[~np.isnan(data).any(axis=0)]
             except:
                 print ('This array cannot be converted into float. Abort')
                 return
-    
-            if data.shape[0] == 1:
-                xdata = range(0, data.shape[1])
-                ydata = data[0, :]
-            elif len(data.shape) == 1:
+            if len(data.shape) == 1:
                 xdata = range(0, data.shape[0])
                 ydata = data[:]
+            elif data.shape[0] == 1:
+                xdata = range(0, data.shape[1])
+                ydata = data[0, :]
             elif data.shape[1] == 1:
                 xdata = range(0, data.shape[0])
                 ydata = data[:, 0]
@@ -177,16 +156,16 @@ class LeftPanel(wx.Panel):
         self.toolbar.EnableTool(ID_UNDO, True)
 
 
-class CommonToolBar(wx.ToolBar):
+class CommonMenuBar(wx.MenuBar):
 
     def __init__(self, parent, tab1, tab2, tab3, **args):
-        wx.ToolBar.__init__(self, parent, **args)
+        wx.MenuBar.__init__(self)
         self.tab1 = tab1
         self.tab2 = tab2
         self.tab3 = tab3
         self.parent = parent
         
-
+        """
         save_ico = wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE, wx.ART_TOOLBAR, (16,16))
         self.AddSimpleTool(ID_SAVE, save_ico, 'Save', '')
         open_ico = wx.ArtProvider.GetBitmap(wx.ART_FILE_OPEN, wx.ART_TOOLBAR, (16,16))
@@ -197,43 +176,58 @@ class CommonToolBar(wx.ToolBar):
         self.AddSimpleTool(ID_EMULATORCHECK, check_ico, 'Check emulator', '')
         exe_ico = wx.ArtProvider.GetBitmap(wx.ART_EXECUTABLE_FILE, wx.ART_TOOLBAR, (16,16))
         self.AddSimpleTool(ID_EMULATE, exe_ico, 'Emulator', '')
- 
+        """
 
-        self.Realize()
-        self.Bind(wx.EVT_TOOL, self.OnFile, id=ID_OPENFILE)
-        self.Bind(wx.EVT_TOOL, self.OnSave, id=ID_SAVE)
-        self.Bind(wx.EVT_TOOL, self.OnSaveNew, id=ID_SAVEAS)
-        self.Bind(wx.EVT_TOOL, self.OnEmulatorCheck, id=ID_EMULATORCHECK)
-        self.Bind(wx.EVT_TOOL, self.OnEmulate, id=ID_EMULATE)
+        fileMenu = wx.Menu()
+        SaveMenuItem = fileMenu.Append(ID_SAVE, 'Save', '')
+        SaveAsMenuItem = fileMenu.Append(ID_SAVEAS, 'Save As', '')
+        OpenMenuItem = fileMenu.Append(ID_OPENFILE, 'Open', '')
+
+        emulatorMenu = wx.Menu()
+        EmulatorCheckItem = emulatorMenu.Append(ID_EMULATORCHECK, 'Check emulator', '')
+        EmulatorItem = emulatorMenu.Append(ID_EMULATE, 'Emulator', '')
+
+        self.Append(fileMenu, '&File')
+        self.Append(emulatorMenu, '&Emulator')
+        self.Bind(wx.EVT_TOOL, self.OnFile, OpenMenuItem)
+        self.Bind(wx.EVT_TOOL, self.OnSave, SaveMenuItem)
+        self.Bind(wx.EVT_TOOL, self.OnSaveNew, SaveAsMenuItem)
+        self.Bind(wx.EVT_TOOL, self.OnEmulatorCheck, EmulatorCheckItem)
+        self.Bind(wx.EVT_TOOL, self.OnEmulate, EmulatorItem)
  
         self.opened_filename = None
         self.opened_data = None
 
-
-    def OnEmulatorCheck(self, event):
+    def _CheckOpenedFile(self):
         if self.opened_filename is None:
-            wx.MessageBox('No file is associated with this data. You must save and train the emulator first', wx.OK | wx.ICON_ERROR)
-            return
+            wx.MessageBox('No file is associated with this data. You must save and train the emulator first', 'Error', wx.OK | wx.ICON_ERROR)
+            return False
 
         with open(self.opened_filename, 'rb') as buff:
             data = pickle.load(buff)
 
         if not data['emulator']:
-            wx.MessageBox('Emulator not found in the current file. Have you trained the emulator?', wx.OK | wx.ICON_ERROR)
-            return 
+            wx.MessageBox('Emulator not found in the current file. Have you trained the emulator?', 'Error', wx.OK | wx.ICON_ERROR)
+            return False
+        return True
 
-        frame = EmulatorTest(None, data['emulator'], data['data'].prior)
-        frame.Show()
+    def OnEmulatorCheck(self, event):
+        if self._CheckOpenedFile():
+            with open(self.opened_filename, 'rb') as buff:
+                data = pickle.load(buff)
+            frame = EmulatorTest(None, data['emulator'], data['data'].prior, data['data'].exp_result)
+            frame.Show()
 
     def OnEmulate(self, event):
-        args = {}
-        args['Training_file'] = self.opened_filename
-        frame = EmulatorFrame()
-        res = frame.ShowModal()
-        if res == wx.ID_OK:
-            frame.AdditionalData(args)
-            StatParallel(args)
-        frame.Destroy()
+        if self._CheckOpenedFile():
+            args = {}
+            args['Training_file'] = self.opened_filename
+            frame = EmulatorFrame()
+            res = frame.ShowModal()
+            if res == wx.ID_OK:
+                frame.AdditionalData(args)
+                StatParallel(args)
+                frame.Destroy()
         
 
     def _CheckData(self, prior_headers, prior, model_headers, model, exp_headers, exp):
@@ -267,20 +261,41 @@ class CommonToolBar(wx.ToolBar):
         if len(exp_headers) != exp.shape[1]:
             wx.MessageBox('Number of variables and numerical columns in exp do not match.', 'Error', wx.OK | wx.ICON_ERROR)
             return False 
+        if not any([name.endswith('_Error') for name in exp_headers]):
+            wx.MessageBox('There are no columns associated with experimental error. Please fill that in.', 'Error', wx.OK | wx.ICON_ERROR)
+            return False
+        if prior.isnull().values.any():
+            wx.MessageBox('There are empty holes in prior.', 'Error', wx.OK | wx.ICON_ERROR)
+            return False
+        if model.isnull().values.any():
+            wx.MessageBox('There are empty holes in model.', 'Error', wx.OK | wx.ICON_ERROR)
+            return False
+        if exp.isnull().values.any():
+            wx.MessageBox('There are empty holes in exp.', 'Error', wx.OK | wx.ICON_ERROR)
+            return False
         return True
 
 
 
     def OnSaveNew(self, event):
         model = self.tab2.grid.GetAllValues()
+        prior = self.tab1.grid.GetAllValues()
+        exp = self.tab3.grid.GetAllValues()
+
+        if not model:
+            wx.MessageBox('Model value cannot be empty', 'Error', wx.OK | wx.ICON_ERROR)
+            return False
+        if not prior:
+            wx.MessageBox('Prior value cannot be empty', 'Error', wx.OK | wx.ICON_ERROR)
+            return False
+        if not exp:
+            wx.MessageBox('Exp value cannot be empty', 'Error', wx.OK | wx.ICON_ERROR)
+            return False
+
         model_headers = model.pop(0)
         model = pd.DataFrame(model, columns=model_headers)
-
-        prior = self.tab1.grid.GetAllValues()
         prior_headers = prior.pop(0)
         prior = pd.DataFrame(prior, columns=prior_headers)
-
-        exp = self.tab3.grid.GetAllValues()
         exp_headers = exp.pop(0)
         exp = pd.DataFrame(exp, columns=exp_headers)
 
@@ -340,13 +355,17 @@ class CommonToolBar(wx.ToolBar):
 
     def OnSave(self, event):
         
+        if self.opened_filename is None:
+            wx.MessageBox('No file is associated with this data. You must save and train the emulator first', 'Error', wx.OK | wx.ICON_ERROR)
+            return 
+
         """
         Every time the model data is changed, it needs to be trained again
         It cannot be saved directly
         Warn the user and ask them if they want to proceed
         """
-        if self.tab2.stockUndo:
-            dlg = wx.MessageDialog(None, "Model data may have changed. Any change here will be discarded. You need to re-train the emulator. Do you want to continue saving?", wx.YES_NO | wx.ICON_QUESTION) 
+        if self.tab2.grid.stockUndo:
+            dlg = wx.MessageDialog(None, "Model data may have changed. Any change here will be discarded. You need to re-train the emulator. Do you want to continue saving?", "", wx.YES_NO | wx.ICON_QUESTION) 
             result = dlg.ShowModal()
 
             if result != wx.ID_YES:
@@ -368,24 +387,9 @@ class CommonToolBar(wx.ToolBar):
             temp.flush()
             self.opened_data['data'].ChangeExp(temp.name)
 
-        """
-        Create and show the Open FileDialog
-        """
-        dlg = wx.FileDialog(
-            self, message="Save project as ...",
-            defaultFile="",
-            style=wx.SAVE | wx.OVERWRITE_PROMPT
-            )
-        result = dlg.ShowModal()            
-        inFile = dlg.GetPaths()
-        dlg.Destroy()
-
-        if result == wx.ID_OK:          #Save button was pressed
-            with open(inFile[0], 'wb') as buff:
-                pickle.dump(self.opened_data, buff)
-            return True
-        elif result == wx.ID_CANCEL:    #Either the cancel button was pressed or the window was closed
-            return False
+        with open(self.opened_filename, 'wb') as buff:
+            pickle.dump(self.opened_data, buff)
+        return True
 
 
     def OnFile(self, event):
@@ -471,10 +475,10 @@ class Common(wx.Frame):
                 
         
     # toolbar
-        self.toolbar = CommonToolBar(panel, tab1=leftP, tab2=leftP2, tab3=leftP3, id=100, style=wx.TB_HORIZONTAL | wx.NO_BORDER |
+        self.menubar = CommonMenuBar(panel, tab1=leftP, tab2=leftP2, tab3=leftP3, id=100, style=wx.TB_HORIZONTAL | wx.NO_BORDER |
                                         wx.TB_FLAT | wx.TB_TEXT)
 
-        sizer.Add(self.toolbar, border=5)
+        self.SetMenuBar(self.menubar)
         
         sizer.Add(notebook, 1, wx.EXPAND | wx.EXPAND, 5)
         

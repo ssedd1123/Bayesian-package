@@ -12,6 +12,9 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import matplotlib.gridspec as gridspec
 import math
+# form random variables according to prior 
+import pymc
+
 
 from Emulator.Emulator import *
 from Preprocessor.PipeLine import *
@@ -74,9 +77,7 @@ def GenerateTrace(emulator, exp_result, exp_cov, prior, id_, iter):
     The main function to generate pandas trace file after comparing the emulator with experimental value
     Uses pymc2 as it is found to be faster
     """
-    # form random variables according to prior 
-    import pymc
-    #pymc.numpy.random.seed(id_)
+    pymc.numpy.random.seed(id_)
     parameters = []
     for column in prior:
         parameters.append(pymc.Uniform(column, prior[column][0], prior[column][1], value=(0.5*prior[column][0] + 0.5*prior[column][1])))

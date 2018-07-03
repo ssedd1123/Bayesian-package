@@ -36,7 +36,7 @@ import wx
 import wx.grid as gridlib
 
 class EmulatorTest(wx.Frame):
-    def __init__(self, parent, emulator, prior):
+    def __init__(self, parent, emulator, prior, exp_data=None):
         wx.Frame.__init__(self, parent, wx.NewId())
         panel = wx.Panel(self)
 
@@ -75,6 +75,8 @@ class EmulatorTest(wx.Frame):
         result, var = self.signal(ini_par)
         self.xaxis =  np.arange(0, self.num_output)
         self.line, _, (self.bars,) = self.graph.errorbar(self.xaxis, result, yerr=np.sqrt(np.diag(var)), marker='o', linewidth=2, color='red')
+        if exp_data is not None:
+            self.graph.plot(self.xaxis, exp_data, marker='o', linewidth=2, color='b')
         self.graph.autoscale()
 
         self.graph.set_xlim([-1, self.num_output+1])
