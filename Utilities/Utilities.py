@@ -20,7 +20,7 @@ from Emulator.Emulator import *
 from Preprocessor.PipeLine import *
 
 # input is the pymc3 trace and list of parameters
-def PlotTrace(trace, par_name, prior):
+def PlotTrace(trace, par_name, prior, fig=None):
     """
     Arrange trace in a n*n matrix of plots
     where n is the number of variables
@@ -28,7 +28,10 @@ def PlotTrace(trace, par_name, prior):
     # plot the result in a nice matrix of histograms
     num_par = len(par_name)
     graph_num = 1
-    fig, axes2d = plt.subplots(num_par, num_par)
+    if fig is None:
+        fig, axes2d = plt.subplots(num_par, num_par)
+    else:
+        axes2d = fig.subplots(num_par, num_par)
     if num_par == 1:
         axes2d = [[axes2d]]
     for i, row in enumerate(axes2d):
@@ -52,7 +55,7 @@ def PlotTrace(trace, par_name, prior):
             ylist = cell.get_yticks().tolist()
             ylist[0] = ''
             ylist[-1] = ''
-            cell.set_yticklabels(ylist)
+            #cell.set_yticklabels(ylist)
 
             cell.tick_params(axis='both', which='major', labelsize=20)
 
@@ -104,6 +107,7 @@ def GenerateTrace(emulator, exp_result, exp_cov, prior, id_, iter):
     trace_dict = {}
     for column in prior:
         trace_dict[column] = mcmc.trace(column)[:]
+    mcmc.db.close()
     return pd.DataFrame.from_dict(trace_dict)
     
     

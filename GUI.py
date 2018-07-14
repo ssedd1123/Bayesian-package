@@ -30,11 +30,13 @@ import wx.grid as gridlib
 from GUI.ID import *
 from Training import Training
 from GUI.TrainingFrame import TrainingFrame
+from GUI.MatplotlibFrame import MatplotlibFrame
 from GUI.Grid import MyGrid
 from GUI.PlotFrame import PlotFrame
 from GUI.EmulatorTest import EmulatorTest
 from GUI.EmulatorFrame import EmulatorFrame
 from StatParallel import StatParallel
+from Utilities.Utilities import PlotTrace
 
 
 matplotlib.rc('image', origin='lower')
@@ -197,6 +199,7 @@ class CommonMenuBar(wx.MenuBar):
  
         self.opened_filename = None
         self.opened_data = None
+        self.correlation_frame = None
 
     def _CheckOpenedFile(self):
         if self.opened_filename is None:
@@ -226,8 +229,14 @@ class CommonMenuBar(wx.MenuBar):
             res = frame.ShowModal()
             if res == wx.ID_OK:
                 frame.AdditionalData(args)
-                StatParallel(args)
-                frame.Destroy()
+                trace, par_name, prior = StatParallel(args)
+    
+                if not self.correlation_frame:
+                    fig = Figure((15,12), 75)
+                    self.correlation_frame = MatplotlibFrame(None, fig)
+                PlotTrace(trace, par_name, prior, self.correlation_frame.fig)
+                self.correlation_frame.SetData()
+                self.correlation_frame.Show()
         
 
     def _CheckData(self, prior_headers, prior, model_headers, model, exp_headers, exp):
@@ -370,6 +379,9 @@ class CommonMenuBar(wx.MenuBar):
 
             if result != wx.ID_YES:
                 return 
+            else:
+                while self.tab2.grid.stockUndo:
+                    self.tab2.OnUndo(None)
 
         prior = self.tab1.grid.GetAllValues()
         headers = prior.pop(0)
@@ -389,6 +401,7 @@ class CommonMenuBar(wx.MenuBar):
 
         with open(self.opened_filename, 'wb') as buff:
             pickle.dump(self.opened_data, buff)
+
         return True
 
 

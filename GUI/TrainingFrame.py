@@ -20,7 +20,7 @@ class TrainingFrame(wx.Dialog):
          box1.Add(self.combo_cov_func, 1, wx.EXPAND|wx.ALIGN_LEFT|wx.ALL,5) 
          box.Add(box1)
 
-         list_textctrl = {'Number of PCA Components': '3', 'PCA Fraction': '0.99', 'Initial scale': '0.5', 'Initial nugget': '1', 'Scale learning rate': '0.003', 'Nugget learning rate': '0.003', 'Maximum iterations': '1000'}
+         list_textctrl = {'Number of PCA Components': '3', 'PCA Fraction': '0.99', 'Initial scale': '0.5', 'Initial nugget': '1', 'Scale learning rate': '0.00003', 'Nugget learning rate': '0.00003', 'Maximum iterations': '1000'}
          self.output = {}
          
          for name, default_value in list_textctrl.iteritems():

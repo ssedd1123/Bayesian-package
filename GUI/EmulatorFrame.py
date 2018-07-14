@@ -11,7 +11,7 @@ class EmulatorFrame(wx.Dialog):
          panel = wx.Panel(self)
          box = wx.BoxSizer(wx.VERTICAL)
 
-         list_textctrl = {'Output name': '', 'Number of Cores': '7', 'Number of steps': '10000'}
+         list_textctrl = {'CSV Output name': '', 'Number of Cores': '7', 'Number of steps': '10000'}
          self.output = {}
          
          for name, default_value in list_textctrl.iteritems():
@@ -23,6 +23,15 @@ class EmulatorFrame(wx.Dialog):
              self.output[name] = textbox
              box.Add(box_new)
 
+         """
+         Checkbox for whether to clear previous results or not
+         """
+         box_clear = wx.BoxSizer(wx.HORIZONTAL)
+         self.clear = wx.CheckBox(panel, label='Clear Previous Trace')
+         #self.Bind(wx.EVT_CHECKBOX, self.onChecked)
+         box_clear.Add(self.clear, 0, wx.ALIGN_CENTER)
+         box.Add(box_clear)
+
          box_submit = wx.BoxSizer(wx.HORIZONTAL)
          self.submit = wx.Button(panel, wx.ID_OK, "Submit")
          box_submit.Add(self.submit, 0, wx.ALIGN_CENTER)
@@ -32,9 +41,11 @@ class EmulatorFrame(wx.Dialog):
          panel.SetSizer(box)
 
     def AdditionalData(self,args):
-        args['Output_name'] = self.output['Output name'].GetValue()
+        args['Output_name'] = self.output['CSV Output name'].GetValue()
         args['cores'] = int(self.output['Number of Cores'].GetValue())
         args['steps'] = int(self.output['Number of steps'].GetValue())
+        if not self.clear.GetValue():
+            args['concat'] = True
         
     def OnQuit(self, event):
         self.Destroy()

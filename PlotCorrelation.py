@@ -23,7 +23,7 @@ if __name__=="__main__":
     args = vars(parser.parse_args())
     
     if args['result'] is None:
-        list_of_files = glob.glob('result/*')
+        list_of_files = glob.glob('training/*')
         filename = max(list_of_files, key=os.path.getctime)
     else:
         filename = args['result']
@@ -33,8 +33,9 @@ if __name__=="__main__":
         data = pickle.load(buff)
     
     trace = data['trace']
-    par_name = data['data']['data'].par_name
-    prior = data['prior']
+    training_data = data['data']
+    par_name = training_data.par_name
+    prior = training_data.prior
     
     fig, axes2d = PlotTrace(trace, par_name, prior)
     if args['points'] and ('real_para' not in data):

@@ -78,7 +78,9 @@ class GridPopupMenu(wx.Menu):
 
     def OnDeleteMoveLeft(self, event):
         coords = deepcopy(self.parent.selected_coords)
+        print('delete', coords)
         width = coords[1][1] - coords[0][1] + 1
+        print('width', width)
  
         range_ = [[coords[0][0], coords[0][1] + width], [coords[1][0], self.num_col - 1]]
         print('Left getrange ', range_)

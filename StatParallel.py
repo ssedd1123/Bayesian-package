@@ -1,3 +1,4 @@
+import random
 import sys
 import os
 from multiprocessing import Pool
@@ -34,19 +35,27 @@ def StatParallel(args):
     pool = Pool(args['cores'])
     result = []
     for i in xrange(processes):
-        result.append(pool.apply_async(GenerateTrace, (emulator, training_data.exp_result, training_data.exp_cov, prior, i, args['steps'])))
+        result.append(pool.apply_async(GenerateTrace, (emulator, training_data.exp_result, training_data.exp_cov, prior, random.randint(0, 1000) + i, args['steps'])))
     trace = [r.get() for r in result]
     pool.close()
     pool.join()
     trace = pd.concat(trace, ignore_index=True)
     
     """
+    If trace is inside the file, we will concatenate the trace
+    """
+    if 'trace' in data and 'concat' in args:
+        trace = pd.concat([trace, data['trace']], ignore_index=True)
+
+    """
     Save everything
     """
-    trace.to_csv('/projects/hira/tsangc/GaussianEmulator/result/%s.csv' % args['Output_name'], sep=',')
-    with open('/projects/hira/tsangc/GaussianEmulator/result/%s.pkl' % args['Output_name'], 'wb') as buff:
-        pickle.dump({'model': emulator, 'trace': trace, \
-                     'data': data, 'prior': prior}, buff)
+    if args['Output_name']:
+        trace.to_csv(os.path.join(os.getcwd(), '%s.txt' % args['Output_name']), sep=' ')
+
+    data['trace'] = trace
+    with open(args['Training_file'], 'wb') as buff:
+        pickle.dump(data, buff)
 
     return trace, training_data.par_name, prior
 
@@ -59,10 +68,11 @@ if __name__=="__main__":
     parser.add_argument('-c', '--cores', type=int, default=14, help='Number of cores used. (Default: 14)')
     parser.add_argument('-n', '--steps', type=int, default=10000, help='Number of iterations used in each core. (Default: 10000)')
     parser.add_argument('-p', '--plot', action='store_true', help='Use this if you want to plot posterior immediatly after trace generation')
+    parser.add_argument('-co', '--concat', action='store_true', help='Use this if you want to plot posterior immediatly after trace generation')
     args = vars(parser.parse_args())
     
     trace, par_name, prior = StatParallel(args)
     
     if args['plot']:
-        PlotTrace(trace, training_data.par_name, prior)
+        PlotTrace(trace, par_name, prior)
         plt.show()

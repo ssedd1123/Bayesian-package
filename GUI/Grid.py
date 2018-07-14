@@ -47,30 +47,24 @@ class MyGrid(gridlib.Grid):
         """Constructor"""
         self.stockUndo = []
         self.stockRedo = []
-        #wx.Frame.__init__(self, parent, -1)
-        #wx.Panel.__init__(self, parent)
         gridlib.Grid.__init__(self, parent, size=(200, 300))
         self.num_row = 100
         self.num_col = 100
         self.CreateGrid(self.num_row, self.num_col)
-        #self.parent = wx.Panel(self)
         self.parent = parent
         self.InitUI()
 
     def InitUI(self):
-        #self.grid = gridlib.Grid(self, -1)#.parent)
-        #self.grid.CreateGrid(12, 8)
-
         self.selected_data = None
-        self.selected_coords = None#[(0,0), (0,0)]
+        self.selected_coords = None
  
         # test all the events
-        self.Bind(gridlib.EVT_GRID_CELL_RIGHT_CLICK, self.ShowMenu)#self.OnCellRightDClick)
+        self.Bind(gridlib.EVT_GRID_CELL_RIGHT_CLICK, self.ShowMenu)
  
         self.Bind(gridlib.EVT_GRID_RANGE_SELECT, self.OnRangeSelect)
         self.Bind(gridlib.EVT_GRID_CELL_CHANGE, self.OnCellChange)
         self.Bind(gridlib.EVT_GRID_SELECT_CELL, self.OnSelectCell)
- 
+
 
     def _SetValue(self, coords, data):
         changed_row = []
@@ -128,8 +122,12 @@ class MyGrid(gridlib.Grid):
         self.ClearRange([[0,0], [self.num_row-1, self.num_col-1]])
 
     def ShowMenu(self, event):
+        print('sel', self.GetSelectedCells())
+        print('test', self.GetSelectionBlockTopLeft())
+        print('test2', self.GetSelectionBlockBottomRight())
+        print('column, row', self.GetSelectedCols(), self.GetSelectedRows())
         pos = wx.GetMousePosition()
-        win = self.PopupMenu(GridPopupMenu(self), self.ScreenToClient(pos))
+        win = self.PopupMenu(GridPopupMenu(self), event.GetPosition())# self.ScreenToClient(pos))
  
           
 
@@ -147,7 +145,7 @@ class MyGrid(gridlib.Grid):
         else:
             self.selected_coords = None
             self.selected_data = None
-        evt.Skip()
+        #evt.Skip()
 
 
     def GetRange(self, coord_list):

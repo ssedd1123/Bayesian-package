@@ -25,9 +25,9 @@ def PlotOutput(plot_prior, filename):
     with open(filename, 'rb') as buff:
         data = pickle.load(buff)
 
-    emulator, trace  = data['model'], data['trace']
-    dataloader = data['data']['data']
-    prior = data['prior']
+    emulator, trace  = data['emulator'], data['trace']
+    dataloader = data['data']
+    prior = dataloader.prior
     exp_data, exp_err = dataloader.exp_result, np.diag(np.sqrt(dataloader.exp_cov))
 
     if plot_prior:
@@ -78,7 +78,7 @@ def PlotOutput(plot_prior, filename):
 if len(sys.argv) != 2:
     #print('Use this script by entering: python %s Iutput_name' % (sys.argv[0]))
     #sys.exit()
-    list_of_files = glob.glob('result/*')
+    list_of_files = glob.glob('training/*')
     filename = max(list_of_files, key=os.path.getctime)
 else:
     filename = sys.argv[1]
