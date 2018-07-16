@@ -1,7 +1,7 @@
 import random
 import sys
 import os
-from multiprocessing import Pool
+from multiprocessing import Pool, Process, Queue
 if sys.version_info > (3, 0):
     import pickle
 else:
@@ -16,31 +16,31 @@ from Emulator.Emulator import *
 from Preprocessor.PipeLine import *
 from Utilities.Utilities import PlotTrace, GenerateTrace
 
-def StatParallel(args):
-    """
-    Load the trained emulator
-    """
-    with open(args['Training_file'], 'rb') as buff:
-        data = pickle.load(buff)
-    
-    emulator = data['emulator']
-    training_data = data['data']
-    prior=training_data.prior
 
-    
-    """
-    Trace generation with multiple cores
-    """
-    processes=args['cores']
-    pool = Pool(args['cores'])
-    result = []
-    for i in xrange(processes):
-        result.append(pool.apply_async(GenerateTrace, (emulator, training_data.exp_result, training_data.exp_cov, prior, random.randint(0, 1000) + i, args['steps'])))
-    trace = [r.get() for r in result]
-    pool.close()
-    pool.join()
-    trace = pd.concat(trace, ignore_index=True)
-    
+class TraceCreator:
+
+    def __init__(self, args):
+        with open(args['Training_file'], 'rb') as buff:
+            data = pickle.load(buff)
+        self.emulator = data['emulator']
+        self.training_data = data['data']
+        self.prior = self.training_data.prior
+        self.processes = args['cores']
+        self.steps = args['steps']
+        self.data = data
+
+    def CreateTrace(self, id_, queue=None):
+        trace = GenerateTrace(self.emulator, self.training_data.exp_result, 
+                             self.training_data.exp_cov, self.prior, 
+                             random.randint(0, 1000) + id_, self.steps)
+        if queue:
+            queue.put(trace)
+        return trace
+
+
+def MergeTrace(list_of_traces, args, data):
+    trace = pd.concat(list_of_traces, ignore_index=True)
+
     """
     If trace is inside the file, we will concatenate the trace
     """
@@ -56,8 +56,23 @@ def StatParallel(args):
     data['trace'] = trace
     with open(args['Training_file'], 'wb') as buff:
         pickle.dump(data, buff)
+    return trace
 
-    return trace, training_data.par_name, prior
+    
+def StatParallel(args):
+    trace = TraceCreator(args)
+    result = []
+    process = []
+    for i in range(args['cores']):
+        queue = Queue()
+        process.append(Process(target=trace.CreateTrace, args=(i, queue)))
+        result.append(queue)
+        process[-1].start()
+
+    result = [r.get() for r in result]
+    process = [p.join() for p in process]
+    #print(result[0])
+    return MergeTrace(result, args, trace.data), trace.training_data.par_name, trace.prior
 
 
 if __name__=="__main__":

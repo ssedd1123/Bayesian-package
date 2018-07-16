@@ -2,7 +2,7 @@ import sys, wx
 
 from multiprocessing import Process, Queue, cpu_count, current_process, freeze_support
 from Queue import Empty
-from StatParalleldevelopment import StatParallel, TraceCreator, MergeTrace
+from StatParallel import TraceCreator, MergeTrace
 
 class QueuePipe:
     """
