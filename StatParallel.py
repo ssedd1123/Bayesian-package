@@ -1,6 +1,8 @@
 import random
 import sys
 import os
+os.environ['OPENBLAS_NUM_THREADS'] = '1'
+os.environ['MKL_NUM_THREADS'] = '1'
 from multiprocessing import Pool, Process, Queue
 if sys.version_info > (3, 0):
     import pickle
@@ -65,10 +67,15 @@ def StatParallel(args):
     process = []
     for i in range(args['cores']):
         queue = Queue()
-        process.append(Process(target=trace.CreateTrace, args=(i, queue)))
+        try:
+            process.append(Process(target=trace.CreateTrace, args=(i, queue)))
+            process[-1].start()
+        except Exception:
+            process.pop()
+            print('Cannot create process %d' % i)
+            break
         result.append(queue)
-        process[-1].start()
-
+        
     result = [r.get() for r in result]
     process = [p.join() for p in process]
     #print(result[0])
