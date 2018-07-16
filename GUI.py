@@ -35,14 +35,14 @@ from GUI.Grid import MyGrid
 from GUI.PlotFrame import PlotFrame
 from GUI.EmulatorTest import EmulatorTest
 from GUI.EmulatorFrame import EmulatorFrame
-from StatParallel import StatParallel
+from GUI.ProgressDisplay import MyFrame
 from Utilities.Utilities import PlotTrace
 
 
 matplotlib.rc('image', origin='lower')
 
 
-class LeftPanel(wx.Panel):
+class GridPanel(wx.Panel):
 
     def __init__(self, parent):
         wx.Panel.__init__(self, parent)
@@ -229,7 +229,8 @@ class CommonMenuBar(wx.MenuBar):
             res = frame.ShowModal()
             if res == wx.ID_OK:
                 frame.AdditionalData(args)
-                trace, par_name, prior = StatParallel(args)
+                progress = MyFrame(None, -1, 'stdout to GUI using multiprocessing', args)# {'Training_file': 'training/test', 'Output_name':'para', 'cores':5, 'steps':10000})
+                trace, par_name, prior = progress.OnCalculate()
     
                 if not self.correlation_frame:
                     fig = Figure((15,12), 75)
@@ -469,26 +470,26 @@ class CommonMenuBar(wx.MenuBar):
 class Common(wx.Frame):
  
     def __init__(self, parent):
-        wx.Frame.__init__(self, parent, wx.NewId(), "Common", size=(1000,400))
+        wx.Frame.__init__(self, parent, wx.NewId(), "Bayesian analysis", size=(1000,400))
         
         panel = wx.Panel(self)
          
         notebook = wx.Notebook(panel)
 
-        leftP = LeftPanel(notebook)
-        notebook.AddPage(leftP, "Para prior")
+        GridP1 = GridPanel(notebook)
+        notebook.AddPage(GridP1, "Para prior")
 
-        leftP2 = LeftPanel(notebook)
-        notebook.AddPage(leftP2, "Model result")
+        GridP2 = GridPanel(notebook)
+        notebook.AddPage(GridP2, "Model result")
 
-        leftP3 = LeftPanel(notebook)
-        notebook.AddPage(leftP3, "Exp data data")
+        GridP3 = GridPanel(notebook)
+        notebook.AddPage(GridP3, "Exp data data")
 
         sizer = wx.BoxSizer(wx.VERTICAL)
                 
         
     # toolbar
-        self.menubar = CommonMenuBar(panel, tab1=leftP, tab2=leftP2, tab3=leftP3, id=100, style=wx.TB_HORIZONTAL | wx.NO_BORDER |
+        self.menubar = CommonMenuBar(panel, tab1=GridP1, tab2=GridP2, tab3=GridP3, id=100, style=wx.TB_HORIZONTAL | wx.NO_BORDER |
                                         wx.TB_FLAT | wx.TB_TEXT)
 
         self.SetMenuBar(self.menubar)

@@ -61,9 +61,7 @@ class MyGrid(gridlib.Grid):
         # test all the events
         self.Bind(gridlib.EVT_GRID_CELL_RIGHT_CLICK, self.ShowMenu)
  
-        self.Bind(gridlib.EVT_GRID_RANGE_SELECT, self.OnRangeSelect)
         self.Bind(gridlib.EVT_GRID_CELL_CHANGE, self.OnCellChange)
-        self.Bind(gridlib.EVT_GRID_SELECT_CELL, self.OnSelectCell)
 
 
     def _SetValue(self, coords, data):
@@ -122,31 +120,29 @@ class MyGrid(gridlib.Grid):
         self.ClearRange([[0,0], [self.num_row-1, self.num_col-1]])
 
     def ShowMenu(self, event):
-        print('sel', self.GetSelectedCells())
-        print('test', self.GetSelectionBlockTopLeft())
-        print('test2', self.GetSelectionBlockBottomRight())
-        print('column, row', self.GetSelectedCols(), self.GetSelectedRows())
-        pos = wx.GetMousePosition()
+        cell = self.GetSelectedCells()
+        if not cell:
+            if self.GetSelectionBlockTopLeft():
+                top_left = self.GetSelectionBlockTopLeft()[0]
+                bottom_right = self.GetSelectionBlockBottomRight()[0]
+            elif self.GetSelectedCols():
+                col = self.GetSelectedCols()
+                top_left = [0, col[0]]
+                bottom_right = [self.num_row-1, col[-1]]
+            elif self.GetSelectedRows():
+                row = self.GetSelectedRows()
+                top_left = [row[0], 0]
+                bottom_right = [row[-1], self.num_col-1]
+            else:
+                top_left = bottom_right = [event.GetRow(), event.GetCol()]
+        else:
+            top_left = cell
+            bottom_right = cell
+        self.selected_coords = [list(top_left), list(bottom_right)]
+        self.selected_data = self.GetRange(self.selected_coords)    
         win = self.PopupMenu(GridPopupMenu(self), event.GetPosition())# self.ScreenToClient(pos))
  
           
-
-    def OnRangeSelect(self, evt):
-        if evt.Selecting():
-            first = evt.GetTopLeftCoords()
-            second = evt.GetBottomRightCoords()
-            self.selected_coords = [list(first), list(second)]
-            self.selected_data = []
-            for row in range(first[0], second[0] + 1):
-                col_data = []
-                for column in range(first[1], second[1] + 1):
-                    col_data.append(self.GetCellValue(row, column))
-                self.selected_data.append(col_data)
-        else:
-            self.selected_coords = None
-            self.selected_data = None
-        #evt.Skip()
-
 
     def GetRange(self, coord_list):
         first = coord_list[0]
@@ -198,12 +194,3 @@ class MyGrid(gridlib.Grid):
             toolbar.EnableTool(ID_REDO, False)
 
  
-    def OnSelectCell(self, evt):
-        if evt.Selecting():
-            row = evt.GetRow()
-            col = evt.GetCol()
-            self.selected_data = [[self.GetCellValue(row, col)]]
-            self.selected_coords = [[row, col], [row, col]]
- 
- 
-        

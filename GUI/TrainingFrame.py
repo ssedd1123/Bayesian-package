@@ -7,7 +7,7 @@ class TrainingFrame(wx.Dialog):
     #----------------------------------------------------------------------
     def __init__(self):
          """Constructor"""
-         wx.Dialog.__init__(self, None, title="Second Frame")
+         wx.Dialog.__init__(self, None, title="Training options", style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
          panel = wx.Panel(self)
          box = wx.BoxSizer(wx.VERTICAL)
 
