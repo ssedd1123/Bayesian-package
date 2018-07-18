@@ -40,6 +40,12 @@ class EmulatorFrame(wx.Dialog):
          self.Bind(wx.EVT_CLOSE, self.OnQuit)
          panel.SetSizer(box)
 
+         panel_sizer = wx.BoxSizer(wx.HORIZONTAL)
+         panel_sizer.Add(panel)
+         self.SetSizer(panel_sizer)
+
+         self.Fit()
+
     def AdditionalData(self,args):
         args['Output_name'] = self.output['CSV Output name'].GetValue()
         args['cores'] = int(self.output['Number of Cores'].GetValue())
