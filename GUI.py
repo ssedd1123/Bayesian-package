@@ -12,6 +12,8 @@ import pandas as pd
 import sys
 import time
 import os
+os.environ['OPENBLAS_NUM_THREADS'] = '1'
+os.environ['MKL_NUM_THREADS'] = '1'
 import gc
 import matplotlib
 matplotlib.use('WXAgg')
