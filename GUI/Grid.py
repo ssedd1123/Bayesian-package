@@ -61,7 +61,7 @@ class MyGrid(gridlib.Grid):
         # test all the events
         self.Bind(gridlib.EVT_GRID_CELL_RIGHT_CLICK, self.ShowMenu)
  
-        self.Bind(gridlib.EVT_GRID_CELL_CHANGE, self.OnCellChange)
+        self.Bind(gridlib.EVT_GRID_CELL_CHANGED, self.OnCellChange)
 
 
     def _SetValue(self, coords, data):

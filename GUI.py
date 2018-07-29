@@ -119,7 +119,7 @@ class GridPanel(wx.Panel):
         dlg = wx.FileDialog(
             self, message="Choose a file",
             defaultFile="",
-            style=wx.OPEN | wx.MULTIPLE | wx.CHANGE_DIR
+            style=wx.FD_OPEN | wx.FD_MULTIPLE | wx.FD_CHANGE_DIR
             )
         result = dlg.ShowModal() 
         path = dlg.GetPaths()
@@ -319,7 +319,7 @@ class CommonMenuBar(wx.MenuBar):
         """
         wildcard = "Python source (*.pkl)|*.pkl|" \
            "All files (*.*)|*.*"
-        dlg = wx.FileDialog(self, message="Save project as ...", defaultFile="", style=wx.SAVE | wx.OVERWRITE_PROMPT)
+        dlg = wx.FileDialog(self, message="Save project as ...", defaultFile="", style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
         result = dlg.ShowModal()            
         outFile = dlg.GetPaths()
         dlg.Destroy()
@@ -415,7 +415,7 @@ class CommonMenuBar(wx.MenuBar):
         dlg = wx.FileDialog(
             self, message="Choose a file",
             defaultFile="",
-            style=wx.OPEN | wx.MULTIPLE | wx.CHANGE_DIR
+            style=wx.FD_OPEN | wx.FD_MULTIPLE | wx.FD_CHANGE_DIR
             )
         result = dlg.ShowModal() 
         path = dlg.GetPaths()
