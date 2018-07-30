@@ -49,7 +49,7 @@ class GradientDescentForEmulator:
             history_nuggets.append(hist_nuggets)
             (scales, nuggets) = history_scales[-1], history_nuggets[-1]
             mag = np.linalg.norm(grad_scales*self.step_scales_size + grad_nuggets*self.step_nuggets_size)
-            sys.stdout.write("\rProcessing %i iteration, gradient magnitude = %f, nuggets = %f, scales = %s" % (i, mag, nuggets, np.array2string(scales)))
+            sys.stdout.write("\rProcessing %i iteration, gradient magnitude = %2.6f, nuggets = %2.3f, scales = %s              " % (i, mag, nuggets, np.array2string(scales, formatter={'float_kind':lambda x: '%02.3f' % x})))
             sys.stdout.flush()
             if mag < tolerance:
                 break

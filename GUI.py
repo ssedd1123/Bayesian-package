@@ -352,10 +352,13 @@ class CommonMenuBar(wx.MenuBar):
 
             frame = TrainingFrame()
             res = frame.ShowModal()
-            if res == wx.ID_OK:
+            if res == wx.ID_CANCEL:
+                #frame.Destroy()
+                return False
+            else:
                 frame.AdditionalData(args)
-            frame.Destroy()
-            
+                frame.Destroy()
+                            
             Training(args)
 
             with open(outFile[0], 'rb') as buff:

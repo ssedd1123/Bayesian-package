@@ -20,15 +20,25 @@ class TrainingFrame(wx.Dialog):
          box1.Add(self.combo_cov_func, 1, wx.EXPAND|wx.ALIGN_LEFT|wx.ALL,5) 
          box.Add(box1)
 
-         list_textctrl = {'Number of PCA Components': '3', 'PCA Fraction': '0.99', 'Initial scale': '0.5', 'Initial nugget': '1', 'Scale learning rate': '0.00003', 'Nugget learning rate': '0.00003', 'Maximum iterations': '1000'}
+
+         # radio box for 2 different ways of choosing number of PCA components
+         box2 = wx.BoxSizer(wx.HORIZONTAL)
+         self.rbox = wx.RadioBox(panel, label='Methods for PCA components', choices=['PCA Components', 'PCA Fraction'], majorDimension=1, style=wx.RA_SPECIFY_ROWS)
+         self.rbox_choice = 'PCA Components'
+         box2.Add(self.rbox, 1, wx.EXPAND|wx.ALIGN_CENTRE|wx.ALL,5)
+         box.Add(box2)
+
+         list_textctrl = [('PCA Components', '3'), ('Initial scale', '0.5'), ('Initial nugget', '1'), ('Scale learning rate', '0.00003'), ('Nugget learning rate', '0.00003'), ('Maximum iterations', '1000')]
          self.output = {}
+         self.title = {}
          
-         for name, default_value in list_textctrl.iteritems():
+         for (name, default_value) in list_textctrl:
              box_new = wx.BoxSizer(wx.HORIZONTAL)
              text = wx.StaticText(panel, -1, name)
              box_new.Add(text, 1, wx.EXPAND|wx.ALIGN_LEFT|wx.ALL,5) 
              textbox = wx.TextCtrl(panel, -1, default_value)
              box_new.Add(textbox, 1, wx.EXPAND|wx.ALIGN_LEFT|wx.ALL,5) 
+             self.title[name] = text
              self.output[name] = textbox
              box.Add(box_new)
 
@@ -39,10 +49,31 @@ class TrainingFrame(wx.Dialog):
 
          panel.SetSizer(box)
 
+         sizer = wx.BoxSizer(wx.VERTICAL)
+         sizer.Add(panel)
+         self.SetSizer(sizer)
+         self.Fit()
+
+         self.Bind(wx.EVT_RADIOBOX, self.OnRadioBox)
+         self.Bind(wx.EVT_CLOSE, self.OnClose)
+
+    def OnRadioBox(self, evt):
+        self.rbox_choice = self.rbox.GetStringSelection()
+        self.title['PCA Components'].SetLabel(self.rbox_choice)
+    
+
+    def OnClose(self, evt):
+        self.Destroy()
+        return wx.ID_CANCEL
+
     def AdditionalData(self,args):
         args['covariancefunc'] = self.Cov_func[self.combo_cov_func.GetSelection()]
-        args['principalcomp'] = int(self.output['Number of PCA Components'].GetValue())
-        args['fraction'] = float(self.output['PCA Fraction'].GetValue())
+        if self.rbox_choice == 'PCA Fraction':
+            args['principalcomp'] = 0
+            args['fraction'] = float(self.output['PCA Components'].GetValue())
+        else:
+            args['principalcomp'] = int(self.output['PCA Components'].GetValue())
+            args['fraction'] = None
         args['initialscale'] = np.fromstring(self.output['Initial scale'].GetValue(), dtype=np.float, sep=',')
         args['initialnugget'] = float(self.output['Initial nugget'].GetValue())
         args['scalerate'] = float(self.output['Scale learning rate'].GetValue())
