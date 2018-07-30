@@ -1,9 +1,15 @@
-This is a gaussian emulator and Baysiean analysis with PyMC/PyMC3 <br />
+This is a gaussian emulator and Baysiean analysis with PyMC <br />
  <br />
 In the following, I will use the following naming convention for each variables: <br />
  <br />
 par : parameters, i.e. the input of the theoretical function <br />
 var : variables, i.e. output of the theoretical function <br />
+<br />
+There is a traditional way and a GUI way of doing things <br />
+GUI way is as follows: </br>
+---
+
+
  <br />
 To use the code, follow the following steps: <br />
  <br />
