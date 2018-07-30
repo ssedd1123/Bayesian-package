@@ -4,7 +4,7 @@ In the following, I will use the following naming convention for each variables:
  <br />
 par : parameters, i.e. the input of the theoretical function <br />
 var : variables, i.e. output of the theoretical function <br />
-<br />
+
 There is a traditional way and a GUI way of doing things 
 ---
 GUI way is as follows: 
