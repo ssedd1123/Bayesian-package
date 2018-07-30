@@ -1,14 +1,27 @@
 This is a gaussian emulator and Baysiean analysis with PyMC <br />
  <br />
+ 
+ Installation
+ ---
+ 
+ Please use anaconda python package. Installation with pip and virtualenv is possible but it will be hard to get certain packages (like pymc and wxpython) installed. <br />
+ <br />
+ For anaconda python:
+ 
+ 1. Install anaconda for python2 by following instructions on https://conda.io/docs/user-guide/tasks/manage-pkgs.html#installing-packages. 
+ 2. Go to /path/to/Bayesian-package and create virtual environment by running the following command:
+     conda create --name myPy --file requirements.txt
+ . This script is tested for python 2.7.15
+ 
+ 
+ 
+ 
 In the following, I will use the following naming convention for each variables: <br />
  <br />
 par : parameters, i.e. the input of the theoretical function <br />
 var : variables, i.e. output of the theoretical function <br />
 
-There is a traditional way and a GUI way of doing things 
----
-GUI way is as follows: 
----
+
 
  <br />
 To use the code, follow the following steps: <br />
