@@ -10,18 +10,18 @@ This is a gaussian emulator and Baysiean analysis with PyMC <br />
  
  1. Install anaconda for python2 by following instructions on https://conda.io/docs/user-guide/tasks/manage-pkgs.html#installing-packages. 
  2. Go to /path/to/Bayesian-package and create virtual environment by running the following command:
- 
+ ```
      conda create --name myPy --file requirements.txt
-     
+ ```
     This script is tested for python 2.7.15
  3. Install autograd with pip. Unfortunately this package is not available on anaconda so you will have to install it with pip:
- 
+ ```
      pip install autograd
-     
+ ```     
  4. Run GUI.py
- 
+ ```
      python GUI.py &
-     
+ ```   
      
  
  
