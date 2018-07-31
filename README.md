@@ -1,7 +1,7 @@
 This is a gaussian emulator and Baysiean analysis with PyMC <br />
  <br />
  
- Installation
+ Installation with anaconda
  ---
  
  Please use anaconda python package. Installation with pip and virtualenv is possible but it will be hard to get certain packages (like pymc and wxpython) installed. <br />
@@ -11,19 +11,57 @@ This is a gaussian emulator and Baysiean analysis with PyMC <br />
  1. Install anaconda for python2 by following instructions on https://conda.io/docs/user-guide/tasks/manage-pkgs.html#installing-packages. 
  2. Go to /path/to/Bayesian-package and create virtual environment by running the following command:
  ```
-     conda create --name myPy --file requirements.txt
+     $> conda create --name myPy --file requirements.txt
  ```
  This script is tested for python 2.7.15 <br />
  3. Install autograd with pip. Unfortunately this package is not available on anaconda so you will have to install it with pip:
  ```
-     pip install autograd
+     $> pip install autograd
  ```     
  4. Run GUI.py
  ```
-     python GUI.py &
+     $> python GUI.py &
  ```   
-     
+ and you are ready to go.
  
+ Installation with pip
+ ---
+ 
+ Please be warned that pip installation may not be successful depending on your avaliable libraries. It is highly recommended that anaconda installation be used.
+ 
+ 1. Create a virtual environment with virtualenv and activate it inside /path/to/Bsyesian-package
+```
+    $> virtualenv myPy
+    $> source myPy/bin/activate
+```
+ 2. Install necessay packages with the following commands. If you can install pymc successfully, skip step 3.
+ ```
+     $> pip install numpy
+     $> pip install scipy
+     $> pip install matplotlib
+     $> pip install pandas
+     $> pip install pymc
+ ```
+ 3. Pymc is difficult to install as it relies on external gfortran code. Fortran libraries may not be compiled correctly and there's nothing pip can do. Serval solutions are as follows:
+     * Try to install liblapack-dev with 
+     ```
+        $> sudo apt-get liblapack-dev
+     ```
+     * Load liblapack-dev with module load
+     * Alternatively, local installation of liblapack-dev may work but I have not luck with it
+     * Switch to compatible gcc and gfortran compiler
+     
+ If pymc cannot be installed correctly, anaconda build may be the only solution.
+
+ 4. Install wxpython. Unfortunately wxpython is known to be defective in virtualenv so you have to install wxpython OUTSIDE virtualenv first and link the installed libraries against your virtual environment:
+ ```
+    $> ln -s /usr/lib/python2.7/dist-packages/wx.pth myPy/lib/python2.7/site-packages/<br />
+    $> ln -s /usr/lib/python2.7/dist-packages/wx-3.0-gtk2 myPy/lib/python2.7/site-packages/<br />
+```
+5. Run GUI.py
+ ```
+     $> python GUI.py &
+ ```   
  
  
  
