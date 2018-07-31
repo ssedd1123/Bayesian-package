@@ -100,6 +100,24 @@ var : variables, i.e. output of the theoretical function <br />
  2 | 1 | 4
  3 | 2 | 5
  
+ For 'Model result', you need numbers from theoretical model, error of the result and the value of the corresponding parameter. You need to name all your var and error of each var needs to be in the format of ParName_Error. For instance, let model = f, if f(1, 1) = (2, 5), f(2, 3) = (5, 2) and f(3, 3) = (6, 0) and error of each of those = 0.05, you need to enter:
+ 
+  row | A | B | C | D | E | F
+  ----|---|---|---|---|---|---
+ 1 | par1 | par2 | var1 | var2 | var1_Error | var2_Error
+ 2 | 1 | 1 | 2 | 5 | 0.05 | 0.05
+ 3 | 2 | 3 | 5 | 2 | 0.05 | 0.05
+ 4 | 3 | 3 | 6 | 0 | 0.05 | 0.05
+ 
+ For 'Exp data', you only need 2 columns: name of the variables and values. Using our example, if var1 = 2 and var2 = 3 and experimental error = 0.05, you need to enter the following:
+ 
+   row | A | B | C | D |
+  ----|---|---|---|---|---|---
+ 1 | var1 | var2 | var1_Error | var2_Error
+ 2 | 2 | 3 | 0.05 | 0.05
+ 
+ And you are all set. Let's try to calculate something...
+ 
  
  
  
