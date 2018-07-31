@@ -94,9 +94,10 @@ var : variables, i.e. output of the theoretical function <br />
  
  Those 3 components corresponds to each bookmark on the GUI. For 'Para prior', you need to put name of par on column 1, lower limit on column 2 and higher limit on column 3. Only 3 columns are needed and it will not run if extra columns are entered. For intance, if you have 2 parameters a and b with 1 < a < 2 and 4 < b < 5, you need to enter:
  
- row|A|B
- 1|1|4
- 2|2|5
+ row | A | B
+ ----|---|---
+ 1 | 1 | 4
+ 2 | 2 | 5
  
  
  
