@@ -79,9 +79,12 @@ This is a gaussian emulator and Baysiean analysis with PyMC <br />
  
  3. Wait for the process to start, cd into path/to/Bayesian-package, activate virtual environment of your choice and use GUI as normal.
  
+ Using GUI
+ ---
  
  
- 
+ Using individual scripts for analysis (no GUI)
+ ---
  
  
 In the following, I will use the following naming convention for each variables: <br />
