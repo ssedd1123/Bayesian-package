@@ -13,7 +13,7 @@ This is a gaussian emulator and Baysiean analysis with PyMC <br />
  
      conda create --name myPy --file requirements.txt
      
- . This script is tested for python 2.7.15
+    This script is tested for python 2.7.15
  3. Install autograd with pip. Unfortunately this package is not available on anaconda so you will have to install it with pip:
  
      pip install autograd
@@ -21,6 +21,8 @@ This is a gaussian emulator and Baysiean analysis with PyMC <br />
  4. Run GUI.py
  
      python GUI.py &
+     
+     
  
  
  
