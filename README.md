@@ -76,6 +76,7 @@ This is a gaussian emulator and Baysiean analysis with PyMC <br />
      $> qsub -I -X -l nodes=1:ppn=15,walltime=12:00:00,mem=4G -N Init
  ```
  ppn is the number of cores and mem is the memory. It is recommended that at least 2G of memory be used. Increasing number of nodes will not help due to shortcommings in the program design. 
+ 
  3. Wait for the process to start, cd into path/to/Bayesian-package, activate virtual environment of your choice and use GUI as normal.
  
  
