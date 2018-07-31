@@ -92,12 +92,13 @@ var : variables, i.e. output of the theoretical function <br />
  * List of model calculations (var) for emulation
  * Experimental results 
  
- Those 3 components corresponds to each bookmark on the GUI. For 'Para prior', you need to put name of par on column 1, lower limit on column 2 and higher limit on column 3. Only 3 columns are needed and it will not run if extra columns are entered. For intance, if you have 2 parameters a and b with 1 < a < 2 and 4 < b < 5, you need to enter:
+ Those 3 components corresponds to each bookmark on the GUI. For 'Para prior', you need to put name of par on column 1, lower limit on column 2 and higher limit on column 3. Only 3 columns are needed and it will not run if extra columns are entered. For intance, if you have 2 parameters par1 and par2 with 1 < par1 < 2 and 4 < par2 < 5, you need to enter:
  
  row | A | B
  ----|---|---
- 1 | 1 | 4
- 2 | 2 | 5
+ 1 | par1 | par2
+ 2 | 1 | 4
+ 3 | 2 | 5
  
  
  
