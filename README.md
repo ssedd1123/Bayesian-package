@@ -82,15 +82,30 @@ This is a gaussian emulator and Baysiean analysis with PyMC <br />
  Using GUI
  ---
  
+ In the following, I will use the following naming convention for each variables: <br />
+ <br />
+par : parameters, i.e. the input of the theoretical function <br />
+var : variables, i.e. output of the theoretical function <br />
+ 
+ 3 ingredients are needed for the emulation and Bayesian analysis:
+ * Prior on par
+ * List of model calculations (var) for emulation
+ * Experimental results 
+ 
+ Those 3 components corresponds to each bookmark on the GUI. For 'Para prior', you need to put name of par on column 1, lower limit on column 2 and higher limit on column 3. Only 3 columns are needed and it will not run if extra columns are entered. For intance, if you have 2 parameters a and b with 1 < a < 2 and 4 < b < 5, you need to enter:
+ 
+ row|A|B|
+ 1|1|4|
+ 2|2|5|
+ 
+ 
+ 
  
  Using individual scripts for analysis (no GUI)
  ---
  
  
-In the following, I will use the following naming convention for each variables: <br />
- <br />
-par : parameters, i.e. the input of the theoretical function <br />
-var : variables, i.e. output of the theoretical function <br />
+
 
 
 
