@@ -18,7 +18,7 @@ This is a gaussian emulator and Baysiean analysis with PyMC <br />
  ```
      $> pip install autograd
  ```     
- 4. Run GUI.py
+ 4. Run GUI.py if you want GUI, or any individual calculation scripts otherwise (explained below).
  ```
      $> python GUI.py &
  ```   
@@ -55,13 +55,31 @@ This is a gaussian emulator and Baysiean analysis with PyMC <br />
 
  4. Install wxpython. Unfortunately wxpython is known to be defective in virtualenv so you have to install wxpython OUTSIDE virtualenv first and link the installed libraries against your virtual environment:
  ```
-    $> ln -s /usr/lib/python2.7/dist-packages/wx.pth myPy/lib/python2.7/site-packages/<br />
-    $> ln -s /usr/lib/python2.7/dist-packages/wx-3.0-gtk2 myPy/lib/python2.7/site-packages/<br />
+    $> ln -s /usr/lib/python2.7/dist-packages/wx.pth myPy/lib/python2.7/site-packages/
+    $> ln -s /usr/lib/python2.7/dist-packages/wx-3.0-gtk2 myPy/lib/python2.7/site-packages/
 ```
-5. Run GUI.py
+5. Run GUI.py, or any individual calculation scripts otherwise (explained below).
  ```
      $> python GUI.py &
  ```   
+ 
+ Running GUI on HPCC
+ ---
+ 
+ This section only talks about running GUI in HPCC. If traditional command is used, then just submit jobs like normal and wait for it to run (see details below).
+ 
+ While running on fishtank maybe fast enough, it could be a bad idea to use up everyone's CPU power. Running on HPCC could be a good idea. Installation process is the same, but you need to line up in a queue for CPU power.
+ 
+ 1. Get into a cluster and Install like normal
+ 2. Ask for CPU time:
+ ```
+     $> qsub -I -X -l nodes=1:ppn=15,walltime=12:00:00,mem=4G -N Init
+ ```
+ ppn is the number of cores and mem is the memory. It is recommended that at least 2G of memory be used. Increasing number of nodes will not help due to shortcommings in the program design. 
+ 3. Wait for the process to start, cd into path/to/Bayesian-package, activate virtual environment of your choice and use GUI as normal.
+ 
+ 
+ 
  
  
  
