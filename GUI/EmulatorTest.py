@@ -64,9 +64,9 @@ class EmulatorTest(wx.Frame):
         self.emulator = emulator
         prior_range = {}
         ini_par = []
-        for par_name in list(prior):
-            prior_range[par_name] = (prior[par_name][0], prior[par_name][1])
-            ini_par.append(0.5*(prior[par_name][0] + prior[par_name][1]))
+        for par_name, row in prior.iterrows():
+            prior_range[par_name] = (row[1], row[2])
+            ini_par.append(0.5*(row[1] + row[2]))
 
         ini_par = np.array(ini_par)
         result, var = emulator.Emulate(ini_par)
@@ -86,7 +86,7 @@ class EmulatorTest(wx.Frame):
         Add slider bar
         """
         self.amp_slider = []
-        for index, par_name in enumerate(list(prior)):
+        for index, par_name in enumerate(list(prior.index.values)):
             amp_slider_ax  = self.fig.add_axes([0.25, 0.1 + 0.05*index, 0.65, 0.03])
             self.amp_slider.append(Slider(amp_slider_ax, par_name, prior_range[par_name][0], prior_range[par_name][1], valinit=ini_par[index]))
 

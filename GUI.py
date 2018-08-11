@@ -46,24 +46,24 @@ matplotlib.rc('image', origin='lower')
 
 class GridPanel(wx.Panel):
 
-    def __init__(self, parent):
+    def __init__(self, parent, size=(100,100)):
         wx.Panel.__init__(self, parent)
         self.parent = parent
 
-        self.grid = MyGrid(self)
+        self.grid = MyGrid(self, size)
         sizer = wx.BoxSizer(wx.VERTICAL)
 
      # toolbar
         undo_ico = wx.ArtProvider.GetBitmap(wx.ART_UNDO, wx.ART_TOOLBAR, (16,16))
         self.toolbar = wx.ToolBar(self, id=100, style=wx.TB_HORIZONTAL | wx.NO_BORDER |
                                         wx.TB_FLAT | wx.TB_TEXT)
-        self.toolbar.AddSimpleTool(ID_UNDO, undo_ico, 'Undo', '')
+        self.toolbar.AddTool(ID_UNDO, 'Undo', undo_ico, '')
         redo_ico = wx.ArtProvider.GetBitmap(wx.ART_REDO, wx.ART_TOOLBAR, (16,16))
-        self.toolbar.AddSimpleTool(ID_REDO, redo_ico, 'Redo', '')
+        self.toolbar.AddTool(ID_REDO, 'Redo', redo_ico, '')
         open_ico = wx.ArtProvider.GetBitmap(wx.ART_FILE_OPEN, wx.ART_TOOLBAR, (16,16))
-        self.toolbar.AddSimpleTool(ID_INDOPENFILE, open_ico, 'Open csv', '')
+        self.toolbar.AddTool(ID_INDOPENFILE, 'Open csv', open_ico, '')
         print_ico = wx.ArtProvider.GetBitmap(wx.ART_PRINT, wx.ART_TOOLBAR, (16,16))
-        self.toolbar.AddSimpleTool(ID_PRINT, print_ico, 'Plot data', '')
+        self.toolbar.AddTool(ID_PRINT, 'Plot data', print_ico, '')
  
 
         self.toolbar.EnableTool(ID_UNDO, False)
@@ -169,18 +169,6 @@ class CommonMenuBar(wx.MenuBar):
         self.tab3 = tab3
         self.parent = parent
         
-        """
-        save_ico = wx.ArtProvider.GetBitmap(wx.ART_FILE_SAVE, wx.ART_TOOLBAR, (16,16))
-        self.AddSimpleTool(ID_SAVE, save_ico, 'Save', '')
-        open_ico = wx.ArtProvider.GetBitmap(wx.ART_FILE_OPEN, wx.ART_TOOLBAR, (16,16))
-        self.AddSimpleTool(ID_OPENFILE, open_ico, 'Open', '')
-        new_ico = wx.ArtProvider.GetBitmap(wx.ART_NEW, wx.ART_TOOLBAR, (16,16))
-        self.AddSimpleTool(ID_SAVEAS, new_ico, 'Save As', '')
-        check_ico = wx.ArtProvider.GetBitmap(wx.ART_FIND, wx.ART_TOOLBAR, (16,16))
-        self.AddSimpleTool(ID_EMULATORCHECK, check_ico, 'Check emulator', '')
-        exe_ico = wx.ArtProvider.GetBitmap(wx.ART_EXECUTABLE_FILE, wx.ART_TOOLBAR, (16,16))
-        self.AddSimpleTool(ID_EMULATE, exe_ico, 'Emulator', '')
-        """
 
         fileMenu = wx.Menu()
         SaveMenuItem = fileMenu.Append(ID_SAVE, 'Save', '')
@@ -189,7 +177,7 @@ class CommonMenuBar(wx.MenuBar):
 
         emulatorMenu = wx.Menu()
         EmulatorCheckItem = emulatorMenu.Append(ID_EMULATORCHECK, 'Check emulator', '')
-        EmulatorItem = emulatorMenu.Append(ID_EMULATE, 'Emulator', '')
+        EmulatorItem = emulatorMenu.Append(ID_EMULATE, 'Start Analysis', '')
 
         self.Append(fileMenu, '&File')
         self.Append(emulatorMenu, '&Emulator')
@@ -233,6 +221,15 @@ class CommonMenuBar(wx.MenuBar):
                 frame.AdditionalData(args)
                 progress = MyFrame(None, -1, 'stdout to GUI using multiprocessing', args)# {'Training_file': 'training/test', 'Output_name':'para', 'cores':5, 'steps':10000})
                 trace, par_name, prior = progress.OnCalculate()
+
+                # if root_numpy module exist, it will be saved there
+                try: 
+                    from root_numpy import array2root
+                    df_ = trace.copy(deep=False)
+                    arr = df_.to_records(index=False)
+                    array2root(arr, '%s.root' % self.opened_filename, 'my_ttree', 'recreate')
+                except ImportError:
+                    print('root_numpy module not found. Will not output to root')
     
                 if not self.correlation_frame:
                     fig = Figure((15,12), 75)
@@ -255,8 +252,8 @@ class CommonMenuBar(wx.MenuBar):
         if set(exp_headers).union(set(prior_headers)) != set(model_headers):
             wx.MessageBox('Some variables in model do not appear in either experiment or prior. Please check again', 'Error', wx.OK | wx.ICON_ERROR)
             return False
-        if prior.shape[0] != 2:
-            wx.MessageBox('There could only be 2 rows in prior, one for lower bound and the other for higher, nothing more/less', 'Error', wx.OK | wx.ICON_ERROR)
+        if prior.shape[0] != 5:
+            wx.MessageBox('There could only be 5 rows in prior, one for lower bound and the other for higher, nothing more/less', 'Error', wx.OK | wx.ICON_ERROR)
             return False 
         if exp.shape[0] != 1:
             wx.MessageBox('There could only be 1 rows for exp result, nothing more/less', 'Error', wx.OK | wx.ICON_ERROR)
@@ -308,6 +305,7 @@ class CommonMenuBar(wx.MenuBar):
         model = pd.DataFrame(model, columns=model_headers)
         prior_headers = prior.pop(0)
         prior = pd.DataFrame(prior, columns=prior_headers)
+        print('save', prior)
         exp_headers = exp.pop(0)
         exp = pd.DataFrame(exp, columns=exp_headers)
 
@@ -435,7 +433,7 @@ class CommonMenuBar(wx.MenuBar):
         """
         Loading prior
         """
-        prior = data['data'].prior
+        prior = data['data'].prior.T
         prior = [prior.columns.tolist()] + prior.values.tolist()
         if type(prior[0]) is not list:
             prior = [prior]
@@ -481,13 +479,22 @@ class Common(wx.Frame):
          
         notebook = wx.Notebook(panel)
 
-        GridP1 = GridPanel(notebook)
+        GridP1 = GridPanel(notebook, size=(6, 100))
+        GridP1.grid.SetRowLabelValue(0, "Name")
+        GridP1.grid.SetRowLabelValue(1, "Type")
+        GridP1.grid.SetRowLabelValue(2, "Lower bound")
+        GridP1.grid.SetRowLabelValue(3, "Upper bound")
+        GridP1.grid.SetRowLabelValue(4, "Centre")
+        GridP1.grid.SetRowLabelValue(5, "Standard Deviation")
+        GridP1.grid.SetRowLabelSize(wx.grid.GRID_AUTOSIZE)
         notebook.AddPage(GridP1, "Para prior")
 
         GridP2 = GridPanel(notebook)
         notebook.AddPage(GridP2, "Model result")
 
-        GridP3 = GridPanel(notebook)
+        GridP3 = GridPanel(notebook, size=(2, 100))
+        GridP3.grid.SetRowLabelValue(0, "Name")
+        GridP3.grid.SetRowLabelValue(1, "Value")
         notebook.AddPage(GridP3, "Exp data data")
 
         sizer = wx.BoxSizer(wx.VERTICAL)
@@ -500,10 +507,15 @@ class Common(wx.Frame):
         self.SetMenuBar(self.menubar)
         
         sizer.Add(notebook, 1, wx.EXPAND | wx.EXPAND, 5)
+
+        self.Bind(wx.EVT_CLOSE, self.OnClose)
         
         panel.SetSizer(sizer)
         self.Layout()
         self.Show()
+
+    def OnClose(self, event):
+        self.Destroy()
 
     
 

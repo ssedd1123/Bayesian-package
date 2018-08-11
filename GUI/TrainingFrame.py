@@ -28,7 +28,7 @@ class TrainingFrame(wx.Dialog):
          box2.Add(self.rbox, 1, wx.EXPAND|wx.ALIGN_CENTRE|wx.ALL,5)
          box.Add(box2)
 
-         list_textctrl = [('PCA Components', '3'), ('Initial scale', '0.5'), ('Initial nugget', '1'), ('Scale learning rate', '0.00003'), ('Nugget learning rate', '0.00003'), ('Maximum iterations', '1000')]
+         list_textctrl = [('PCA Components', '3'), ('Initial scale', '1'), ('Initial nugget', '0.1'), ('Scale learning rate', '0.01'), ('Nugget learning rate', '0.01'), ('Maximum iterations', '1000')]
          self.output = {}
          self.title = {}
          

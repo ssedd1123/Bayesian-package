@@ -15,6 +15,7 @@ class DataLoader:
         self.prior = pd.read_csv(prior_filename)
         # load the name of the variables in the prior
         self.par_name = list(self.prior)
+        self.prior = self.prior.T.apply(pd.to_numeric, errors='ignore')
 
         """
         Loading experiment output data
@@ -60,6 +61,7 @@ class DataLoader:
 
     def ChangePrior(self, prior_filename):
         self.prior = pd.read_csv(prior_filename)
+        self.prior = self.prior.T.apply(pd.to_numeric, errors='ignore')
         self.prior_filename = prior_filename
         # check and see if number of variables is changed
         # if so the new prior cannot be accepted. You must start a completely new training

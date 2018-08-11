@@ -2,6 +2,16 @@ import autograd.numpy as np
 import sys
 from autograd import grad
 
+def GetOptimizer(name, *args, **kwargs):
+    if name == 'GradientDescent':
+        return GradientDescentForEmulator(*args, **kwargs)
+    elif name == 'MomentumDescent':
+        return MomentumDescentForEmulator(*args, **kwargs)
+    elif name == 'RMSProp':
+        return RMSPropForEmulator(*args, **kwargs)
+    elif name == 'Adam':
+        return AdamForEmulator(*args, **kwargs)
+
 class GradientDescentForEmulator:
 
 
@@ -37,7 +47,7 @@ class GradientDescentForEmulator:
 
         return np.exp(scale_temp), np.exp(nuggets_temp), gradient_scales, gradient_nuggets
         
-    def Descent(self, scales, nuggets, nsteps=10, tolerance=1e-5):
+    def Descent(self, scales, nuggets, nsteps=10, tolerance=1e-4):
         history_scales = []
         history_nuggets = []
         scales = np.array(scales)
@@ -48,10 +58,14 @@ class GradientDescentForEmulator:
             history_scales.append(hist_scales)
             history_nuggets.append(hist_nuggets)
             (scales, nuggets) = history_scales[-1], history_nuggets[-1]
-            mag = np.linalg.norm(grad_scales*self.step_scales_size + grad_nuggets*self.step_nuggets_size)
+
+            mag_scales = np.linalg.norm(grad_scales)*self.step_scales_size
+            mag_nuggets = np.linalg.norm(grad_nuggets)*self.step_nuggets_size
+            mag = np.sqrt(mag_scales*mag_scales + mag_nuggets*mag_nuggets)
+
             sys.stdout.write("\rProcessing %i iteration, gradient magnitude = %2.6f, nuggets = %2.3f, scales = %s              " % (i, mag, nuggets, np.array2string(scales, formatter={'float_kind':lambda x: '%02.3f' % x})))
             sys.stdout.flush()
-            if mag < tolerance:
+            if mag < tolerance: #or mag < 0.5*(self.step_scales_size + self.step_nuggets_size):
                 break
 
         print('')
@@ -119,7 +133,7 @@ class RMSPropForEmulator(GradientDescentForEmulator):
 class AdamForEmulator(GradientDescentForEmulator):
 
      
-    def __init__(self, step_size_scales, step_size_nuggets, beta1=0.9, beta2=0.999):
+    def __init__(self, step_size_scales, step_size_nuggets, beta1=0.9, beta2=0.99):
         GradientDescentForEmulator.__init__(self, step_size_scales, step_size_nuggets)
         self.beta1 = beta1
         self.beta2 = beta2

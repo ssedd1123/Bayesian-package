@@ -39,12 +39,12 @@ def PlotTrace(trace, par_name, prior, fig=None):
             namex = par_name[j]
             namey = par_name[i]
             if namex == namey:
-                cell.hist(trace[namex], bins = 50, range=np.array([prior[namex][0], prior[namex][1]]))
-                cell.set_xlim([prior[namex][0], prior[namex][1]])
+                cell.hist(trace[namex], bins = 50, range=np.array([prior[1][namex], prior[2][namex]]))
+                cell.set_xlim([prior[1][namex], prior[2][namex]])
             else:
-                im = cell.hist2d(trace[namex], trace[namey], bins=50, range=np.array([(prior[namex][0], prior[namex][1]),(prior[namey][0], prior[namey][1])]))#, norm=colors.LogNorm())
-                cell.set_xlim([prior[namex][0], prior[namex][1]])
-                cell.set_ylim([prior[namey][0], prior[namey][1]])
+                im = cell.hist2d(trace[namex], trace[namey], bins=50, range=np.array([(prior[1][namex], prior[2][namex]),(prior[1][namey], prior[2][namey])]))#, norm=colors.LogNorm())
+                cell.set_xlim([prior[1][namex], prior[2][namex]])
+                cell.set_ylim([prior[1][namey], prior[2][namey]])
                 #fig.colorbar(im[3], ax=cell)
             # Modify axis labels such that the top and bottom label never show up
             xlist = cell.get_xticks().tolist()
@@ -82,8 +82,11 @@ def GenerateTrace(emulator, exp_result, exp_cov, prior, id_, iter):
     """
     pymc.numpy.random.seed(id_)
     parameters = []
-    for column in prior:
-        parameters.append(pymc.Uniform(column, prior[column][0], prior[column][1], value=(0.5*prior[column][0] + 0.5*prior[column][1])))
+    for name, row in prior.iterrows():
+        if row[0] == 'Uniform':
+            parameters.append(pymc.Uniform(name, row[1], row[2], value=(0.5*row[1] + 0.5*row[2])))
+        else:
+            parameters.append(pymc.Normal(name, mu=row[3], tau=row[4]))
     
     @pymc.stochastic(observed=True)
     def emulator_result(value=exp_result, x=parameters):
@@ -105,8 +108,8 @@ def GenerateTrace(emulator, exp_result, exp_cov, prior, id_, iter):
     # sampling from our steady-state posterior distribution
     mcmc.sample(iter, burn=1000)
     trace_dict = {}
-    for column in prior:
-        trace_dict[column] = mcmc.trace(column)[:]
+    for name, row in prior.iterrows():
+        trace_dict[name] = mcmc.trace(name)[:]
     mcmc.db.close()
     return pd.DataFrame.from_dict(trace_dict)
     
@@ -165,9 +168,9 @@ def PlotOutput(plot_prior=True):
 
     for i, row in trace.iterrows():
         par = []
-        for par_name in list(prior):
+        for par_name in list(prior.index.values):
             if plot_prior:
-                par.append(random.uniform(prior[par_name][0], prior[par_name][1]))
+                par.append(random.uniform(prior[1][par_name], prior[2][par_name]))
             else:
                 par.append(row[par_name])
 

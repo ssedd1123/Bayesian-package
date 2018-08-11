@@ -43,8 +43,7 @@ class EmulatorMultiOutput:
         scales = []
         nuggets = []
         for emulator in self.emulator_list:
-            gd = MomentumDescentForEmulator(scales_rate, nuggets_rate)#
-            #gd = GradientDescentForEmulator(scales_rate, nuggets_rate)
+            gd = GetOptimizer('Adam', scales_rate, nuggets_rate)#
             # trainning with marginallikelihood instead of LOOCV 
             gd.SetFunc(emulator.LOOCrossValidation)
             history_scale, history_nuggets = gd.Descent(initial_scales, initial_nuggets, max_step)
@@ -58,16 +57,10 @@ class EmulatorMultiOutput:
         return scales, nuggets
 
     def GetScales(self):
-        scales = []
-        for emulator in self.emulator_list:
-            scales.append(emulator.scales)
-        return scales
+        return [emulator.scales for emulator in self.emulator_list]
 
     def GetNuggets(self):
-        nuggets = []
-        for emulator in self.emulator_list:
-            nuggets.append(emulator.nuggets)
-        return nuggets
+        return [emulator.nuggets for emulator in self.emulator_list]
 
     def SetScales(self, scales):
         for emulator, value in zip(self.emulator_list, scales):

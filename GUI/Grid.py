@@ -43,13 +43,13 @@ class UndoText:
 
 class MyGrid(gridlib.Grid):
     #----------------------------------------------------------------------
-    def __init__(self, parent):
+    def __init__(self, parent, size=(100,100)):
         """Constructor"""
         self.stockUndo = []
         self.stockRedo = []
-        gridlib.Grid.__init__(self, parent, size=(200, 300))
-        self.num_row = 100
-        self.num_col = 100
+        gridlib.Grid.__init__(self, parent, size=size)
+        self.num_row = size[0]
+        self.num_col = size[1]
         self.CreateGrid(self.num_row, self.num_col)
         self.parent = parent
         self.InitUI()
