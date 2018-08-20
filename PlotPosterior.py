@@ -41,11 +41,11 @@ def PlotOutput(plot_prior, filename):
 
     for i, row in trace.iloc[::30, :].iterrows():
         par = []
-        for par_name in list(prior):
+        for name, par_row in prior.iterrows():
             if plot_prior:
-                par.append(random.uniform(prior[par_name][0], prior[par_name][1]))
+                par.append(random.uniform(par_row[1], par_row[2]))
             else:
-                par.append(row[par_name])
+                par.append(row[name])
 
         # transform input by input_pipe and put it in our emulator
         result, var = emulator.Emulate(par)
