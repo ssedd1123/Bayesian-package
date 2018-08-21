@@ -1,22 +1,3 @@
-"""
-Copyright (C) 2003-2004 Andrew Straw, Jeremy O'Donoghue and others
-
-License: This work is licensed under the PSF. A copy should be included
-with this source code, and is also available at
-http://www.python.org/psf/license.html
-
-This is yet another example of using matplotlib with wx.  Hopefully
-this is pretty full-featured:
-
-  - both matplotlib toolbar and WX buttons manipulate plot
-  - full wxApp framework, including widget interaction
-  - XRC (XML wxWidgets resource) file to create GUI (made with XRCed)
-
-This was derived from embedding_in_wx and dynamic_image_wxagg.
-
-Thanks to matplotlib and wx teams for creating such great software!
-
-"""
 from __future__ import print_function
 
 # matplotlib requires wxPython 2.8+
