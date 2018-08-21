@@ -132,6 +132,9 @@ class GridPanel(wx.Panel):
         data = [df.columns.tolist()] + df.values.tolist()
         self.grid.ClearRange([[0,0], [self.grid.num_col - 1, self.grid.num_row - 1]])
         self.grid.SetValue([[0,0], [len(data) - 1, len(data[0]) - 1]], data)
+
+        del self.grid.stockUndo[:]
+        self.toolbar.EnableTool(ID_UNDO, False)
         
 
     def OnUndo(self, event):
@@ -263,7 +266,7 @@ class CommonMenuBar(wx.MenuBar):
         if model.shape[0] < 3:
             wx.MessageBox('Model data has less than 3 entries. I don\'t think this will work. Please check again', 'Error', wx.OK | wx.ICON_ERROR)
             return False
-        if len(prior_headers) != prior.shape[1]:
+        if len(prior_headers) != prior.shape[0]:
             wx.MessageBox('Number of variables and numerical columns in prior do not match.', 'Error', wx.OK | wx.ICON_ERROR)
             return False 
         if len(model_headers) != model.shape[1]:

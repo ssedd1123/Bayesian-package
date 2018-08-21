@@ -34,13 +34,17 @@ from copy import deepcopy
 import wx
 #import wx.xrc as xrc
 import wx.grid as gridlib
+from Grid import MyGrid
 
 class EmulatorTest(wx.Frame):
     def __init__(self, parent, emulator, prior, exp_data=None):
         wx.Frame.__init__(self, parent, wx.NewId())
-        splitter = wx.SplitterWindow(self, -1)
-        right_panel = wx.Panel(splitter, -1)
-        left_panel = wx.Panel(splitter, -1)
+        splitterTB = wx.SplitterWindow(self, -1)
+        splitterLR = wx.SplitterWindow(splitterTB, -1)
+        bottom_panel = wx.Panel(splitterTB, -1)
+
+        right_panel = wx.Panel(splitterLR, -1)
+        left_panel = wx.Panel(splitterLR, -1)
 
         self.fig = Figure((5, 4), 75)
         # Adjust the subplots region to leave some space for the sliders and buttons
@@ -64,14 +68,7 @@ class EmulatorTest(wx.Frame):
         sizer.Add(lst, 1, wx.EXPAND)
         left_panel.SetSizer(sizer)
 
-        splitter.SplitVertically(left_panel, right_panel, 100)
-        sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.Add(splitter)
-        self.SetSizer(sizer)
-        self.Fit()
-        self.Centre()
-        self.Bind(wx.EVT_LISTBOX, self.onListBox, lst)
-       
+        splitterLR.SplitVertically(left_panel, right_panel, 100)
                 
         """
         Calculation with emulator
@@ -110,7 +107,38 @@ class EmulatorTest(wx.Frame):
         for slider in self.amp_slider:
             slider.on_changed(self.sliders_on_changed)
 
+        self.grid = MyGrid(bottom_panel, (1, len(prior) + self.num_output), False)      
+        index = 0
+        self.grid.SetRowLabelValue(0, "Value")
+        for par_name, row in prior.iterrows():
+            self.grid.SetColLabelValue(index, par_name)
+            index = index + 1
+
+        # set the result as read only
+        for index in range(0, self.num_output):
+            self.grid.SetReadOnly(0, index + len(prior), True)
+            self.grid.SetCellBackgroundColour(0, index + len(prior), (211,211,211))
+
+        sizer = wx.BoxSizer(wx.HORIZONTAL)
+        sizer.Add(self.grid, 1, wx.LEFT | wx.TOP | wx.GROW)
+        bottom_panel.SetSizer(sizer)
+        
+        # add grid to the bottom of the window
+        splitterTB.SplitHorizontally(splitterLR, bottom_panel, 300)
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(splitterTB, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP | wx.GROW)
+        self.SetSizer(sizer)
+        self.Fit()
+        self.Centre()
+        self.Bind(wx.EVT_LISTBOX, self.onListBox, lst)
+        self.grid.Bind(gridlib.EVT_GRID_CELL_CHANGED, self.OnCellChange)
+
         self.toolbar.update()  # Not sure why this is needed - ADS
+
+    def OnCellChange(self, evt):
+        col = evt.GetCol()
+        self.amp_slider[col].set_val(float(self.grid.GetCellValue(0, col)))
+        self.sliders_on_changed(0)
 
     # Define an action for modifying the line when any slider's value changes
     def sliders_on_changed(self, val):
@@ -127,6 +155,9 @@ class EmulatorTest(wx.Frame):
                         x, yt, yb in zip(x_base, yerr_top, yerr_bot)]
         self.line.set_ydata(ydata)
         self.bars.set_segments(new_segments)
+
+        # write data into the bottom grid
+        self.grid.SetValue([[0, 0], [0, len(par) + ydata.shape[0]]], [par + ydata.tolist()])
     
         self.fig.canvas.draw_idle()
 

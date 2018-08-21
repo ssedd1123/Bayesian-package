@@ -43,8 +43,9 @@ class UndoText:
 
 class MyGrid(gridlib.Grid):
     #----------------------------------------------------------------------
-    def __init__(self, parent, size=(100,100)):
+    def __init__(self, parent, size=(100,100), has_toolbar=True):
         """Constructor"""
+        self.has_toolbar = has_toolbar
         self.stockUndo = []
         self.stockRedo = []
         gridlib.Grid.__init__(self, parent, size=size)
@@ -60,8 +61,13 @@ class MyGrid(gridlib.Grid):
  
         # test all the events
         self.Bind(gridlib.EVT_GRID_CELL_RIGHT_CLICK, self.ShowMenu)
- 
+        self.Bind(gridlib.EVT_GRID_RANGE_SELECT, self.OnRangeSelect)
         self.Bind(gridlib.EVT_GRID_CELL_CHANGED, self.OnCellChange)
+
+
+    def OnRangeSelect(self, event):
+        self.selected_coords = [list(event.GetTopLeftCoords()), list(event.GetBottomRightCoords())]
+        self.selected_data = self.GetRange(self.selected_coords)   
 
 
     def _SetValue(self, coords, data):
@@ -83,13 +89,13 @@ class MyGrid(gridlib.Grid):
         return undo
 
     def SetValue(self, coords, data):
-        toolbar = self.parent.toolbar
         undo = self._SetValue(coords, data)
         self.stockUndo.append(undo)
 
         if self.stockRedo:
             del self.stockRedo[:]
-            toolbar.EnableTool(ID_REDO, False)
+            if self.has_toolbar:
+                toolbar.EnableTool(ID_REDO, False)
 
     def _ClearRange(self, coords):
         changed_row = []
@@ -108,13 +114,13 @@ class MyGrid(gridlib.Grid):
         return undo
 
     def ClearRange(self, coords):
-        toolbar = self.parent.toolbar
         undo = self._ClearRange(coords)
         self.stockUndo.append(undo)
 
         if self.stockRedo:
             del self.stockRedo[:]
-            toolbar.EnableTool(ID_REDO, False)
+            if self.has_toolbar:
+                self.parent.toolbar.EnableTool(ID_REDO, False)
 
     def ClearAll(self):
         self.ClearRange([[0,0], [self.num_row-1, self.num_col-1]])
@@ -141,7 +147,7 @@ class MyGrid(gridlib.Grid):
         self.selected_coords = [list(top_left), list(bottom_right)]
         self.selected_data = self.GetRange(self.selected_coords)    
         win = self.PopupMenu(GridPopupMenu(self), event.GetPosition())# self.ScreenToClient(pos))
- 
+        
           
 
     def GetRange(self, coord_list):
@@ -176,9 +182,9 @@ class MyGrid(gridlib.Grid):
 
  
     def OnCellChange(self, event):
-        toolbar = self.parent.toolbar
-        if (toolbar.GetToolEnabled(ID_UNDO) == False):
-            toolbar.EnableTool(ID_UNDO, True)
+        if self.has_toolbar:
+            if (self.parent.toolbar.GetToolEnabled(ID_UNDO) == False):
+                self.parent.toolbar.EnableTool(ID_UNDO, True)
         r = event.GetRow()
         c = event.GetCol()
         text = self.GetCellValue(r, c)
@@ -191,6 +197,7 @@ class MyGrid(gridlib.Grid):
             # this might be surprising, but it is a standard behaviour
             # in all spreadsheets
             del self.stockRedo[:]
-            toolbar.EnableTool(ID_REDO, False)
+            if self.has_toolbar:
+                self.parent.toolbar.EnableTool(ID_REDO, False)
 
  

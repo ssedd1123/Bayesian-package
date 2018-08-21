@@ -65,7 +65,7 @@ class DataLoader:
         self.prior_filename = prior_filename
         # check and see if number of variables is changed
         # if so the new prior cannot be accepted. You must start a completely new training
-        if(set(self.par_name) != set(list(self.prior))):
+        if(set(self.par_name) != set(list(self.prior.T))):
             print('Number of parameters in the new prior changes! You must start a completely new training for it. ')
 
             
