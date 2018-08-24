@@ -4,6 +4,7 @@ import sys
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.lines as mlines
 import math
 
 from Emulator.Emulator import *
@@ -28,7 +29,7 @@ scales = data['scales']
 nuggets = data['nuggets']
 
 num_run = training_data.sim_data.shape[0]
-num_excluded = 5
+num_excluded = 1
 emulator_results = []
 actual_results = []
 
@@ -56,6 +57,11 @@ for validation_run in xrange(0, num_run, num_excluded):
         actual_results.append(data.tolist())
 
 plt.plot(emulator_results, actual_results, 'ro')
+
+# also plot the line x=y for comparison
+xmin = min(actual_results + emulator_results)
+xmax = max(actual_results + emulator_results)
+plt.plot([xmin, xmax], [xmin, xmax], '--')
 plt.xlabel('Emulator result')
 plt.ylabel('Actual results')
 plt.show()

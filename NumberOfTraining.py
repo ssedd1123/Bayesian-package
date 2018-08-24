@@ -12,59 +12,77 @@ from Preprocessor.PipeLine import *
 from DataReader.DataLoader import DataLoader
 from Utilities.Utilities import *
 
-if len(sys.argv) != 3:
-    print('Use this script by entering: python %s Training_file validation_run' % (sys.argv[0]))
-    sys.exit()
+def RunValidation(validation_run, emulator, training_data, scales, nuggets):
+    sim_data = training_data.sim_data
+    sim_para = training_data.sim_para
+    
+    valid_data = training_data.sim_data[validation_run, :]
+    valid_para = training_data.sim_para[validation_run, :]
+    
+    sim_data = np.delete(sim_data, validation_run, 0)
+    sim_para = np.delete(sim_para, validation_run, 0)
 
-
-"""
-Use trained emulator
-"""
-with open(sys.argv[1], 'rb') as buff:
-    data = pickle.load(buff)
-
-emulator = data['emulator']
-training_data = data['data']
-scales = data['scales']
-nuggets = data['nuggets']
-
-validation_run = np.fromstring(sys.argv[2], dtype=int, sep=',')
-sim_data = training_data.sim_data
-sim_para = training_data.sim_para
-
-valid_data = training_data.sim_data[validation_run, :]
-valid_para = training_data.sim_para[validation_run, :]
-
-sim_data = np.delete(sim_data, validation_run, 0)
-sim_para = np.delete(sim_para, validation_run, 0)
-
-# see if the emulator's performance increase with number of training points
-log_likelihood = []
-percentage_diff_per_point = []
-num_points = []
-for i in xrange(2, len(sim_data)):
-    emulator.ResetData(sim_para[:i, :], sim_data[:i, :])
-    emulator.SetScales(scales)
-    emulator.SetNuggets(nuggets)
-    emulator.StartUp()
-
-    tot_likelihood = 0
-    percentage_error = []
-    for par, var in zip(valid_para, valid_data):
-        mean, cov = emulator.Emulate(par.reshape(1, -1))
-        percentage_error += ((mean - var.reshape(1, -1))/mean).tolist()
+    # shuffle before use for the case of regular lattice
+    idx = np.arange(len(sim_data))
+    np.random.shuffle(idx)
+ 
+    sim_data = sim_data[idx]
+    sim_para = sim_para[idx]
+    
+    # see if the emulator's performance increase with number of training points
+    absolute_diff_per_point = []
+    num_points = []
+    for i in range(5, len(sim_data)):
+        num_points.append(i)
         try:
-            tot_likelihood += mvn.logpdf(var.reshape(1, -1), mean, cov)
+            emulator.ResetData(sim_para[:i, :], sim_data[:i, :])
+            emulator.SetScales(scales)
+            emulator.SetNuggets(nuggets)
+            emulator.StartUp()
         except:
-            pass
+            absolute_diff_per_point.append(np.zeros_like(valid_data))
+            continue
 
-    num_points.append(i)
-    log_likelihood.append(tot_likelihood)
-    percentage_diff_per_point.append(np.average(np.absolute(np.array(percentage_error))))
+        tot_likelihood = 0
+        absolute_error = []
+        for par, var in zip(valid_para, valid_data):
+            mean, cov = emulator.Emulate(par.reshape(1, -1))
+            absolute_error += np.square((mean - var.reshape(1, -1))).tolist()
+    
+        absolute_diff_per_point.append(np.sqrt(np.average(np.array(absolute_error))))
 
-plt.plot(num_points, log_likelihood)
-plt.show()
-plt.plot(num_points, percentage_diff_per_point)
-plt.xlabel('Num training points')
-plt.ylabel('Percentage difference per observables')
-plt.show()
+    return num_points, absolute_diff_per_point
+
+if __name__ == '__main__':
+    if len(sys.argv) != 2:
+        print('Use this script by entering: python %s Training_file' % (sys.argv[0]))
+        sys.exit()
+    
+    """
+    Use trained emulator
+    """
+    with open(sys.argv[1], 'rb') as buff:
+        data = pickle.load(buff)
+    
+    emulator = data['emulator']
+    training_data = data['data']
+    scales = data['scales']
+    nuggets = data['nuggets']
+    
+    
+    # randomly choose 5 points as validation
+    # different points will be chosen for averaging
+    num_data = len(training_data.sim_data)
+    abs_list = []
+    for i in range(0, 10):
+        # generate non-repeating random numbers
+        a = np.arange(num_data)
+        np.random.shuffle(a)
+        _, absolute_diff_per_point = RunValidation(a[:5], emulator, training_data, scales, nuggets)
+        abs_list.append(absolute_diff_per_point)
+    rmse = np.average(np.array(abs_list), axis=0)
+    print(' '.join(map(str, rmse)))
+    plt.plot(rmse)
+    plt.xlabel('Num training points')
+    plt.ylabel('Absolute difference of observables')
+    plt.show()

@@ -46,7 +46,7 @@ matplotlib.rc('image', origin='lower')
 
 class GridPanel(wx.Panel):
 
-    def __init__(self, parent, size=(100,100)):
+    def __init__(self, parent, size=(150,100)):
         wx.Panel.__init__(self, parent)
         self.parent = parent
 
@@ -266,7 +266,8 @@ class CommonMenuBar(wx.MenuBar):
         if model.shape[0] < 3:
             wx.MessageBox('Model data has less than 3 entries. I don\'t think this will work. Please check again', 'Error', wx.OK | wx.ICON_ERROR)
             return False
-        if len(prior_headers) != prior.shape[0]:
+        print(prior_headers, prior)
+        if len(prior_headers) != prior.shape[1]:
             wx.MessageBox('Number of variables and numerical columns in prior do not match.', 'Error', wx.OK | wx.ICON_ERROR)
             return False 
         if len(model_headers) != model.shape[1]:
@@ -310,7 +311,6 @@ class CommonMenuBar(wx.MenuBar):
         model = pd.DataFrame(model, columns=model_headers)
         prior_headers = prior.pop(0)
         prior = pd.DataFrame(prior, columns=prior_headers)
-        print('save', prior)
         exp_headers = exp.pop(0)
         exp = pd.DataFrame(exp, columns=exp_headers)
 
@@ -388,9 +388,6 @@ class CommonMenuBar(wx.MenuBar):
 
             if result != wx.ID_YES:
                 return 
-            else:
-                while self.tab2.grid.stockUndo:
-                    self.tab2.OnUndo(None)
 
         prior = self.tab1.grid.GetAllValues()
         headers = prior.pop(0)
