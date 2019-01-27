@@ -86,7 +86,6 @@ def GenerateTrace(emulator, exp_result, exp_cov, prior, id_, iter):
         if row[0] == 'Uniform':
             parameters.append(pymc.Uniform(name, row[1], row[2], value=(0.5*row[1] + 0.5*row[2])))
         else:
-            sys.stderr.write('%s, %f, %f\n' % (name, row[3], row[4]))
             parameters.append(pymc.TruncatedNormal(name, mu=row[3], tau=1./row[4]**2, a=row[1], b=row[2], value=row[3]))
     
     @pymc.stochastic(observed=True)

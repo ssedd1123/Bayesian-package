@@ -202,7 +202,7 @@ class EmulatorMaster(EmulatorMultiOutput):
 
         input_ = self.input_pipe.Transform(input_).reshape(1,-1)
         mean, cov = EmulatorMultiOutput.Emulate(self, input_)
-        return mvn.logpdf(pca_targ, mean.flatten(), cov + pca_cov)
+        return mvn.logpdf(pca_targ, mean.flatten(), np.diag(cov) + pca_cov)
 
     def ResetData(self, input_, target):
         self = self.__init__(input_, target, self.input_pipe, self.output_pipe, False)
