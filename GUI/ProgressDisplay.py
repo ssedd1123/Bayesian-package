@@ -1,8 +1,11 @@
 import sys, wx
 
+import itertools
 from multiprocessing import Process, Queue, cpu_count, current_process, freeze_support
 from Queue import Empty
 from StatParallel import TraceCreator, MergeTrace
+from mpi4py import MPI
+import cPickle as pickle
 
 class QueuePipe:
     """
@@ -23,7 +26,9 @@ class QueuePipe:
 
 
 class MyFrame(wx.Frame):
-    def __init__(self, parent, id, title, args):
+    def __init__(self, parent, id, title, args, comm=None, rank=None):
+        self.comm = comm
+        self.rank = rank
         self.args = args         
         self.trace = TraceCreator(self.args)
 
@@ -98,7 +103,15 @@ class MyFrame(wx.Frame):
         #    self.start_bt.Enable(True)
 
         self.Close()
-        return MergeTrace([trace.get() for trace in self.trace_queue], self.args, self.trace.data), self.trace.training_data.par_name, self.trace.prior
+        all_trace = [trace.get() for trace in self.trace_queue]
+        if self.comm is not None:
+            all_trace = self.comm.gather(all_trace, root=0)
+        else:
+            all_trace = [all_trace]
+        if self.rank == 0 or self.rank is None:
+            merged = list(itertools.chain.from_iterable(all_trace))
+            return MergeTrace(merged, self.args, self.trace.data), self.trace.training_data.par_name, self.trace.prior
+        return None, None, None
 
 
     def processTasks(self, resfunc=None):
@@ -139,13 +152,31 @@ class MyFrame(wx.Frame):
     worker = classmethod(worker)
 
 class MyApp(wx.App):
+    def __init__(self, args, comm=None, rank=None):
+        self.args = args
+        self.comm = comm
+        self.rank = rank
+        wx.App.__init__(self, False)
+
     def OnInit(self):
-        self.frame = MyFrame(None, -1, 'stdout to GUI using multiprocessing', {'Training_file': 'training/test', 'Output_name':'para', 'cores':5, 'steps':10000})
+        if self.comm is not None:
+            node_name =  MPI.Get_processor_name()
+        else:
+            node_name = 'main'
+        self.frame = MyFrame(None, -1, 'Progress of node %s' % node_name, self.args, comm=self.comm, rank=self.rank)#{'Training_file': 'training/test', 'Output_name':'para', 'cores':5, 'steps':10000})
         self.frame.OnCalculate()#Show(True)
         #self.frame.Center()
         return True
 
+comm = MPI.COMM_WORLD
+size = comm.Get_size()
+rank = comm.Get_rank()
+
 if __name__ == '__main__':
     #freeze_support()
-    app = MyApp(0)
-    app.MainLoop()
+    with open(sys.argv[1], 'rb') as buff:
+        args = pickle.load(buff)
+        app = MyApp(args, comm=comm, rank=rank)
+        app.MainLoop()
+    #app = MyApp({'cores': 2, 'Training_file': u'/mnt/home/tsangchu/Bayesian-package/result/e120_LOO_Gaussian_mv.pkl', 'Output_name': u'', 'concat': True, 'steps': 5000}, comm=comm, rank=rank)
+

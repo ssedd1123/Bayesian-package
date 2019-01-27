@@ -7,6 +7,7 @@ from __future__ import print_function
 #wxversion.ensureMinimal('2.8')
 
 import random
+from numpy.core import multiarray
 import cPickle as pickle
 import pandas as pd
 import sys
@@ -14,6 +15,8 @@ import time
 import os
 os.environ['OPENBLAS_NUM_THREADS'] = '1'
 os.environ['MKL_NUM_THREADS'] = '1'
+import subprocess
+import shlex
 import gc
 import matplotlib
 matplotlib.use('WXAgg')
@@ -37,7 +40,7 @@ from GUI.Grid import MyGrid
 from GUI.PlotFrame import PlotFrame
 from GUI.EmulatorTestSliderWX import EmulatorTest
 from GUI.EmulatorFrame import EmulatorFrame
-from GUI.ProgressDisplay import MyFrame
+#from GUI.ProgressDisplay import MyFrame
 from Utilities.Utilities import PlotTrace
 
 
@@ -166,6 +169,7 @@ class GridPanel(wx.Panel):
 class CommonMenuBar(wx.MenuBar):
 
     def __init__(self, parent, tab1, tab2, tab3, **args):
+        self.directory = os.path.dirname(os.path.realpath(sys.argv[0]))
         wx.MenuBar.__init__(self)
         self.tab1 = tab1
         self.tab2 = tab2
@@ -222,8 +226,19 @@ class CommonMenuBar(wx.MenuBar):
             res = frame.ShowModal()
             if res == wx.ID_OK:
                 frame.AdditionalData(args)
-                progress = MyFrame(None, -1, 'stdout to GUI using multiprocessing', args)# {'Training_file': 'training/test', 'Output_name':'para', 'cores':5, 'steps':10000})
-                trace, par_name, prior = progress.OnCalculate()
+                # pickle the argument such that it can be executed by GUI.Progressbar with MPI
+                with open(os.path.join(self.directory, 'arguments.pkl'), 'wb') as tmp:
+                    pickle.dump(args, tmp)
+                    tmp.flush()
+                    cmd = shlex.split('mpiexec -n %d python -m GUI.ProgressDisplay %s' % (args['nodes'], tmp.name))
+                    subprocess.call(cmd, cwd=self.directory)
+                #progress = MyFrame(None, -1, 'stdout to GUI using multiprocessing', args)# {'Training_file': 'training/test', 'Output_name':'para', 'cores':5, 'steps':10000})
+                #progress.OnCalculate()
+                with open(self.opened_filename, 'rb') as buff:
+                    data = pickle.load(buff)
+                trace = data['trace']
+                par_name = data['data'].par_name
+                prior = data['data'].prior
 
                 # if root_numpy module exist, it will be saved there
                 try: 

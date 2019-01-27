@@ -11,7 +11,7 @@ class EmulatorFrame(wx.Dialog):
          panel = wx.Panel(self)
          box = wx.BoxSizer(wx.VERTICAL)
 
-         list_textctrl = {'CSV Output name': '', 'Number of Cores': '7', 'Number of steps': '10000'}
+         list_textctrl = {'CSV Output name': '', 'Number of Cores': '7', 'Number of steps': '10000', 'Number of Nodes': '1'}
          self.output = {}
          
          for name, default_value in list_textctrl.iteritems():
@@ -50,6 +50,7 @@ class EmulatorFrame(wx.Dialog):
         args['Output_name'] = self.output['CSV Output name'].GetValue()
         args['cores'] = int(self.output['Number of Cores'].GetValue())
         args['steps'] = int(self.output['Number of steps'].GetValue())
+        args['nodes'] = int(self.output['Number of Nodes'].GetValue())
         if not self.clear.GetValue():
             args['concat'] = True
         
