@@ -37,7 +37,7 @@ import wx.grid as gridlib
 from Grid import MyGrid
 
 class EmulatorTest(wx.Frame):
-    def __init__(self, parent, emulator, prior, exp_data=None):
+    def __init__(self, parent, emulator, prior, exp_data=None, model_data=None):
         wx.Frame.__init__(self, parent, wx.NewId())
         splitterTB = wx.SplitterWindow(self, -1)
         splitterLR = wx.SplitterWindow(splitterTB, -1)
@@ -62,7 +62,9 @@ class EmulatorTest(wx.Frame):
         right_panel.SetSizer(sizer)
         self.graph = self.fig.add_subplot(111)
 
-        run_num = ['exp'] + [str(i) for i in range(0, emulator.emulator_list[0].input_.shape[0])]
+        run_num = ['exp'] 
+        if model_data is not None:
+            run_num = run_num + [str(i) for i in range(0, emulator.emulator_list[0].input_.shape[0])]
         lst = wx.ListBox(left_panel, size=(100,300), style=wx.LB_SINGLE, choices=run_num)#, choices=run_num, style=wx.LB_SINGLE)
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         sizer.Add(lst, 1, wx.EXPAND)
@@ -88,6 +90,7 @@ class EmulatorTest(wx.Frame):
         self.xaxis =  np.arange(0, self.num_output)
         self.line, _, (self.bars,) = self.graph.errorbar(self.xaxis, result, yerr=np.sqrt(np.diag(var)), marker='o', linewidth=2, color='red')
         self.exp_data = exp_data
+        self.model_data = model_data
         if exp_data is None:
             exp_data = result
         self.bg_line, = self.graph.plot(self.xaxis, exp_data, marker='o', linewidth=2, color='b')
@@ -166,9 +169,12 @@ class EmulatorTest(wx.Frame):
         chosen = event.GetEventObject().GetStringSelection()
         if chosen != 'exp':
             num = int(chosen)
+            data = self.model_data[num,:]
+            """
             mean = np.array([emu.target[num] for emu in self.emulator.emulator_list])
             # calculate the input data 
             data = self.emulator.output_pipe.TransformInv(mean.flatten())        
+            """
             # calculate the input parameters
             par = self.emulator.input_pipe.TransformInv(self.emulator.emulator_list[0].input_)
             # set marker on slider 

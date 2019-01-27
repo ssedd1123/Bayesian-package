@@ -211,7 +211,7 @@ class CommonMenuBar(wx.MenuBar):
         if self._CheckOpenedFile():
             with open(self.opened_filename, 'rb') as buff:
                 data = pickle.load(buff)
-            frame = EmulatorTest(None, data['emulator'], data['data'].prior, data['data'].exp_result)
+            frame = EmulatorTest(None, data['emulator'], data['data'].prior, data['data'].exp_result, data['data'].sim_data)
             frame.Show()
 
     def OnEmulate(self, event):
