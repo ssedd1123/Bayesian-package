@@ -86,16 +86,16 @@ def GenerateTrace(emulator, exp_result, exp_cov, prior, id_, iter):
         if row[0] == 'Uniform':
             parameters.append(pymc.Uniform(name, row[1], row[2], value=(0.5*row[1] + 0.5*row[2])))
         else:
-            parameters.append(pymc.Normal(name, mu=row[3], tau=row[4]))
+            sys.stderr.write('%s, %f, %f\n' % (name, row[3], row[4]))
+            parameters.append(pymc.TruncatedNormal(name, mu=row[3], tau=1./row[4]**2, a=row[1], b=row[2], value=row[3]))
     
     @pymc.stochastic(observed=True)
     def emulator_result(value=exp_result, x=parameters):
         mean, var = emulator.Emulate(np.array(x).reshape(1, -1))
-        #print(mean, var)
         var = var + exp_cov
-        #var = exp_cov
         return np.array(mvn.logpdf(value, mean, var))
-    
+        #return np.array(emulator.GetLogP(np.array(x).reshape(1, -1), value, exp_cov))
+
     parameters.append(emulator_result)
     
     model = pymc.Model(parameters)

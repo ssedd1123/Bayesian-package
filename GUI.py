@@ -226,7 +226,6 @@ class CommonMenuBar(wx.MenuBar):
                 trace, par_name, prior = progress.OnCalculate()
 
                 # if root_numpy module exist, it will be saved there
-                """
                 try: 
                     from root_numpy import array2root
                     df_ = trace.copy(deep=False)
@@ -234,7 +233,6 @@ class CommonMenuBar(wx.MenuBar):
                     array2root(arr, '%s.root' % self.opened_filename, 'my_ttree', 'recreate')
                 except ImportError:
                     print('root_numpy module not found. Will not output to root')
-                """
     
                 if not self.correlation_frame:
                     fig = Figure((15,12), 75)

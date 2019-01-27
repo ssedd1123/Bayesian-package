@@ -45,8 +45,8 @@ class EmulatorMultiOutput:
         for emulator in self.emulator_list:
             gd = GetOptimizer('Adam', scales_rate, nuggets_rate)#
             # trainning with marginallikelihood instead of LOOCV 
-            #gd.SetFunc(emulator.LOOCrossValidation)
-            gd.SetFunc(emulator.MarginalLikelihood)
+            gd.SetFunc(emulator.LOOCrossValidation)
+            #gd.SetFunc(emulator.MarginalLikelihood)
             history_scale, history_nuggets = gd.Descent(initial_scales, initial_nuggets, max_step)
             
             # use the last trained scales and nuggets
@@ -196,5 +196,14 @@ class EmulatorMaster(EmulatorMultiOutput):
         mean, cov = EmulatorMultiOutput.Emulate(self, input_)
         return self.output_pipe.TransformInv(mean.flatten()), self.output_pipe.TransformCovInv(np.diag(cov))
 
+    def GetLogP(self, input_, targ, cov):
+        pca_targ = self.output_pipe.Transform(targ)
+        pca_cov = self.output_pipe.TransformCov(cov)
+
+        input_ = self.input_pipe.Transform(input_).reshape(1,-1)
+        mean, cov = EmulatorMultiOutput.Emulate(self, input_)
+        return mvn.logpdf(pca_targ, mean.flatten(), cov + pca_cov)
+
     def ResetData(self, input_, target):
         self = self.__init__(input_, target, self.input_pipe, self.output_pipe, False)
+
