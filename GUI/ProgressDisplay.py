@@ -85,7 +85,7 @@ class MyFrame(wx.Frame):
         for n in range(self.numproc):
             try:
                 trace_queue = Queue()
-                process = Process(target=self.worker, args=(self.trace, n, self.outputQueue, trace_queue))
+                process = Process(target=self.worker, args=(self.trace, n, self.outputQueue, trace_queue, self.rank, self.numproc))
                 process.daemon = True
                 process_list.append(process)
                 process.start()
@@ -135,14 +135,14 @@ class MyFrame(wx.Frame):
             
 
     def update(self, output):
-        self.output_tc[output[0]].SetValue('Process-%d:  ' % output[0] + output[1])#AppendText(output[1])
+        self.output_tc[output[0]].SetValue('Process-%02d:  ' % output[0] + output[1])#AppendText(output[1])
         wx.YieldIfNeeded()
 
-    def worker(self, trace_creator, tasknum, outputq, traceq):
+    def worker(self, trace_creator, tasknum, outputq, traceq, rank, numproc):
         #while True:
         try:
             sys.stdout = QueuePipe(outputq, tasknum)
-            traceq.put(trace_creator.CreateTrace(tasknum))
+            traceq.put(trace_creator.CreateTrace(tasknum + rank*numproc))
             outputq.put('STOP!') 
         except Empty:
             pass
@@ -172,8 +172,12 @@ comm = MPI.COMM_WORLD
 size = comm.Get_size()
 rank = comm.Get_rank()
 
+#os.environ['OPENBLAS_NUM_THREADS'] = '1'
+#os.environ['MKL_NUM_THREADS'] = '1'
+
 if __name__ == '__main__':
     #freeze_support()
+    #print('Display of node %s, %s' % (MPI.Get_processor_name(), os.environ['DISPLAY']))
     with open(sys.argv[1], 'rb') as buff:
         args = pickle.load(buff)
         app = MyApp(args, comm=comm, rank=rank)

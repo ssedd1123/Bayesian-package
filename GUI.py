@@ -236,7 +236,7 @@ class CommonMenuBar(wx.MenuBar):
                 #progress.OnCalculate()
                 with open(self.opened_filename, 'rb') as buff:
                     data = pickle.load(buff)
-                trace = data['trace']
+                trace = pd.read_hdf('%s.h5' % args['Training_file'])
                 par_name = data['data'].par_name
                 prior = data['data'].prior
 
@@ -534,9 +534,8 @@ class Common(wx.Frame):
 
     
 
-
-
-app = wx.App(0)
-frame = Common(None)
-frame.Show()
-app.MainLoop()
+if __name__ == '__main__':
+    app = wx.App(0)
+    frame = Common(None)
+    frame.Show()
+    app.MainLoop()

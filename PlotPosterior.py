@@ -25,7 +25,8 @@ def PlotOutput(plot_prior, filename):
     with open(filename, 'rb') as buff:
         data = pickle.load(buff)
 
-    emulator, trace  = data['emulator'], data['trace']
+    emulator  = data['emulator']
+    trace = pd.read_hdf('%s.h5' % filename)
     dataloader = data['data']
     prior = dataloader.prior
     exp_data, exp_err = dataloader.exp_result, np.diag(np.sqrt(dataloader.exp_cov))

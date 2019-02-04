@@ -29,36 +29,52 @@ class TraceCreator:
         self.prior = self.training_data.prior
         self.processes = args['cores']
         self.steps = args['steps']
+        self.output_name = args['Training_file']
         self.data = data
 
     def CreateTrace(self, id_, queue=None):
         trace = GenerateTrace(self.emulator, self.training_data.exp_result, 
                              self.training_data.exp_cov, self.prior, 
-                             random.randint(0, 1000) + id_, self.steps)
+                             id_, self.steps, self.output_name)
         if queue:
             queue.put(trace)
-        return trace
+        return trace #self.output_name
 
 
 def MergeTrace(list_of_traces, args, data):
-    trace = pd.concat(list_of_traces, ignore_index=True)
-
-    """
-    If trace is inside the file, we will concatenate the trace
-    """
-    if 'trace' in data and 'concat' in args:
-        trace = pd.concat([trace, data['trace']], ignore_index=True)
+    #trace = pd.concat(list_of_traces, ignore_index=True)
 
     """
     Save everything
     """
     if args['Output_name']:
-        trace.to_csv(os.path.join(os.getcwd(), '%s.txt' % args['Output_name']), sep=' ')
+        output_name = args['Output_name']
+    else:
+        output_name = '%s.h5' % args['Training_file']
 
-    data['trace'] = trace
-    with open(args['Training_file'], 'wb') as buff:
-        pickle.dump(data, buff)
-    return trace
+
+
+    """
+    If trace is inside the file, we will concatenate the trace
+    """
+    if 'concat' not in args:
+        os.remove(output_name)
+        
+    #if 'trace' in data and 'concat' in args:
+    #    trace = pd.concat([trace, data['trace']], ignore_index=True)
+    store = pd.HDFStore(output_name, comblib='blosc')
+    for f in list_of_traces:
+        df = pd.read_hdf(f)
+        store.append(key='trace', value=df, format='t')
+
+
+    # remove temporary files
+    for f in list_of_traces:
+        os.remove(f)
+
+    #with open(args['Training_file'], 'wb') as buff:
+    #    pickle.dump(data, buff)
+    return output_name
 
     
 def StatParallel(args):
@@ -96,5 +112,5 @@ if __name__=="__main__":
     trace, par_name, prior = StatParallel(args)
     
     if args['plot']:
-        PlotTrace(trace, par_name, prior)
+        PlotTrace(df.read_hdf(trace), par_name, prior)
         plt.show()

@@ -1,4 +1,5 @@
 from multiprocessing import Pool
+import random
 import sys
 import os
 if sys.version_info > (3, 0):
@@ -75,12 +76,12 @@ def PlotTrace(trace, par_name, prior, fig=None):
     return fig, axes2d
 
 
-def GenerateTrace(emulator, exp_result, exp_cov, prior, id_, iter):
+def GenerateTrace(emulator, exp_result, exp_cov, prior, id_, iter, output_filename):
     """
     The main function to generate pandas trace file after comparing the emulator with experimental value
     Uses pymc2 as it is found to be faster
     """
-    pymc.numpy.random.seed(id_)
+    pymc.numpy.random.seed(random.randint(0, 1000) + id_)
     parameters = []
     for name, row in prior.iterrows():
         if row[0] == 'Uniform':
@@ -100,17 +101,18 @@ def GenerateTrace(emulator, exp_result, exp_cov, prior, id_, iter):
     model = pymc.Model(parameters)
     
     # prepare for MCMC
-    mcmc = pymc.MCMC(model)
+    new_output_filename = '%s_%d.h5' % (output_filename, id_)
+    mcmc = pymc.MCMC(model, dbname=new_output_filename, db='hdf5', dbmode='w')
      
     # sample from our posterior distribution 50,000 times, but
     # throw the first 20,000 samples out to ensure that we're only
     # sampling from our steady-state posterior distribution
     mcmc.sample(iter, burn=1000)
     trace_dict = {}
-    for name, row in prior.iterrows():
-        trace_dict[name] = mcmc.trace(name)[:]
+    #for name, row in prior.iterrows():
+    #    trace_dict[name] = mcmc.trace(name)[:]
     mcmc.db.close()
-    return pd.DataFrame.from_dict(trace_dict)
+    return new_output_filename#pd.DataFrame.from_dict(trace_dict)
     
     
 def PlotMarginalLikelihood(emulator_function, scales_min=1e-2, scales_max=2, scales_num=20, nuggets_min=1e-2, nuggets_max=20, nuggets_num=20):

@@ -32,7 +32,7 @@ if __name__=="__main__":
     with open(filename, 'rb') as buff:
         data = pickle.load(buff)
     
-    trace = data['trace']
+    trace = pd.read_hdf('%s.h5' % filename)#data['trace']
     training_data = data['data']
     par_name = training_data.par_name
     prior = training_data.prior
