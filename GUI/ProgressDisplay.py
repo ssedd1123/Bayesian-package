@@ -2,10 +2,10 @@ import sys, wx
 
 import itertools
 from multiprocessing import Process, Queue, cpu_count, current_process, freeze_support
-from Queue import Empty
+from queue import Empty
 from StatParallel import TraceCreator, MergeTrace
 from mpi4py import MPI
-import cPickle as pickle
+import pickle as pickle
 
 class QueuePipe:
     """
