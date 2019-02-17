@@ -30,6 +30,7 @@ class MyFrame(wx.Frame):
         self.comm = comm
         self.rank = rank
         self.args = args         
+        self.orig_stdout = sys.stdout
         self.trace = TraceCreator(self.args)
 
         wx.Frame.__init__(self, parent, id, title)
@@ -101,7 +102,7 @@ class MyFrame(wx.Frame):
 
         #if (self.keepgoing):
         #    self.start_bt.Enable(True)
-
+        sys.stdout = self.orig_stdout
         self.Close()
         all_trace = [trace.get() for trace in self.trace_queue]
         if self.comm is not None:

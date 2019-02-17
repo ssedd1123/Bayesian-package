@@ -1,4 +1,5 @@
 from __future__ import print_function
+import traceback, sys
 
 # matplotlib requires wxPython 2.8+
 # set the wxPython version in lib\site-packages\wx.pth file
@@ -279,7 +280,6 @@ class CommonMenuBar(wx.MenuBar):
         if model.shape[0] < 3:
             wx.MessageBox('Model data has less than 3 entries. I don\'t think this will work. Please check again', 'Error', wx.OK | wx.ICON_ERROR)
             return False
-        print(prior_headers, prior)
         if len(prior_headers) != prior.shape[1]:
             wx.MessageBox('Number of variables and numerical columns in prior do not match.', 'Error', wx.OK | wx.ICON_ERROR)
             return False 
@@ -487,10 +487,10 @@ class CommonMenuBar(wx.MenuBar):
 
 class Common(wx.Frame):
  
-    def __init__(self, parent):
+    def __init__(self, parent, app):
         wx.Frame.__init__(self, parent, wx.NewId(), "Bayesian analysis", size=(1000,400))
-        
         panel = wx.Panel(self)
+        self.app = app
          
         notebook = wx.Notebook(panel)
 
@@ -531,11 +531,15 @@ class Common(wx.Frame):
 
     def OnClose(self, event):
         self.Destroy()
+        if self.menubar.correlation_frame:
+            self.menubar.correlation_frame.Destroy()
+        self.app.ExitMainLoop()
+        
 
     
 
 if __name__ == '__main__':
     app = wx.App(0)
-    frame = Common(None)
+    frame = Common(None, app)
     frame.Show()
     app.MainLoop()

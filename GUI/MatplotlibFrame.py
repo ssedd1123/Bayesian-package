@@ -52,7 +52,7 @@ class MatplotlibFrame(wx.Frame):
         self.SetSizer(sizer)
         self.Fit()
        
-
+        self.Bind(wx.EVT_CLOSE, self.OnClose)
         self.toolbar.update()  # Not sure why this is needed - ADS
 
     def GetToolBar(self):
@@ -62,6 +62,9 @@ class MatplotlibFrame(wx.Frame):
 
     def SetData(self):
         self.canvas.draw()
+
+    def OnClose(self, event):
+        self.Destroy()
 
     def onEraseBackground(self, evt):
         # this is supposed to prevent redraw flicker on some X servers...
