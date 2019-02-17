@@ -1,11 +1,11 @@
-from __future__ import print_function
+#from __future__ import print_function
 
 import numpy as np
 from copy import deepcopy
 
 import wx
 import wx.grid as gridlib
-from ID import *
+from GUI.ID import *
 
 class GridPopupMenu(wx.Menu):
 

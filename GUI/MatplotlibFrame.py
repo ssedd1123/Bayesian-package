@@ -7,7 +7,7 @@ from __future__ import print_function
 #wxversion.ensureMinimal('2.8')
 
 import random
-import cPickle as pickle
+import pickle as pickle
 import pandas as pd
 import sys
 import time
@@ -17,7 +17,7 @@ import matplotlib
 matplotlib.use('WXAgg')
 import matplotlib.cm as cm
 import matplotlib.cbook as cbook
-from matplotlib.backends.backend_wxagg import Toolbar, FigureCanvasWxAgg
+from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
 from matplotlib.figure import Figure
 import tempfile
 

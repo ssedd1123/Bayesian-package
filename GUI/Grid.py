@@ -6,8 +6,8 @@ from copy import deepcopy
 import wx
 import wx.grid as gridlib
 
-from GridMenu import GridPopupMenu
-from ID import *
+from GUI.GridMenu import GridPopupMenu
+from GUI.ID import *
 
 
 class UndoText:

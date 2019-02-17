@@ -14,7 +14,7 @@ class EmulatorFrame(wx.Dialog):
          list_textctrl = {'CSV Output name': '', 'Number of Cores': '7', 'Number of steps': '10000', 'Number of Nodes': '1'}
          self.output = {}
          
-         for name, default_value in list_textctrl.iteritems():
+         for name, default_value in list_textctrl.items():
              box_new = wx.BoxSizer(wx.HORIZONTAL)
              text = wx.StaticText(panel, -1, name)
              box_new.Add(text, 1, wx.EXPAND|wx.ALIGN_LEFT|wx.ALL,5) 

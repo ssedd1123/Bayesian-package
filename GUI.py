@@ -9,7 +9,7 @@ import traceback, sys
 
 import random
 from numpy.core import multiarray
-import cPickle as pickle
+import pickle as pickle
 import pandas as pd
 import sys
 import time
@@ -23,7 +23,7 @@ import matplotlib
 matplotlib.use('WXAgg')
 import matplotlib.cm as cm
 import matplotlib.cbook as cbook
-from matplotlib.backends.backend_wxagg import Toolbar, FigureCanvasWxAgg
+from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
 from matplotlib.figure import Figure
 import tempfile
 from matplotlib.backends.backend_wx import NavigationToolbar2Wx

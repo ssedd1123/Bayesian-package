@@ -11,7 +11,7 @@ from matplotlib.widgets import Slider, Button, RadioButtons
 #wxversion.ensureMinimal('2.8')
 
 import random
-import cPickle as pickle
+import pickle as pickle
 import pandas as pd
 import sys
 import time
@@ -19,7 +19,7 @@ import os
 import gc
 import matplotlib
 matplotlib.use('WXAgg')
-from matplotlib.backends.backend_wxagg import Toolbar, FigureCanvasWxAgg
+from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
 from matplotlib.figure import Figure
 import tempfile
 
@@ -34,7 +34,7 @@ from copy import deepcopy
 import wx
 #import wx.xrc as xrc
 import wx.grid as gridlib
-from Grid import MyGrid
+from GUI.Grid import MyGrid
 
 class EmulatorTest(wx.Frame):
     def __init__(self, parent, emulator, prior, exp_data=None, model_data=None):
