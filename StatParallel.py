@@ -63,7 +63,7 @@ def MergeTrace(list_of_traces, args, data):
         
     #if 'trace' in data and 'concat' in args:
     #    trace = pd.concat([trace, data['trace']], ignore_index=True)
-    store = pd.HDFStore(output_name, complevel=5, comblib='blosc')
+    store = pd.HDFStore(output_name, 'w', complevel=5, comblib='blosc')
     for f in list_of_traces:
         df = pd.read_hdf(f)
         store.append(key='trace', value=df, format='t')

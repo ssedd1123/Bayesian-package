@@ -116,13 +116,10 @@ class MyFrame(wx.Frame):
         result = None
         if self.rank == 0 or self.rank is None:
             merged = list(itertools.chain.from_iterable(all_trace))
-            """
             try:
                 result = MergeTrace(merged, self.args, self.trace.data)
             finally:
-                pass
-                #shutil.rmtree(dirpath)
-            """
+                shutil.rmtree(dirpath)
         return result, self.trace.training_data.par_name, self.trace.prior
 
 
