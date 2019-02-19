@@ -7,7 +7,7 @@ if sys.version_info > (3, 0):
 else:
     import cPickle as pickle
 import pandas as pd
-from pandas.tools.plotting import scatter_matrix
+from pandas.plotting import scatter_matrix
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors

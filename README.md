@@ -23,6 +23,17 @@ This is a gaussian emulator and Baysiean analysis with PyMC <br />
      $> python GUI.py &
  ```   
  and you are ready to go.
+
+Right now python3_branch is ready and this package can now be used with python3. Installation is as follows: <br />
+
+ 1. Install anaconda for python3 by following instructions on https://conda.io/docs/user-guide/tasks/manage-pkgs.html#installing-packages. 
+ 2. Go to /path/to/Bayesian-package and create virtual environment by running the following command:
+ ```
+     $> conda create --name myPy --file requirements.txt
+ ```
+
+That's it. There is no need to use pip.
+
  
  Installation with pip
  ---

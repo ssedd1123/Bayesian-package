@@ -531,8 +531,8 @@ class Common(wx.Frame):
 
     def OnClose(self, event):
         self.Destroy()
-        if self.menubar.correlation_frame:
-            self.menubar.correlation_frame.Destroy()
+        #if self.menubar.correlation_frame:
+        #    self.menubar.correlation_frame.Destroy()
         self.app.ExitMainLoop()
         
 
