@@ -6,6 +6,9 @@ from queue import Empty
 from StatParallel import TraceCreator, MergeTrace
 from mpi4py import MPI
 import pickle as pickle
+import tempfile
+import shutil
+import os
 
 class QueuePipe:
     """
@@ -83,15 +86,16 @@ class MyFrame(wx.Frame):
         process_list = []
 
         # The worker processes...
+        dirpath = tempfile.mkdtemp(dir=os.path.dirname(os.path.realpath(__file__)))
         for n in range(self.numproc):
             try:
                 trace_queue = Queue()
-                process = Process(target=self.worker, args=(self.trace, n, self.outputQueue, trace_queue, self.rank, self.numproc))
+                process = Process(target=self.worker, args=(self.trace, n, self.outputQueue, trace_queue, self.rank, self.numproc, os.path.join(dirpath, 'temp')))
                 process.daemon = True
                 process_list.append(process)
                 process.start()
             except Exception:
-                print('Cannot create process %d' % n)
+                print('Cannot create process %di because %s' % (n, str(e)))
                 self.numproc = n
                 break
             self.trace_queue.append(trace_queue)
@@ -109,10 +113,17 @@ class MyFrame(wx.Frame):
             all_trace = self.comm.gather(all_trace, root=0)
         else:
             all_trace = [all_trace]
+        result = None
         if self.rank == 0 or self.rank is None:
             merged = list(itertools.chain.from_iterable(all_trace))
-            return MergeTrace(merged, self.args, self.trace.data), self.trace.training_data.par_name, self.trace.prior
-        return None, None, None
+            """
+            try:
+                result = MergeTrace(merged, self.args, self.trace.data)
+            finally:
+                pass
+                #shutil.rmtree(dirpath)
+            """
+        return result, self.trace.training_data.par_name, self.trace.prior
 
 
     def processTasks(self, resfunc=None):
@@ -139,11 +150,11 @@ class MyFrame(wx.Frame):
         self.output_tc[output[0]].SetValue('Process-%02d:  ' % output[0] + output[1])#AppendText(output[1])
         wx.YieldIfNeeded()
 
-    def worker(self, trace_creator, tasknum, outputq, traceq, rank, numproc):
+    def worker(self, trace_creator, tasknum, outputq, traceq, rank, numproc, dir):
         #while True:
         try:
             sys.stdout = QueuePipe(outputq, tasknum)
-            traceq.put(trace_creator.CreateTrace(tasknum + rank*numproc))
+            traceq.put(trace_creator.CreateTrace(tasknum + rank*numproc, dir))
             outputq.put('STOP!') 
         except Empty:
             pass

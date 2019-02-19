@@ -13,6 +13,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import math
 import argparse
+import tempfile
+import shutil
 
 from Emulator.Emulator import *
 from Preprocessor.PipeLine import *
@@ -29,13 +31,12 @@ class TraceCreator:
         self.prior = self.training_data.prior
         self.processes = args['cores']
         self.steps = args['steps']
-        self.output_name = args['Training_file']
         self.data = data
 
-    def CreateTrace(self, id_, queue=None):
+    def CreateTrace(self, id_, dir, queue=None):
         trace = GenerateTrace(self.emulator, self.training_data.exp_result, 
                              self.training_data.exp_cov, self.prior, 
-                             id_, self.steps, self.output_name)
+                             id_, self.steps, dir)
         if queue:
             queue.put(trace)
         return trace #self.output_name
@@ -62,15 +63,10 @@ def MergeTrace(list_of_traces, args, data):
         
     #if 'trace' in data and 'concat' in args:
     #    trace = pd.concat([trace, data['trace']], ignore_index=True)
-    store = pd.HDFStore(output_name, comblib='blosc')
+    store = pd.HDFStore(output_name, complevel=5, comblib='blosc')
     for f in list_of_traces:
         df = pd.read_hdf(f)
         store.append(key='trace', value=df, format='t')
-
-
-    # remove temporary files
-    for f in list_of_traces:
-        os.remove(f)
 
     #with open(args['Training_file'], 'wb') as buff:
     #    pickle.dump(data, buff)
@@ -81,10 +77,11 @@ def StatParallel(args):
     trace = TraceCreator(args)
     result = []
     process = []
+    dirpath = tempfile.mkdtemp()
     for i in range(args['cores']):
         queue = Queue()
         try:
-            process.append(Process(target=trace.CreateTrace, args=(i, queue)))
+            process.append(Process(target=trace.CreateTrace, args=(i, os.path.join(dirpath, 'temp'), queue)))
             process[-1].start()
         except Exception:
             process.pop()
@@ -95,7 +92,11 @@ def StatParallel(args):
     result = [r.get() for r in result]
     process = [p.join() for p in process]
     #print(result[0])
-    return MergeTrace(result, args, trace.data), trace.training_data.par_name, trace.prior
+    try: 
+        result = MergeTrace(result, args, trace.data)
+    finally:
+        shutil.rmtree(dirpath)
+    return result, trace.training_data.par_name, trace.prior
 
 
 if __name__=="__main__":

@@ -108,9 +108,6 @@ def GenerateTrace(emulator, exp_result, exp_cov, prior, id_, iter, output_filena
     # throw the first 20,000 samples out to ensure that we're only
     # sampling from our steady-state posterior distribution
     mcmc.sample(iter, burn=1000)
-    trace_dict = {}
-    #for name, row in prior.iterrows():
-    #    trace_dict[name] = mcmc.trace(name)[:]
     mcmc.db.close()
     return new_output_filename#pd.DataFrame.from_dict(trace_dict)
     
