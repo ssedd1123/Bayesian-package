@@ -41,7 +41,6 @@ dependencies:
   - mkl=2018.0.3=1
   - mkl_fft=1.0.6=py36h7dd41cf_0
   - mkl_random=1.0.1=py36h4414c95_1
-  - mpi4py=2.0.0=py36_2
   - mpich2=1.4.1p1=0
   - ncurses=6.1=he6710b0_1
   - numexpr=2.6.8=py36hd89afb7_0
@@ -77,6 +76,6 @@ dependencies:
   - pip:
     - autograd==1.2
     - future==0.17.1
-    - tables==3.4.4
-prefix: /home/tommy/anaconda3/envs/Bay3
+    - mpi4py==3.0.1
+prefix: /mnt/home/tsangchu/anaconda2/envs/Bay3
 
