@@ -231,7 +231,7 @@ class CommonMenuBar(wx.MenuBar):
                 with open(os.path.join(self.directory, 'arguments.pkl'), 'wb') as tmp:
                     pickle.dump(args, tmp)
                     tmp.flush()
-                    cmd = shlex.split('mpiexec -n %d python -m GUI.ProgressDisplay %s' % (args['nodes'], tmp.name))
+                    cmd = shlex.split('mpiexec -n %d --bind-to none python -m GUI.ProgressDisplay %s' % (args['nodes'], tmp.name))
                     subprocess.call(cmd, cwd=self.directory)
                 #progress = MyFrame(None, -1, 'stdout to GUI using multiprocessing', args)# {'Training_file': 'training/test', 'Output_name':'para', 'cores':5, 'steps':10000})
                 #progress.OnCalculate()
