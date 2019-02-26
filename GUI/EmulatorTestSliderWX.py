@@ -60,7 +60,7 @@ class EmulatorTest(wx.Frame):
         sizer.Add(self.toolbar, 0, wx.GROW)
         # Best to allow the toolbar to resize!
         right_panel.SetSizer(sizer)
-        self.graph = self.fig.add_subplot(111)
+        #self.graph = self.fig.add_subplot(111)
 
         run_num = ['exp'] 
         if model_data is not None:
@@ -71,6 +71,32 @@ class EmulatorTest(wx.Frame):
         left_panel.SetSizer(sizer)
 
         splitterLR.SplitVertically(left_panel, right_panel, 100)
+
+        """
+        fraction of upper right sizer that should be graph vs slider
+        """
+        graph_fraction = 0.7
+        graph_pad = 0.05
+
+        slider_fraction = 1 - graph_fraction
+        nsliders = prior.index.values.shape[0]
+
+        """
+        calculate slider location. In fraction of slider location
+        """
+        slider_pad = 0.1
+        slider_gap = 0.05
+        slider_height = (1 - 2*slider_pad - slider_gap*(nsliders - 1))/nsliders
+        slider_box_height = slider_gap + slider_height
+
+        """
+        Convert slider fraction into total sizer fraction
+        """
+        slider_pad = slider_pad*slider_fraction
+        slider_gap = slider_gap*slider_fraction
+        slider_height = slider_height*slider_fraction
+        slider_box_height = slider_box_height*slider_fraction
+
                 
         """
         Calculation with emulator
@@ -86,6 +112,7 @@ class EmulatorTest(wx.Frame):
         result, var = emulator.Emulate(ini_par)
         self.num_output = result.shape[0]
 
+        self.graph = self.fig.add_axes([0.25, slider_fraction + graph_pad, 0.65, graph_fraction - graph_pad])
         result, var = self.signal(ini_par)
         self.xaxis =  np.arange(0, self.num_output)
         self.line, _, (self.bars,) = self.graph.errorbar(self.xaxis, result, yerr=np.sqrt(np.diag(var)), marker='o', linewidth=2, color='red')
@@ -94,17 +121,20 @@ class EmulatorTest(wx.Frame):
         if exp_data is None:
             exp_data = result
         self.bg_line, = self.graph.plot(self.xaxis, exp_data, marker='o', linewidth=2, color='b')
-        self.graph.autoscale()
+        #self.graph.autoscale()
 
         self.graph.set_xlim([-1, self.num_output+1])
-        #self.graph.set_ylim([0.5, 1.9])
+        if model_data is None:
+            self.graph.autoscale()
+        else:
+            self.graph.set_ylim([np.min(model_data), np.max(model_data)])
 
         """
         Add slider bar
         """
         self.amp_slider = []
         for index, par_name in enumerate(list(prior.index.values)):
-            amp_slider_ax  = self.fig.add_axes([0.25, 0.1 + 0.05*index, 0.65, 0.03])
+            amp_slider_ax  = self.fig.add_axes([0.25, slider_pad + 0.5*slider_gap + slider_box_height*index, 0.65, slider_height])#[0.25, 0.1 + 0.05*index, 0.65, 0.03])
             self.amp_slider.append(Slider(amp_slider_ax, par_name, prior_range[par_name][0], prior_range[par_name][1], valinit=ini_par[index]))
 
         
@@ -128,7 +158,9 @@ class EmulatorTest(wx.Frame):
         bottom_panel.SetSizer(sizer)
         
         # add grid to the bottom of the window
-        splitterTB.SplitHorizontally(splitterLR, bottom_panel, 300)
+        splitterTB.SplitHorizontally(splitterLR, bottom_panel, 270)
+        # When expanded, the grid on the bottom remains the same height
+        splitterTB.SetSashGravity(1.0)
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(splitterTB, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP | wx.GROW)
         self.SetSizer(sizer)
@@ -201,12 +233,12 @@ class EmulatorTest(wx.Frame):
 
 if __name__ == "__main__":
     app = wx.App(0)
-    with open('../result/e120_LOO.pkl', 'rb') as buff:
+    with open('result/astro', 'rb') as buff:
         data = pickle.load(buff)
 
     emulator  = data['emulator']
     prior = data['data'].prior
-    frame = EmulatorTest(None, emulator, prior)
+    frame = EmulatorTest(None, emulator, prior, data['data'].exp_result, data['data'].sim_data)
     frame.Show()
     app.MainLoop()
 
