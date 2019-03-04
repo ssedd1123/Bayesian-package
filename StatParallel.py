@@ -68,6 +68,7 @@ def MergeTrace(list_of_traces, args, data):
         df = pd.read_hdf(f)
         store.append(key='trace', value=df, format='t')
 
+    store.close()
     #with open(args['Training_file'], 'wb') as buff:
     #    pickle.dump(data, buff)
     return output_name

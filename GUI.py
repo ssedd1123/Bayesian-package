@@ -6,7 +6,7 @@ import traceback, sys
 # or if you have wxversion installed un-comment the lines below
 #import wxversion
 #wxversion.ensureMinimal('2.8')
-
+from mpi4py import MPI
 import random
 from numpy.core import multiarray
 import pickle as pickle
@@ -41,9 +41,11 @@ from GUI.Grid import MyGrid
 from GUI.PlotFrame import PlotFrame
 from GUI.EmulatorTestSliderWX import EmulatorTest
 from GUI.EmulatorFrame import EmulatorFrame
+from GUI.Model import CalculationFrame
+from Utilities.MasterSlave import MasterSlave
 #from GUI.ProgressDisplay import MyFrame
 from Utilities.Utilities import PlotTrace
-
+from StatParallel import TraceCreator
 
 matplotlib.rc('image', origin='lower')
 
@@ -176,6 +178,7 @@ class CommonMenuBar(wx.MenuBar):
         self.tab2 = tab2
         self.tab3 = tab3
         self.parent = parent
+        self.enviro = args['enviro']
         
 
         fileMenu = wx.Menu()
@@ -228,11 +231,9 @@ class CommonMenuBar(wx.MenuBar):
             if res == wx.ID_OK:
                 frame.AdditionalData(args)
                 # pickle the argument such that it can be executed by GUI.Progressbar with MPI
-                with open(os.path.join(self.directory, 'arguments.pkl'), 'wb') as tmp:
-                    pickle.dump(args, tmp)
-                    tmp.flush()
-                    cmd = shlex.split('mpiexec -n %d --bind-to none python -m GUI.ProgressDisplay %s' % (args['nodes'], tmp.name))
-                    subprocess.call(cmd, cwd=self.directory)
+                calculation_frame = CalculationFrame(None, -1, 'Progress', self.enviro, args['steps'])
+                calculation_frame.Show()
+                calculation_frame.OnCalculate(args)
                 #progress = MyFrame(None, -1, 'stdout to GUI using multiprocessing', args)# {'Training_file': 'training/test', 'Output_name':'para', 'cores':5, 'steps':10000})
                 #progress.OnCalculate()
                 with open(self.opened_filename, 'rb') as buff:
@@ -487,7 +488,7 @@ class CommonMenuBar(wx.MenuBar):
 
 class Common(wx.Frame):
  
-    def __init__(self, parent, app):
+    def __init__(self, parent, app, enviro):
         wx.Frame.__init__(self, parent, wx.NewId(), "Bayesian analysis", size=(1000,400))
         panel = wx.Panel(self)
         self.app = app
@@ -517,7 +518,7 @@ class Common(wx.Frame):
         
     # toolbar
         self.menubar = CommonMenuBar(panel, tab1=GridP1, tab2=GridP2, tab3=GridP3, id=100, style=wx.TB_HORIZONTAL | wx.NO_BORDER |
-                                        wx.TB_FLAT | wx.TB_TEXT)
+                                        wx.TB_FLAT | wx.TB_TEXT, enviro=enviro)
 
         self.SetMenuBar(self.menubar)
         
@@ -535,11 +536,24 @@ class Common(wx.Frame):
         #    self.menubar.correlation_frame.Destroy()
         self.app.ExitMainLoop()
         
-
-    
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+size = comm.Get_size()
+status = MPI.Status()
+root = 0
 
 if __name__ == '__main__':
-    app = wx.App(0)
-    frame = Common(None, app)
-    frame.Show()
-    app.MainLoop()
+
+    def CalculateTrace(dir, args):
+      model = TraceCreator(args)
+      return model.CreateTrace(rank, dir)
+
+    work_environment = MasterSlave(comm, CalculateTrace)
+    work_environment.EventLoop()
+  
+    if rank == root:
+      app = wx.App(0)
+      frame = Common(None, app, enviro=work_environment)
+      frame.Show()
+      app.MainLoop()
+      work_environment.Close()
