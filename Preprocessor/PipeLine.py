@@ -140,4 +140,4 @@ class PCA:
         return np.dot(data, self.eigvec.T);
 
     def TransformCovInv(self, data_cov):
-        return self.eigvec.dot(data_cov).dot(self.eigvec.T)# + self.reconstruction_error*np.eye(self.cov.shape[0])
+        return self.eigvec.dot(data_cov).dot(self.eigvec.T) + self.reconstruction_error*np.eye(self.cov.shape[0])

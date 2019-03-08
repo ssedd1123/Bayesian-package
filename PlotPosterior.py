@@ -2,7 +2,7 @@ from multiprocessing import Pool
 import glob
 import matplotlib as mpl
 import scipy
-import cPickle as pickle
+import pickle as pickle
 import pandas as pd
 import sys
 import os
@@ -59,7 +59,7 @@ def PlotOutput(plot_prior, filename):
         index_list.append(index)
         result_list.append(np.interp(index, np.arange(num_output), result))
         
-        if i > 60000:
+        if i > 40000:
             break
     # plot the result
     result = np.stack(result_list)

@@ -74,6 +74,8 @@ class EmulatorTest(wx.Frame):
 
         result, var = self.signal(ini_par)
         self.xaxis =  np.arange(0, self.num_output)
+        print(np.sqrt(np.diag(var)))
+        sys.stdout.flush()
         self.line, _, (self.bars,) = self.graph.errorbar(self.xaxis, result, yerr=np.sqrt(np.diag(var)), marker='o', linewidth=2, color='red')
         if exp_data is not None:
             self.graph.plot(self.xaxis, exp_data, marker='o', linewidth=2, color='b')

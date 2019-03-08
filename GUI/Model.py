@@ -86,15 +86,19 @@ class EvtSpeedMeter(SM.SpeedMeter):
     self.SetSpeedBackground(wx.WHITE)
 
     # Smooth the speedmeter
-    self.SpeedCalculator = RunningAve(40)
-    self.speed_list = [0]*num_ranks
+    self.SpeedCalculator = RunningAve(2*num_ranks)
+    #self.speed_list = [0]*num_ranks
+    self.prev_speed = 0
 
-  def UpdateSpeed(self, source, int_speed):
+  def UpdateSpeed(self, int_speed):
     self.num_refresh += 1
-    if int_speed is not None:
-      self.speed_list[source] = int_speed
+    if int_speed is None:
+      int_speed = self.prev_speed
+    else:
+      self.prev_speed = int_speed
+      #self.speed_list[source] = int_speed
 
-    speed = self.SpeedCalculator.GetAve(np.sum(self.speed_list))
+    speed = self.SpeedCalculator.GetAve(int_speed)#np.sum(self.speed_list))
     if self.num_refresh > self.refresh_interval:
       if speed > self.max_speed:
         speed = self.max_speed
@@ -242,8 +246,9 @@ class CalculationFrame(wx.Frame):
     # check for jobs completions and collect results
     # avarage speed for each rank
     start_time = time.time()
-    num_prev = [0]*self.enviro.nworkers
-    time_prev = [start_time]*self.enviro.nworkers
+    num_list = [0]*self.enviro.nworkers
+    num_prev = 0
+    time_prev = start_time
 
     while self.enviro.IsRunning(self.refresh_rate):
       source, result, tag = self.enviro.stdout
@@ -263,16 +268,21 @@ class CalculationFrame(wx.Frame):
           num = re.findall(r"\d+\.?\d*", result)
           if len(num) > 1:
             last_num = int(num[1])
-            dn = last_num-num_prev[idx]
-            dt = new_time-time_prev[idx]
-            speed = dn/dt 
-          if dt > 0.1 or last_num == self.tot_per_rank: # prevents spikes in speed when information from a particular rank comes in consecutive burst
-            time_prev[idx] = new_time
-            num_prev[idx] = last_num
+            num_list[idx] = last_num
+            new_tot = np.sum(num_list)
+            dn = new_tot - num_prev
+            dt = new_time-time_prev
+            
+            if dt > 0.1 or last_num == self.tot_per_rank: # prevents spikes in speed when information from a particular rank comes in consecutive burst
+              time_prev = new_time
+              num_prev = new_tot
+              speed = dn/dt 
+            else:
+              speed = None
           else:
             speed = None
           
-      self.speedmeter.UpdateSpeed(idx, speed)
+      self.speedmeter.UpdateSpeed(speed)
       self.progress_bar.UpdateProgress(np.sum(num_prev))
       wx.YieldIfNeeded()
 

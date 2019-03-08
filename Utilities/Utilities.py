@@ -1,4 +1,3 @@
-from multiprocessing import Pool
 import random
 import sys
 import os
