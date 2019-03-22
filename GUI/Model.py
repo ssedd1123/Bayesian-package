@@ -12,7 +12,7 @@ import matplotlib
 matplotlib.use('WXAgg')
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
 from matplotlib.figure import Figure
-from StatParallel import TraceCreator, MergeTrace
+from MCMCTrace import MCMCParallel, Merging
 import tempfile
 import shutil
 import pickle
@@ -24,8 +24,9 @@ class RunningAve(object):
     self.prev_speed = [0]*num
 
   def GetAve(self, val):
-     self.prev_speed.pop(0)
-     self.prev_speed.append(val)
+     if val is not None:
+         self.prev_speed.pop(0)
+         self.prev_speed.append(val)
      return np.mean(self.prev_speed)
 
 class InfoBar(wx.StaticText):
@@ -92,12 +93,6 @@ class EvtSpeedMeter(SM.SpeedMeter):
 
   def UpdateSpeed(self, int_speed):
     self.num_refresh += 1
-    if int_speed is None:
-      int_speed = self.prev_speed
-    else:
-      self.prev_speed = int_speed
-      #self.speed_list[source] = int_speed
-
     speed = self.SpeedCalculator.GetAve(int_speed)#np.sum(self.speed_list))
     if self.num_refresh > self.refresh_interval:
       if speed > self.max_speed:
@@ -240,7 +235,9 @@ class CalculationFrame(wx.Frame):
 
     # create temporary file for which each rank must write to
     dirpath = tempfile.mkdtemp(dir=os.path.dirname(os.path.realpath(__file__)))
-    self.enviro.Submit(dir=os.path.join(dirpath, 'temp_result'), args=args)
+    self.enviro.Submit(config_file=args['config_file'], 
+                       dirpath=dirpath, 
+                       nevents=args['nsteps'])
     self.info_bar.PrintInfo('%d workers are working' % self.enviro.nworking)
 
     # check for jobs completions and collect results
@@ -292,7 +289,7 @@ class CalculationFrame(wx.Frame):
     wx.YieldIfNeeded()
 
     try:
-      result = MergeTrace(self.enviro.results, args, None)
+      result = Merging(args['config_file'], self.enviro.results)
     except Exception as e:
       print('Error merging files. Read result in %s' % dirpath)
       sys.stdout.flush()
@@ -317,7 +314,7 @@ class MyApp(wx.App):#, wx.lib.mixins.inspection.InspectionMixin):
 
   def OnInit(self):
     #self.Init()
-    self.frame = CalculationFrame(None, -1, 'Progress', self.enviro)
+    self.frame = CalculationFrame(None, -1, 'Progress', self.enviro, self.args['nsteps'])
     self.frame.Show()
     self.SetTopWindow(self.frame)
     self.frame.OnCalculate(self.args)
@@ -331,16 +328,9 @@ status = MPI.Status()
 root = 0
 
 if __name__ == '__main__':
-  with open(sys.argv[1], 'rb') as buff:
-    kargs = pickle.load(buff)
+  kargs= {'config_file': '/projects/hira/tsangc/GaussianEmulator/result/test.h5', 'nsteps': 10000}
 
-  kargs= {'Training_file': '/projects/hira/tsangc/GaussianEmulator/result/e120', 'Output_name': '', 'cores': 7, 'steps': 10000, 'nodes': 1, 'concat': True}
-
-  def CalculateTrace(dir, args):
-    model = TraceCreator(args) 
-    return model.CreateTrace(rank, dir)
-
-  work_environment = MasterSlave(comm, CalculateTrace)
+  work_environment = MasterSlave(comm, MCMCParallel)
   work_environment.EventLoop()
 
   if rank == root:

@@ -90,7 +90,7 @@ class MasterSlave(object):
     if self.rank == 0:
       for worker in range(1, self.size):
         self.comm.send(None, tag=tags.EXIT, dest=worker)
-  
+
   def EventLoop(self):
     if self.rank != 0:
       while True:

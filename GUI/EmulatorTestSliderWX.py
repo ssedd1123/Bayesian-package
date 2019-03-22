@@ -23,7 +23,6 @@ from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
 from matplotlib.figure import Figure
 import tempfile
 
-
 #from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.backends.backend_wx import NavigationToolbar2Wx
 #from matplotlib.figure import Figure
@@ -37,7 +36,7 @@ import wx.grid as gridlib
 from GUI.Grid import MyGrid
 
 class EmulatorTest(wx.Frame):
-    def __init__(self, parent, emulator, prior, exp_data=None, model_data=None):
+    def __init__(self, parent, emulator, store):
         wx.Frame.__init__(self, parent, wx.NewId())
         splitterTB = wx.SplitterWindow(self, -1)
         splitterLR = wx.SplitterWindow(splitterTB, -1)
@@ -62,14 +61,26 @@ class EmulatorTest(wx.Frame):
         right_panel.SetSizer(sizer)
         #self.graph = self.fig.add_subplot(111)
 
+        self.prior = store['PriorAndConfig']
+        self.model_X = store['Model_X']
+        self.model_Y = store['Model_Y']
+        self.exp_Y = store['Exp_Y']
+        self.exp_Yerr = store['Exp_YErr']
+
+        num_par = self.prior.shape[0]
+        num_features = self.model_Y.shape[1]
+        num_samples = self.model_Y.shape[0]
+
+
+        """
+        Create list on the right hand side for people to choose which sample to look at
+        """
         run_num = ['exp'] 
-        if model_data is not None:
-            run_num = run_num + [str(i) for i in range(0, emulator.emulator_list[0].input_.shape[0])]
-        lst = wx.ListBox(left_panel, size=(100,300), style=wx.LB_SINGLE, choices=run_num)#, choices=run_num, style=wx.LB_SINGLE)
+        run_num += [str(i) for i in range(num_samples)]
+        lst = wx.ListBox(left_panel, size=(100,300), style=wx.LB_SINGLE, choices=run_num)#
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         sizer.Add(lst, 1, wx.EXPAND)
         left_panel.SetSizer(sizer)
-
         splitterLR.SplitVertically(left_panel, right_panel, 100)
 
         """
@@ -79,7 +90,7 @@ class EmulatorTest(wx.Frame):
         graph_pad = 0.05
 
         slider_fraction = 1 - graph_fraction
-        nsliders = prior.index.values.shape[0]
+        nsliders = num_par
 
         """
         calculate slider location. In fraction of slider location
@@ -102,56 +113,50 @@ class EmulatorTest(wx.Frame):
         Calculation with emulator
         """
         self.emulator = emulator
-        prior_range = {}
-        ini_par = []
-        for par_name, row in prior.iterrows():
-            prior_range[par_name] = (row[1], row[2])
-            ini_par.append(0.5*(row[1] + row[2]))
-
-        ini_par = np.array(ini_par)
-        result, var = emulator.Emulate(ini_par)
-        self.num_output = result.shape[0]
+        ini_par = 0.5*(self.prior['Max'] + self.prior['Min']).values
+        result, var = emulator.Predict(ini_par.reshape(1, -1))
 
         self.graph = self.fig.add_axes([0.25, slider_fraction + graph_pad, 0.65, graph_fraction - graph_pad])
         result, var = self.signal(ini_par)
-        self.xaxis =  np.arange(0, self.num_output)
-        self.line, _, (self.bars,) = self.graph.errorbar(self.xaxis, result, yerr=np.sqrt(np.diag(var)), marker='o', linewidth=2, color='red')
-        self.exp_data = exp_data
-        self.model_data = model_data
-        if exp_data is None:
-            exp_data = result
-        self.bg_line, = self.graph.plot(self.xaxis, exp_data, marker='o', linewidth=2, color='b')
-        #self.graph.autoscale()
+        self.xaxis =  np.arange(self.model_Y.shape[1])
+        self.line, _, (self.bars,) = self.graph.errorbar(self.xaxis, 
+                                                         result, 
+                                                         yerr=np.sqrt(np.diag(var)), 
+                                                         marker='o', linewidth=2, color='red')
+        self.bg_line, _, (self.bg_bars,)  = self.graph.errorbar(self.xaxis, 
+                                                                np.squeeze(self.exp_Y), 
+                                                                yerr=np.squeeze(self.exp_Yerr), 
+                                                                marker='o', linewidth=2, color='b')
 
-        self.graph.set_xlim([-1, self.num_output+1])
-        if model_data is None:
-            self.graph.autoscale()
-        else:
-            self.graph.set_ylim([np.min(model_data), np.max(model_data)])
+        self.graph.set_xlim([-1, num_features+1])
+        self.graph.set_ylim([np.min(self.model_Y.values), np.max(self.model_Y.values)])
 
         """
         Add slider bar
         """
         self.amp_slider = []
-        for index, par_name in enumerate(list(prior.index.values)):
-            amp_slider_ax  = self.fig.add_axes([0.25, slider_pad + 0.5*slider_gap + slider_box_height*index, 0.65, slider_height])#[0.25, 0.1 + 0.05*index, 0.65, 0.03])
-            self.amp_slider.append(Slider(amp_slider_ax, par_name, prior_range[par_name][0], prior_range[par_name][1], valinit=ini_par[index]))
+        for idx, (par_name, row) in enumerate(self.prior.iterrows()):
+            amp_slider_ax  = self.fig.add_axes([0.25, 
+                                                slider_pad + 0.5*slider_gap + slider_box_height*idx, 
+                                                0.65, slider_height])
+            self.amp_slider.append(Slider(amp_slider_ax, 
+                                          par_name, 
+                                          row['Min'], row['Max'], valinit=ini_par[idx]))
 
         
         for slider in self.amp_slider:
             slider.on_changed(self.sliders_on_changed)
 
-        self.grid = MyGrid(bottom_panel, (1, len(prior) + self.num_output), False)      
-        index = 0
+        # total number of columns in bottom grid = number of parameters + number of features
+        self.grid = MyGrid(bottom_panel, (1, num_par + num_features), False)      
         self.grid.SetRowLabelValue(0, "Value")
-        for par_name, row in prior.iterrows():
-            self.grid.SetColLabelValue(index, par_name)
-            index = index + 1
+        for idx, (par_name, row) in enumerate(self.prior.iterrows()):
+            self.grid.SetColLabelValue(idx, par_name)
 
         # set the result as read only
-        for index in range(0, self.num_output):
-            self.grid.SetReadOnly(0, index + len(prior), True)
-            self.grid.SetCellBackgroundColour(0, index + len(prior), (211,211,211))
+        for index in range(num_par, num_par + num_features):
+            self.grid.SetReadOnly(0, index, True)
+            self.grid.SetCellBackgroundColour(0, index, (211,211,211))
 
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         sizer.Add(self.grid, 1, wx.LEFT | wx.TOP | wx.GROW)
@@ -178,45 +183,41 @@ class EmulatorTest(wx.Frame):
 
     # Define an action for modifying the line when any slider's value changes
     def sliders_on_changed(self, val):
-        par = []
-        for slider in self.amp_slider:
-            par.append(slider.val)
+        par = [slider.val for slider in self.amp_slider]
         ydata, var = self.signal(np.array(par))
         err = np.sqrt(np.diag(var))
     
-        yerr_top = ydata + err
-        yerr_bot = ydata - err
-        x_base = self.line.get_xdata()
-        new_segments = [np.array([[x, yt], [x, yb]]) for
-                        x, yt, yb in zip(x_base, yerr_top, yerr_bot)]
-        self.line.set_ydata(ydata)
-        self.bars.set_segments(new_segments)
-
+        self.SetErrorBar(self.line, self.bars, ydata, err)
         # write data into the bottom grid
         self.grid.SetValue([[0, 0], [0, len(par) + ydata.shape[0]]], [par + ydata.tolist()])
-    
-        self.fig.canvas.draw_idle()
+        
 
     def onListBox(self, event):
         chosen = event.GetEventObject().GetStringSelection()
         if chosen != 'exp':
             num = int(chosen)
-            data = self.model_data[num,:]
-            """
-            mean = np.array([emu.target[num] for emu in self.emulator.emulator_list])
-            # calculate the input data 
-            data = self.emulator.output_pipe.TransformInv(mean.flatten())        
-            """
-            # calculate the input parameters
-            par = self.emulator.input_pipe.TransformInv(self.emulator.emulator_list[0].input_)
+            data = self.model_Y.values[num,:]
+            par = self.model_X.values[num,:]
+            err = 0
             # set marker on slider 
-            for index, val in enumerate(par[num]):
+            for index, val in enumerate(par):
                 self.amp_slider[index].vline.set_xdata([val, val])
         else:
-            data = self.exp_data
-        self.bg_line.set_ydata(data)
-        self.fig.canvas.draw_idle()
+            data = self.exp_Y
+            err = np.squeeze(self.exp_Yerr)
 
+        self.SetErrorBar(self.bg_line, self.bg_bars, data, err)
+
+    def SetErrorBar(self, line, errorbar, values, err):
+        yerr_top = values + err
+        yerr_bot = values - err
+        line.set_ydata(values)
+        x_base = line.get_xdata()
+        new_segments = [np.array([[x, yt], [x, yb]]) for
+                        x, yt, yb in zip(x_base, yerr_top, yerr_bot)]
+        errorbar.set_segments(new_segments)
+        self.fig.canvas.draw_idle()
+        
 
     def GetToolBar(self):
         # You will need to override GetToolBar if you are using an
@@ -228,17 +229,19 @@ class EmulatorTest(wx.Frame):
         pass
 
     def signal(self, par):
-        result, var = self.emulator.Emulate(par)
-        return result, var
+        result, var = self.emulator.Predict(par.reshape(1, -1))
+        return np.squeeze(result), np.squeeze(var)
 
 if __name__ == "__main__":
     app = wx.App(0)
-    with open('result/astro', 'rb') as buff:
-        data = pickle.load(buff)
+    store = pd.HDFStore('result/test.h5')
 
-    emulator  = data['emulator']
-    prior = data['data'].prior
-    frame = EmulatorTest(None, emulator, prior, data['data'].exp_result, data['data'].sim_data)
+    config = store.get_storer('PriorAndConfig').attrs.my_attribute
+    from numpy import array
+    from Preprocessor.PipeLine import *
+    emulator  = eval(config['repr'])
+    emulator.Fit(store['Model_X'].values, store['Model_Y'].values)
+    frame = EmulatorTest(None, emulator, store)
     frame.Show()
     app.MainLoop()
 

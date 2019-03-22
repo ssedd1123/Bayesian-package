@@ -20,32 +20,41 @@ from Emulator.Emulator import *
 from Preprocessor.PipeLine import *
 
 # input is the pymc3 trace and list of parameters
-def PlotTrace(trace, par_name, prior, fig=None):
+def PlotTrace(config_file, fig=None):
     """
     Arrange trace in a n*n matrix of plots
     where n is the number of variables
     """
     # plot the result in a nice matrix of histograms
-    num_par = len(par_name)
+    store = pd.HDFStore(config_file, 'r')
+    trace = store['trace']
+    prior = store['PriorAndConfig']
+    num_par = prior.shape[0]
+    par_name = prior.index
+
     graph_num = 1
     if fig is None:
         fig, axes2d = plt.subplots(num_par, num_par)
     else:
         axes2d = fig.subplots(num_par, num_par)
+
     if num_par == 1:
         axes2d = [[axes2d]]
+    prior['Min'] = prior['Min'].astype('float')
+    prior['Max'] = prior['Max'].astype('float')
     for i, row in enumerate(axes2d):
         for j, cell in enumerate(row):
             namex = par_name[j]
             namey = par_name[i]
             if namex == namey:
-                cell.hist(trace[namex], bins = 50, range=np.array([prior[1][namex], prior[2][namex]]))
-                cell.set_xlim([prior[1][namex], prior[2][namex]])
+                cell.hist(trace[namex], bins = 50, range=np.array([prior['Min'][namex], prior['Max'][namex]]))
+                cell.set_xlim([prior['Min'][namex], prior['Max'][namex]])
             else:
-                im = cell.hist2d(trace[namex], trace[namey], bins=50, range=np.array([(prior[1][namex], prior[2][namex]),(prior[1][namey], prior[2][namey])]))#, norm=colors.LogNorm())
-                cell.set_xlim([prior[1][namex], prior[2][namex]])
-                cell.set_ylim([prior[1][namey], prior[2][namey]])
-                #fig.colorbar(im[3], ax=cell)
+                im = cell.hist2d(trace[namex], trace[namey], bins=50, 
+                                 range=np.array([(prior['Min'][namex], prior['Max'][namex]),
+                                                (prior['Min'][namey], prior['Max'][namey])]))#, norm=colors.LogNorm())
+                cell.set_xlim([prior['Min'][namex], prior['Max'][namex]])
+                cell.set_ylim([prior['Min'][namey], prior['Max'][namey]])
             # Modify axis labels such that the top and bottom label never show up
             xlist = cell.get_xticks().tolist()
             xlist[0] = ''
@@ -72,6 +81,7 @@ def PlotTrace(trace, par_name, prior, fig=None):
  
             
     plt.subplots_adjust(wspace=0, hspace=0)
+    store.close()
     return fig, axes2d
 
 

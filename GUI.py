@@ -19,13 +19,14 @@ os.environ['MKL_NUM_THREADS'] = '1'
 import subprocess
 import shlex
 import gc
-import matplotlib
-matplotlib.use('WXAgg')
+#import matplotlib
+#matplotlib.use('WXAgg')
 import matplotlib.cm as cm
 import matplotlib.cbook as cbook
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
 from matplotlib.figure import Figure
 import tempfile
+import matplotlib
 from matplotlib.backends.backend_wx import NavigationToolbar2Wx
 import numpy as np
 from copy import deepcopy
@@ -33,11 +34,7 @@ import wx
 #import wx.xrc as xrc
 import wx.grid as gridlib
 
-from GUI.ID import *
-from Training import Training
-from GUI.TrainingFrame import TrainingFrame
 from GUI.MatplotlibFrame import MatplotlibFrame
-from GUI.Grid import MyGrid
 from GUI.PlotFrame import PlotFrame
 from GUI.EmulatorTestSliderWX import EmulatorTest
 from GUI.EmulatorFrame import EmulatorFrame
@@ -45,7 +42,16 @@ from GUI.Model import CalculationFrame
 from Utilities.MasterSlave import MasterSlave
 #from GUI.ProgressDisplay import MyFrame
 from Utilities.Utilities import PlotTrace
-from StatParallel import TraceCreator
+from TrainEmulator import Training
+from MCMCTrace import MCMCParallel, Merging
+
+from GUI.ID import *
+from GUI.TrainingFrame import TrainingFrame
+
+from GUI.Grid import MyGrid
+from numpy import array
+from Preprocessor.PipeLine import *
+
 
 matplotlib.rc('image', origin='lower')
 
@@ -206,55 +212,39 @@ class CommonMenuBar(wx.MenuBar):
         if self.opened_filename is None:
             wx.MessageBox('No file is associated with this data. You must save and train the emulator first', 'Error', wx.OK | wx.ICON_ERROR)
             return False
-
-        with open(self.opened_filename, 'rb') as buff:
-            data = pickle.load(buff)
-
-        if not data['emulator']:
-            wx.MessageBox('Emulator not found in the current file. Have you trained the emulator?', 'Error', wx.OK | wx.ICON_ERROR)
             return False
         return True
 
     def OnEmulatorCheck(self, event):
         if self._CheckOpenedFile():
-            with open(self.opened_filename, 'rb') as buff:
-                data = pickle.load(buff)
-            frame = EmulatorTest(None, data['emulator'], data['data'].prior, data['data'].exp_result, data['data'].sim_data)
+            store = pd.HDFStore(self.opened_filename, 'r')
+            config = store.get_storer('PriorAndConfig').attrs.my_attribute
+            emulator  = eval(config['repr'])
+            emulator.Fit(store['Model_X'].values, store['Model_Y'].values)
+            frame = EmulatorTest(None, emulator, store)
             frame.Show()
+            store.close()
 
     def OnEmulate(self, event):
         if self._CheckOpenedFile():
             args = {}
-            args['Training_file'] = self.opened_filename
+            args['config_file'] = self.opened_filename
             frame = EmulatorFrame()
             res = frame.ShowModal()
             if res == wx.ID_OK:
                 frame.AdditionalData(args)
                 # pickle the argument such that it can be executed by GUI.Progressbar with MPI
+                args['nsteps'] = args['steps']
                 calculation_frame = CalculationFrame(None, -1, 'Progress', self.enviro, args['steps'])
                 calculation_frame.Show()
                 calculation_frame.OnCalculate(args)
                 #progress = MyFrame(None, -1, 'stdout to GUI using multiprocessing', args)# {'Training_file': 'training/test', 'Output_name':'para', 'cores':5, 'steps':10000})
                 #progress.OnCalculate()
-                with open(self.opened_filename, 'rb') as buff:
-                    data = pickle.load(buff)
-                trace = pd.read_hdf('%s.h5' % args['Training_file'])
-                par_name = data['data'].par_name
-                prior = data['data'].prior
-
-                # if root_numpy module exist, it will be saved there
-                try: 
-                    from root_numpy import array2root
-                    df_ = trace.copy(deep=False)
-                    arr = df_.to_records(index=False)
-                    array2root(arr, '%s.root' % self.opened_filename, 'my_ttree', 'recreate')
-                except ImportError:
-                    print('root_numpy module not found. Will not output to root')
     
                 if not self.correlation_frame:
                     fig = Figure((15,12), 75)
                     self.correlation_frame = MatplotlibFrame(None, fig)
-                PlotTrace(trace, par_name, prior, self.correlation_frame.fig)
+                PlotTrace(self.opened_filename, self.correlation_frame.fig)
                 self.correlation_frame.SetData()
                 self.correlation_frame.Show()
         
@@ -269,14 +259,11 @@ class CommonMenuBar(wx.MenuBar):
         if not set(exp_headers).issubset(set(model_headers)):
             wx.MessageBox('Some variables in experiment result (including its error) do not appear in model. Please check again', 'Error', wx.OK | wx.ICON_ERROR)
             return False
-        if set(exp_headers).union(set(prior_headers)) != set(model_headers):
-            wx.MessageBox('Some variables in model do not appear in either experiment or prior. Please check again', 'Error', wx.OK | wx.ICON_ERROR)
-            return False
         if prior.shape[0] != 5:
             wx.MessageBox('There could only be 5 rows in prior, one for lower bound and the other for higher, nothing more/less', 'Error', wx.OK | wx.ICON_ERROR)
             return False 
-        if exp.shape[0] != 1:
-            wx.MessageBox('There could only be 1 rows for exp result, nothing more/less', 'Error', wx.OK | wx.ICON_ERROR)
+        if exp.shape[0] != 2:
+            wx.MessageBox('There could only be 2 rows for exp result, one for values and the other for its error', 'Error', wx.OK | wx.ICON_ERROR)
             return False 
         if model.shape[0] < 3:
             wx.MessageBox('Model data has less than 3 entries. I don\'t think this will work. Please check again', 'Error', wx.OK | wx.ICON_ERROR)
@@ -290,9 +277,6 @@ class CommonMenuBar(wx.MenuBar):
         if len(exp_headers) != exp.shape[1]:
             wx.MessageBox('Number of variables and numerical columns in exp do not match.', 'Error', wx.OK | wx.ICON_ERROR)
             return False 
-        if not any([name.endswith('_Error') for name in exp_headers]):
-            wx.MessageBox('There are no columns associated with experimental error. Please fill that in.', 'Error', wx.OK | wx.ICON_ERROR)
-            return False
         if prior.isnull().values.any():
             wx.MessageBox('There are empty holes in prior.', 'Error', wx.OK | wx.ICON_ERROR)
             return False
@@ -325,8 +309,11 @@ class CommonMenuBar(wx.MenuBar):
         model = pd.DataFrame(model, columns=model_headers)
         prior_headers = prior.pop(0)
         prior = pd.DataFrame(prior, columns=prior_headers)
+
         exp_headers = exp.pop(0)
         exp = pd.DataFrame(exp, columns=exp_headers)
+        exp.index = ['Values', 'Errors']
+
 
         if not self._CheckData(prior_headers, prior, model_headers, model, exp_headers, exp):
             return False
@@ -345,14 +332,19 @@ class CommonMenuBar(wx.MenuBar):
             return False
 
         with tempfile.NamedTemporaryFile() as tmpmodel, tempfile.NamedTemporaryFile() as tmpprior, tempfile.NamedTemporaryFile() as tmpexp: 
+            prior['Name'] = ['Type', 'Min', 'Max', 'Mean', 'SD']
+            cols = prior.columns.tolist()
+            cols = cols[-1:] + cols[:-1]
+            prior = prior[cols]
+
             prior.to_csv(tmpprior.name, sep=',', index=False)
             model.to_csv(tmpmodel.name, sep=',', index=False)
-            exp.to_csv(tmpexp.name, sep=',', index=False)
+            exp.to_csv(tmpexp.name, sep=',')
 
             tmpprior.flush()
             tmpmodel.flush()
             tmpexp.flush()
-
+      
             args = {}
             args['Prior'] = tmpprior.name
             args['ModelData'] = tmpmodel.name
@@ -376,54 +368,12 @@ class CommonMenuBar(wx.MenuBar):
                 frame.AdditionalData(args)
                 frame.Destroy()
                             
-            Training(args)
+            Training(args['Prior'], args['ModelData'], args['ExpData'], args['Training_name'], args['principalcomp'], args['fraction'], args['initialscale'], args['initialnugget'], args['scalerate'], args['nuggetrate'], args['maxsteps'])
 
-            with open(outFile[0], 'rb') as buff:
-                data = pickle.load(buff)
-
-            self.opened_data = data
             self.opened_filename = outFile[0]
-        
 
     def OnSave(self, event):
-        
-        if self.opened_filename is None:
-            wx.MessageBox('No file is associated with this data. You must save and train the emulator first', 'Error', wx.OK | wx.ICON_ERROR)
-            return 
-
-        """
-        Every time the model data is changed, it needs to be trained again
-        It cannot be saved directly
-        Warn the user and ask them if they want to proceed
-        """
-        if self.tab2.grid.stockUndo:
-            dlg = wx.MessageDialog(None, "Model data may have changed. Any change here will be discarded. You need to re-train the emulator. Do you want to continue saving?", "", wx.YES_NO | wx.ICON_QUESTION) 
-            result = dlg.ShowModal()
-
-            if result != wx.ID_YES:
-                return 
-
-        prior = self.tab1.grid.GetAllValues()
-        headers = prior.pop(0)
-        prior = pd.DataFrame(prior, columns=headers)
-        with tempfile.NamedTemporaryFile() as temp:
-            prior.to_csv(temp.name, sep=',', index=False)
-            temp.flush()
-            self.opened_data['data'].ChangePrior(temp.name)
-
-        exp = self.tab3.grid.GetAllValues()
-        headers = exp.pop(0)
-        exp = pd.DataFrame(exp, columns=headers)
-        with tempfile.NamedTemporaryFile() as temp:
-            exp.to_csv(temp.name, sep=',', index=False)
-            temp.flush()
-            self.opened_data['data'].ChangeExp(temp.name)
-
-        with open(self.opened_filename, 'wb') as buff:
-            pickle.dump(self.opened_data, buff)
-
-        return True
-
+        pass
 
     def OnFile(self, event):
         """
@@ -441,15 +391,13 @@ class CommonMenuBar(wx.MenuBar):
         if result != wx.ID_OK:
             return False
 
-        with open(path[0], 'rb') as buff:
-            data = pickle.load(buff)
-
         self.opened_filename = path[0]
-        self.opened_data = data
+        store = pd.HDFStore(self.opened_filename, 'r')
+        
         """
         Loading prior
         """
-        prior = data['data'].prior.T
+        prior = store['PriorAndConfig'].T
         prior = [prior.columns.tolist()] + prior.values.tolist()
         if type(prior[0]) is not list:
             prior = [prior]
@@ -461,13 +409,14 @@ class CommonMenuBar(wx.MenuBar):
         """
         Loading model data
         """
-        training_data = data['data']
-        header = [training_data.par_name + training_data.var_name + [name + "_Error" for name in training_data.var_name]] 
-        content = np.concatenate((training_data.sim_para, training_data.sim_data, training_data.sim_error), axis=1).tolist()
+        training_data = pd.concat([store['Model_X'], store['Model_Y']], axis=1)
+        header = list(store['Model_X']) + list(store['Model_Y']) 
+        print(header, flush=True)
+        content = training_data.values.tolist()
         if type(content[0]) is not list:
             content = [content]
         self.tab2.grid.ClearAll()
-        self.tab2.grid.SetValue([[0,0], [0, len(header[0]) - 1]], header)
+        self.tab2.grid.SetValue([[0,0], [0, len(header) - 1]], [header])
         self.tab2.grid.SetValue([[1,0], [len(content), len(content[0]) - 1]], content)
         del self.tab2.grid.stockUndo[:]
         self.tab2.toolbar.EnableTool(ID_UNDO, False)
@@ -475,12 +424,13 @@ class CommonMenuBar(wx.MenuBar):
         """
         Loading exp data
         """
-        header = [training_data.var_name + [name + "_Error" for name in training_data.var_name]] 
-        content = np.concatenate((training_data.exp_result, np.sqrt(np.diag(training_data.exp_cov)))).tolist()
+        content = np.vstack([store['Exp_Y'].values, store['Exp_YErr'].values])
+        content = content.tolist()
+        header = store['Exp_Y'].index.tolist()
         if type(content[0]) is not list:
             content = [content]
         self.tab3.grid.ClearAll()
-        self.tab3.grid.SetValue([[0,0], [0, len(header[0]) - 1]], header)
+        self.tab3.grid.SetValue([[0,0], [0, len(header) - 1]], [header])
         self.tab3.grid.SetValue([[1,0], [len(content), len(content[0]) - 1]], content)
         del self.tab3.grid.stockUndo[:]
         self.tab3.toolbar.EnableTool(ID_UNDO, False)
@@ -498,19 +448,20 @@ class Common(wx.Frame):
         GridP1 = GridPanel(notebook, size=(6, 100))
         GridP1.grid.SetRowLabelValue(0, "Name")
         GridP1.grid.SetRowLabelValue(1, "Type")
-        GridP1.grid.SetRowLabelValue(2, "Lower bound")
-        GridP1.grid.SetRowLabelValue(3, "Upper bound")
-        GridP1.grid.SetRowLabelValue(4, "Centre")
-        GridP1.grid.SetRowLabelValue(5, "Standard Deviation")
+        GridP1.grid.SetRowLabelValue(2, "Min")
+        GridP1.grid.SetRowLabelValue(3, "Max")
+        GridP1.grid.SetRowLabelValue(4, "Mean")
+        GridP1.grid.SetRowLabelValue(5, "SD")
         GridP1.grid.SetRowLabelSize(wx.grid.GRID_AUTOSIZE)
         notebook.AddPage(GridP1, "Para prior")
 
         GridP2 = GridPanel(notebook)
         notebook.AddPage(GridP2, "Model result")
 
-        GridP3 = GridPanel(notebook, size=(2, 100))
+        GridP3 = GridPanel(notebook, size=(3, 100))
         GridP3.grid.SetRowLabelValue(0, "Name")
-        GridP3.grid.SetRowLabelValue(1, "Value")
+        GridP3.grid.SetRowLabelValue(1, "Values")
+        GridP3.grid.SetRowLabelValue(2, "Errors")
         notebook.AddPage(GridP3, "Exp data data")
 
         sizer = wx.BoxSizer(wx.VERTICAL)
@@ -544,11 +495,7 @@ root = 0
 
 if __name__ == '__main__':
 
-    def CalculateTrace(dir, args):
-      model = TraceCreator(args)
-      return model.CreateTrace(rank, dir)
-
-    work_environment = MasterSlave(comm, CalculateTrace)
+    work_environment = MasterSlave(comm, MCMCParallel)
     work_environment.EventLoop()
   
     if rank == root:
