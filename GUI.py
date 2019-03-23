@@ -433,6 +433,7 @@ class CommonMenuBar(wx.MenuBar):
         self.tab3.grid.SetValue([[0,0], [0, len(header) - 1]], [header])
         self.tab3.grid.SetValue([[1,0], [len(content), len(content[0]) - 1]], content)
         del self.tab3.grid.stockUndo[:]
+        store.close()
         self.tab3.toolbar.EnableTool(ID_UNDO, False)
 
 
