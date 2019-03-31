@@ -7,6 +7,9 @@ import sys
 import time
 import re
 from mpi4py import MPI
+import dill
+MPI.pickle.__init__(dill.dumps, dill.loads)
+
 import tempfile
 import shutil
 import pickle
@@ -16,7 +19,7 @@ def enum(*sequential, **named):
     enums = dict(zip(sequential, range(len(sequential))), **named)
     return type('Enum', (), enums)
 
-tags = enum('START', 'END', 'ERROR', 'READY', 'IO', 'EXIT', 'NOTHING')
+tags = enum('FUNC', 'START', 'END', 'ERROR', 'READY', 'IO', 'EXIT', 'NOTHING')
 
 class OutputPipe(object):
   def __init__(self, comm, root):
@@ -31,22 +34,28 @@ class OutputPipe(object):
     pass
 
 class MasterSlave(object):
-  def __init__(self, comm, func):
+  def __init__(self, comm):
     self.comm = comm
     self.rank = comm.Get_rank()
     self.size = comm.Get_size()
     self.nworkers = self.size - 1
     self.nworking = 0
-    self.func = func
+    self.func = None
     self.results = []
     if self.rank != 0:
       sys.stdout = OutputPipe(comm, 0)
+    self.EventLoop()
 
-  def Submit(self, **kwargs):
+  def __del__(self):
+    self.Close()
+
+  def Submit(self, func, **kwargs):
     self.results = []
     if self.rank == 0:
       if self.nworking != 0:
         raise RuntimeError('Current working ranks > 0. Are you submitting new jobs while the old one are still running? This function is not yet supported')
+      for worker in range(1, self.size):
+        self.comm.send(func, tag=tags.FUNC, dest=worker)
 
       self.nworking = self.nworkers
       for worker in range(1, self.size):
@@ -96,8 +105,8 @@ class MasterSlave(object):
       while True:
         sleep_seconds = 0.05
         if sleep_seconds > 0:
-            while not self.comm.Iprobe(source=MPI.ANY_SOURCE):
-                time.sleep(sleep_seconds)
+          while not self.comm.Iprobe(source=MPI.ANY_SOURCE):
+            time.sleep(sleep_seconds)
 
         status = MPI.Status()
         kwargs = self.comm.recv(source=MPI.ANY_SOURCE, tag=MPI.ANY_TAG, status=status)
@@ -110,8 +119,10 @@ class MasterSlave(object):
             self.comm.send(e, tag=tags.ERROR, dest=0)
           else:
             self.comm.send(result, tag=tags.END, dest=0)
+        elif source == 0 and tag == tags.FUNC:
+            self.func = kwargs
         elif source == 0 and tag == tags.EXIT:
-          break
+          sys.exit(0)
     
 
      

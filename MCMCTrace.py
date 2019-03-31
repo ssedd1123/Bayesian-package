@@ -34,12 +34,13 @@ def GenerateTrace(emulator, exp_Y, exp_Yerr, prior, id_, iter, output_filename):
     parameters = []
     for name, row in prior.iterrows():
         if row['Type'] == 'Uniform':
-            parameters.append(pymc.Uniform(name, float(row['Min']), float(row['Max']), value=0.5*(float(row['Min']) + float(row['Max']))))
+            parameters.append(pymc.Uniform(name, float(row['Min']), float(row['Max']), 
+                                           value=0.5*(float(row['Min']) + float(row['Max']))))
         else:
-            parameters.append(pymc.TruncatedNormal(name, mu=float(row['Mean']), tau=1./float(row['SD'])**2, a=float(row['Min']), b=float(row['Max']), value=float(row['Mean'])))
+            parameters.append(pymc.TruncatedNormal(name, mu=float(row['Mean']), tau=1./float(row['SD'])**2, 
+                                                   a=float(row['Min']), b=float(row['Max']), value=float(row['Mean'])))
 
     exp_cov = np.diag(np.square(exp_Yerr))
-
     @pymc.stochastic(observed=True)
     def emulator_result(value=exp_Y, x=parameters):
         mean, var = emulator.Predict(np.array(x).reshape(1, -1))
@@ -47,7 +48,6 @@ def GenerateTrace(emulator, exp_Y, exp_Yerr, prior, id_, iter, output_filename):
 
 
     model = pymc.Model(parameters)
-    
     # prepare for MCMC
     new_output_filename = '%s_%d.h5' % (output_filename, id_)
     mcmc = pymc.MCMC(model, dbname=new_output_filename, db='hdf5', dbmode='w')
@@ -84,7 +84,7 @@ def Merging(config_file, list_of_traces):
     store = pd.HDFStore(config_file)
     for f in list_of_traces:
         df = pd.read_hdf(f)
-        store.append(key='trace', value=df, format='t')
+        store.append(key='trace', value=df)
     prior = store['PriorAndConfig']
     store.close()
     return prior
@@ -98,25 +98,25 @@ root = 0
 
 if __name__=="__main__":
 
+    work_environment = MasterSlave(comm)
     parser = argparse.ArgumentParser(description='This script will choose an optimal set of hyperparameters by minizing loss function')
     parser.add_argument('config_file', help='Location of the trained parameter (output from Training.py)')
+    parser.add_argument('nevents', type=int, help='Number of events')
+
     #parser.add_argument('-p', '--plot', action='store_true', help='Use this if you want to plot posterior immediatly after trace generation')
     args = vars(parser.parse_args())
 
-    work_environment = MasterSlave(comm, MCMCParallel)
-    work_environment.EventLoop()
     
-    if rank == root:
-        work_environment.Submit(**args)
-        while work_environment.IsRunning():
-            out = work_environment.stdout[1]
-            if out is not None:
-                print(out, flush=True)
+    #if rank == root:
+    work_environment.Submit(MCMCParallel, **args)
+    while work_environment.IsRunning():
+        out = work_environment.stdout[1]
+        if out is not None:
+            print(out, flush=True)
 
-        prior = Merging(args['config_file'], work_environment.results)
-        #shutil.rmtree(work_environment.results) 
+    prior = Merging(args['config_file'], work_environment.results)
+    #shutil.rmtree(work_environment.results) 
     
-        PlotTrace(args['config_file'])
-        plt.show()
-
-    work_environment.Close()
+    PlotTrace(args['config_file'])
+    plt.show()
+    #work_environment.Close()

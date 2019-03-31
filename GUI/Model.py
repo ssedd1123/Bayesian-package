@@ -235,7 +235,8 @@ class CalculationFrame(wx.Frame):
 
     # create temporary file for which each rank must write to
     dirpath = tempfile.mkdtemp(dir=os.path.dirname(os.path.realpath(__file__)))
-    self.enviro.Submit(config_file=args['config_file'], 
+    self.enviro.Submit(MCMCParallel,
+                       config_file=args['config_file'], 
                        dirpath=dirpath, 
                        nevents=args['nsteps'])
     self.info_bar.PrintInfo('%d workers are working' % self.enviro.nworking)
@@ -330,10 +331,7 @@ root = 0
 if __name__ == '__main__':
   kargs= {'config_file': '/projects/hira/tsangc/GaussianEmulator/result/test.h5', 'nsteps': 10000}
 
-  work_environment = MasterSlave(comm, MCMCParallel)
-  work_environment.EventLoop()
+  work_environment = MasterSlave(comm)
 
-  if rank == root:
-    app = MyApp(size=size, enviro=work_environment, args=kargs)
-    app.MainLoop()
-    work_environment.Close()
+  app = MyApp(size=size, enviro=work_environment, args=kargs)
+  app.MainLoop()

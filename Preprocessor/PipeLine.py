@@ -1,18 +1,31 @@
+import numpy as nnp
 import autograd.numpy as np
 import autograd.scipy.linalg as linalg
-from autograd import grad
 from functools import partial
 from autograd.scipy.linalg import solve_triangular
+import numba
+from scipy.spatial.distance import cdist
 
 from Utilities.GradientDescent import *
 
 
-def squared_exponential(xp, xq, scales):
-    scale = scales[..., None, None]
-    y2 = np.expand_dims(xp.T, axis=1)
-    y3 = np.expand_dims(xq.T, axis=2)
-    return np.exp(-((y3 - y2)*(y3 - y2)/(scale*scale)).sum(axis=0))
+def DistSquareMatrix(xp, xq):
+    xps2 = np.sum(np.square(xp), 1)
+    xqs2 = np.sum(np.square(xq), 1)
+    #return np.sum(np.square(xp[:, np.newaxis, :] - xq[np.newaxis, :, :]), axis=-1)
+    return xps2.reshape((-1,1)) + xqs2.reshape((1,-1)) - 2*np.matmul(xp, xq.T)
 
+
+def squared_exponential(xp, xq, scales):
+    xp = xp/scales.reshape(1, -1)
+    xq = xq/scales.reshape(1, -1)
+    return np.exp(-DistSquareMatrix(xq, xp))
+    """
+    xp = xp/scales.reshape(1, -1)
+    xq = xq/scales.reshape(1, -1)
+    dist = cdist(xp, xq).T
+    return np.exp(-dist)
+    """
 
 
 class Transformer:
@@ -268,7 +281,44 @@ class Emulator(Transformer):
         predictive_mean = np.matmul(np.transpose(kstar), self.alpha)
         v = solve_triangular(self.cholesky, kstar, lower=True)
         predictive_variance = self.covariance(X, X, self.scales) - np.matmul(np.transpose(v), v)
-        return predictive_mean.reshape(-1,1), np.diag(predictive_variance).reshape(-1,1,1) # will only return SD of individual predictions. No covariances between each prediction
+        return predictive_mean.reshape(-1,1), np.diag(predictive_variance).reshape(-1,1,1)
+        """
+        return JITPredict(X, self.X, self.cholesky, self.scales, self.alpha)
+        """
+        
+  # will only return SD of individual predictions. No covariances between each prediction
+"""
+@numba.jit(nopython=True)
+def DistWithScale(xp, xq, scales):
+    nrows = xp.shape[0]
+    ncols = xq.shape[0]
+    nfeatures = xp.shape[1]
+    D = nnp.empty((nrows, ncols), dtype=np.float64)
+    for i in range(nrows):
+        for j in range(ncols):
+            d = 0
+            for k in range(nfeatures):
+                tmp = (xp[i, k] - xq[j, k])/scales[k]
+                d += tmp*tmp
+            D[i, j] = d
+    return nnp.exp(-D).T
+"""
+@numba.jit(nopython=True, fastmath=True)
+def DistWithScale(xp, xq, scales):
+    xps2 = nnp.sum(nnp.square(xp/scales.reshape(1,-1)), 1)
+    xqs2 = nnp.sum(nnp.square(xq/scales.reshape(1,-1)), 1)
+    #return np.sum(np.square(xp[:, np.newaxis, :] - xq[np.newaxis, :, :]), axis=-1)
+    return nnp.exp(-(xps2.reshape((-1,1)) + xqs2.reshape((1,-1)) - 2*(xp.dot(xq.T)))).T
+
+
+
+@numba.jit(nopython=True, fastmath=True)
+def JITPredict(X, self_X, self_cholesky, self_scales, self_alpha):
+    kstar = DistWithScale(X, self_X, self_scales)
+    predictive_mean = kstar.T.dot(self_alpha)
+    v = nnp.linalg.solve(self_cholesky, kstar)
+    predictive_variance = DistWithScale(X, X, self_scales) - v.T.dot(v)
+    return predictive_mean.reshape(-1,1), nnp.diag(predictive_variance).reshape(-1,1,1)
 
 class MultEmulator(Transformer):
 
