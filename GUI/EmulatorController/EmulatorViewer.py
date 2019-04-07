@@ -137,6 +137,8 @@ class EmulatorController:
             self.viewer.clb.Check(0, False)
         checked = np.array(self.viewer.clb.GetCheckedItems(), dtype=np.int) - 2
         checked = checked[checked >= 0]
+        print(checked)
+        print(self.model_Y)
         self.model.Fit(self.model_X.loc[checked].values, self.model_Y.loc[checked].values)
         self.ChangeValue(0, self.current_values[0])
 

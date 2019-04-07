@@ -48,12 +48,15 @@ class GridData(gridlib.GridTableBase):
     def GetParent(self):
         pass
 
-    def GetData(self, first_row_as_header=True):  
+    def GetData(self, first_row_as_header=True, drop_index=True):  
         df = self.data.replace(r'^\s*$', np.nan, regex=True)
         df = df.dropna(axis=0, how='all').dropna(axis=1, how='all')
         if first_row_as_header:
-            df.columns = df.iloc[0]
+            df.columns=df.iloc[0]
             df = df.drop(df.index[0])
+            if drop_index:
+                df = df.reset_index(drop=True)
+                df.columns.name = None
         return df
  
 
@@ -61,7 +64,7 @@ class GridData(gridlib.GridTableBase):
         if include_index:
             df = df.reset_index()
         if include_header:
-            df = df.T.reset_index().T
+            df = df.T.reset_index().T.reset_index(drop=True)
         self.ChangeValues(np.arange(df.shape[0]), np.arange(df.shape[1]), df, delete_undo=True)
 
     def ResetUndo(self):

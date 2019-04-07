@@ -55,7 +55,7 @@ class GUIController:
                 break
 
     def Emulate(self, obj, evt):
-        if self.filename is not None:
+        if self.store is not None:
             self.store.close()
             frame = CalculationFrame(None, -1, 'Progress', self.workenv, 10000)
             frame.Show()
@@ -72,10 +72,10 @@ class GUIController:
 
 
     def Save(self, obj, evt):
-        prior = self.prior_model.GetData()
+        prior = self.prior_model.GetData(drop_index=False)
         model_X = self.model_par_model.GetData().astype('float')
         model_Y = self.model_obs_model.GetData().astype('float')
-        exp = self.exp_model.GetData().astype('float')
+        exp = self.exp_model.GetData(drop_index=False).astype('float')
 
         if model_X.equals(self.store['Model_X']) and model_Y.equals(self.store['Model_Y']):
             self.store.close()
@@ -106,17 +106,22 @@ class GUIController:
             args = frame.AdditionalData()
             frame.Destroy()
 
-        prior = self.prior_model.GetData()
+        prior = self.prior_model.GetData(drop_index=False)
         model_X = self.model_par_model.GetData()
         model_Y = self.model_obs_model.GetData()
-        exp = self.exp_model.GetData()
+        exp = self.exp_model.GetData(drop_index=False)
         self.store.close()
         Training(prior, model_X, model_Y, exp, outFile[0], abs_output=True, **args)
 
+        if self.store is not None:
+            self.store.close()
         self.store = pd.HDFStore(outFile[0])
         self.filename = outFile[0]
     
     def OpenFile(self, obj, evt):
+        if self.store is not None:
+            self.store.close()
+
         dlg = wx.FileDialog(
             obj, message="Choose a file",
             defaultFile="",
@@ -131,6 +136,7 @@ class GUIController:
 
         self.filename = path[0]
         self.store = pd.HDFStore(self.filename, 'r')
+
         self.prior_model.SetData(self.store['PriorAndConfig'].T)
         self.model_par_model.SetData(self.store['Model_X'])
         self.model_obs_model.SetData(self.store['Model_Y'])
