@@ -1,3 +1,4 @@
+import sys
 import pandas as pd
 import numpy as np
 import wx
@@ -16,6 +17,7 @@ from GUI.PlotFrame import PlotFrame
 from Utilities.MasterSlave import MasterSlave
 from GUI.Model import CalculationFrame
 from GUI.MatplotlibFrame import MatplotlibFrame
+from GUI.SelectEmulationOption import SelectEmulationOption
 
 class GUIController:
 
@@ -57,17 +59,23 @@ class GUIController:
     def Emulate(self, obj, evt):
         if self.store is not None:
             self.store.close()
-            frame = CalculationFrame(None, -1, 'Progress', self.workenv, 10000)
-            frame.Show()
-            frame.OnCalculate({'config_file': self.filename, 'nsteps': 10000})
 
-            self.store = pd.HDFStore(self.filename, 'r')
-            if not self.correlation_frame:
-                fig = Figure((15,12), 75)
-                self.correlation_frame = MatplotlibFrame(None, fig)
-            PlotTrace(self.filename, self.correlation_frame.fig)
-            self.correlation_frame.SetData()
-            self.correlation_frame.Show()
+            EmuOption = SelectEmulationOption(self.view)
+            res = EmuOption.ShowModal()
+            if res == wx.ID_OK:
+                options = EmuOption.GetValue()
+                nevent = options['nevent']
+                frame = CalculationFrame(None, -1, 'Progress', self.workenv, nevent)
+                frame.Show()
+                frame.OnCalculate({'config_file': self.filename, 'nsteps': nevent})
+
+                self.store = pd.HDFStore(self.filename, 'r')
+                if not self.correlation_frame:
+                    fig = Figure((15,12), 75)
+                    self.correlation_frame = MatplotlibFrame(None, fig)
+                PlotTrace(self.filename, self.correlation_frame.fig)
+                self.correlation_frame.SetData()
+                self.correlation_frame.Show()
         
 
 
@@ -134,7 +142,10 @@ class GUIController:
         if result != wx.ID_OK:
             return False
 
-        self.filename = path[0]
+        self.LoadFile(path[0])
+
+    def LoadFile(self, filename):
+        self.filename = filename
         self.store = pd.HDFStore(self.filename, 'r')
 
         self.prior_model.SetData(self.store['PriorAndConfig'].T)
@@ -244,18 +255,22 @@ class GUIViewer(wx.Frame):
         self.app.ExitMainLoop()
 
 
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
-size = comm.Get_size()
-status = MPI.Status()
-root = 0
-
-
 if __name__ == '__main__':
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+    status = MPI.Status()
+    root = 0
+
+
     work_environment = MasterSlave(comm)
 
     app = wx.App(0)
     controller = GUIController(None, app=app, workenv=work_environment)
     controller.view.Show()
+
+    if len(sys.argv) == 2:
+        controller.LoadFile(sys.argv[1])
+
     app.MainLoop()
     work_environment.Close()
