@@ -96,7 +96,7 @@ class EmulatorController:
         init_value, init_cov = self.model.Predict(self.current_values)
 
         self.X = np.arange(init_value.shape[1])
-        self.line, _, (self.bars,) = self.viewer.ax.errorbar(self.X, init_value.flatten(), yerr=np.sqrt(np.diag(np.squeeze(init_cov))).flatten(),
+        self.line, _, (self.bars,) = self.viewer.ax.errorbar(self.X, init_value.flatten(), yerr=np.sqrt(np.diag(np.atleast_1d(np.squeeze(init_cov)))).flatten(),
                                                              marker='o', linewidth=2, color='red')
         self.bg_line, _, (self.bg_bars,)= self.viewer.ax.errorbar(self.X, self.exp_Y, yerr=self.exp_Yerr, 
                                                                   marker='o', linewidth=2, color='b')
@@ -162,7 +162,7 @@ class EmulatorController:
     def ChangeValue(self, idx, value):
         self.current_values[idx] = value
         val, cov = self.model.Predict(self.current_values)
-        self.SetErrorBar(self.line, self.bars, val.flatten(), np.sqrt(np.diag(np.squeeze(cov))).flatten()) 
+        self.SetErrorBar(self.line, self.bars, val.flatten(), np.sqrt(np.diag(np.atleast_1d(np.squeeze(cov)))).flatten()) 
         self.viewer.RefreshFig()
 
     def OnSlider(self, obj, value):
