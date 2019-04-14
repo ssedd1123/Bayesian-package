@@ -7,8 +7,85 @@ else:
 import autograd.numpy as np
 import pandas as pd
 import argparse
+from Utilities.GradientDescent import UseDefaultOutput
+from Utilities.Utilities import GetTrainedEmulator
+from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
+from numpy import array
 
+from Preprocessor.PipeLine import *
 import Preprocessor.PipeLine as pl
+
+def TrainingCurve(fig, config_file):
+    args = GetTrainedEmulator(config_file)
+    clf = args[0]
+    prior = args[1]
+    exp_Y = args[2]
+    exp_Yerr = args[3]
+    model_X = args[4].values
+    model_Y = args[5].values
+    training_idx = args[6]
+    validation_idx = np.setdiff1d(np.arange(model_X.shape[0]), training_idx)
+    history_para = args[7].fillna(method='ffill')
+
+    clf.Fit(model_X, model_Y)
+    axes = fig.subplots(1,2)
+    NumberOfPts(axes[0], clf, model_X, model_Y, training_idx, validation_idx)
+    NumberOfSteps(axes[1], clf, model_X, model_Y, training_idx, validation_idx, history_para)
+    
+
+def NumberOfPts(ax, clf, model_X, model_Y, training_idx, validation_idx):
+    training_scores = []
+    validation_scores = []
+
+    training_X = model_X[training_idx]
+    training_Y = model_Y[training_idx]
+    validation_X = model_X[validation_idx]
+    validation_Y = model_Y[validation_idx]
+
+    for ntrain in range(2, len(training_X)):
+        clf.Fit(training_X[0:ntrain], training_Y[0:ntrain])
+        pred_Y, _ = clf.Predict(training_X[0:ntrain])
+        training_scores.append(np.sqrt(np.mean((training_Y[0:ntrain] - pred_Y)**2)))
+        pred_Y, _ = clf.Predict(validation_X)
+        validation_scores.append(np.sqrt(np.mean((validation_Y - pred_Y)**2)))
+
+    ax.plot(range(3, len(training_scores)+3), training_scores, label='training')
+    ax.plot(range(3, len(validation_scores)+3), validation_scores, label='validation')
+    ax.set_xlabel('Number of training points')
+    ax.set_ylabel('RMSE per feature')
+    ax.legend()
+
+
+def NumberOfSteps(ax, clf, model_X, model_Y, training_idx, validation_idx, history_para):
+    training_scores = []
+    validation_scores = []
+
+    training_X = model_X[training_idx]
+    training_Y = model_Y[training_idx]
+    validation_X = model_X[validation_idx]
+    validation_Y = model_Y[validation_idx]
+    for idx, para in history_para.iterrows():
+        nuggets = []
+        scales = []
+        for idemu, emulator in enumerate(clf['Emulator'].emulators):
+            nuggets.append(para['Nuggets%d' % idemu])
+            scales.append(para[['Scales%d_%d' % (idemu, idinput) for idinput in range(model_X.shape[1])]].values)
+        clf['Emulator'].scales = np.atleast_2d(scales)
+        clf['Emulator'].nuggets = np.atleast_1d(nuggets)
+
+        clf.Fit(training_X, training_Y)
+        training_scores.append(clf.Score(training_X, training_Y))
+        validation_scores.append(clf.Score(validation_X, validation_Y))
+
+    ax.plot(range(history_para.shape[0]), training_scores, label=r'Training $R^2$')
+    ax.plot(range(history_para.shape[0]), validation_scores, label=r'Validation $R^2$')
+    ax.set_xlabel('Number of ephoes')
+    ax.set_ylabel(r'$R^2$')
+    ax.legend()
+
+
+
 
 def Training(prior, model_X, model_Y, exp, training_file,
              principalcomp=None, fraction=0.99,
@@ -51,9 +128,11 @@ def Training(prior, model_X, model_Y, exp, training_file,
                                                     initial_nuggets=initialnugget,
                                                     scales_rate=scalerate,
                                                     nuggets_rate=nuggetrate,
-                                                    max_steps=maxsteps))])
-    
-    clf.Fit(model_X.values, model_Y.values) 
+                                                    max_steps=maxsteps,
+                                                    save_train_history=True))])
+    X = model_X.values
+    Y = model_Y.values
+    clf.Fit(X, Y) 
 
     """
     Write all the training result, together with training points and pipe used to a file
@@ -70,15 +149,21 @@ def Training(prior, model_X, model_Y, exp, training_file,
     store['Exp_Y'] = exp_Y
     store['Exp_YErr'] = exp_Yerr
   
-    emulator = clf.named_steps[-1][1]
+    emulator = clf['Emulator']
     config = {'repr': repr(clf)}
     store.get_storer('PriorAndConfig').attrs.my_attribute = config
+    
+    df_para = []
+    for idemu, emulator in enumerate(clf['Emulator'].emulators):
+        df_para.append(pd.DataFrame(emulator.history_para, columns=['Nuggets%d'%idemu] + ['Scales%d_%d'%(idemu, idinput) for idinput in range(model_X.shape[1])]))
+    df_para = pd.concat(df_para, axis=1)
+    store['ParaHistory'] = df_para
 
     store.close()
 
 
 if __name__=='__main__':
-
+    
     parser = argparse.ArgumentParser(description='This script will choose an optimal set of hyperparameters by minizing loss function')
     parser.add_argument('prior', help='Locatioin of parameter priors')
     parser.add_argument('model', help='Location of the model simulation files')
@@ -96,5 +181,11 @@ if __name__=='__main__':
     args['Model_Y'] = args['Model']
     del args['Model']
     
+    UseDefaultOutput()
     Training(**args)
-    
+
+    fig = plt.figure(None, (15,12), 75)
+    TrainingCurve(fig, args['training_file'])
+    plt.show()
+
+

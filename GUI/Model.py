@@ -290,7 +290,7 @@ class CalculationFrame(wx.Frame):
     wx.YieldIfNeeded()
 
     try:
-      result = Merging(args['config_file'], self.enviro.results)
+      result = Merging(args['config_file'], self.enviro.results, args['clear_trace'])
     except Exception as e:
       print('Error merging files. Read result in %s' % dirpath)
       sys.stdout.flush()

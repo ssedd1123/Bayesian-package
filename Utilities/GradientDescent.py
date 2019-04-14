@@ -1,6 +1,20 @@
 import autograd.numpy as np
 import sys
 from autograd import grad
+from pubsub import pub
+
+def DefaultOutput(step, mag, nuggets, scales):
+    sys.stdout.write("\rProcessing %i iteration, gradient magnitude = %2.6f, nuggets = %2.3f, scales = %s      " % (step, mag, nuggets, np.array2string(scales, formatter={'float_kind':lambda x: '%02.3f' % x})))
+    sys.stdout.flush()
+
+def NewLine():
+    print('')
+
+def UseDefaultOutput():
+    pub.subscribe(DefaultOutput, 'GradientProgress')
+    pub.subscribe(NewLine, 'GradientEnd')
+
+
 
 def GetOptimizer(name, *args, **kwargs):
     if name == 'GradientDescent':
@@ -27,49 +41,39 @@ class GradientDescentForEmulator:
     def SetFunc(self, func):
         self.func = func
 
-        def scales_exp_cal(t_scales_log):
-            return func(scales=np.exp(t_scales_log), nuggets=np.exp(self.nuggets_log))
+        def exp_cal(t_para_log):
+            return func(np.exp(t_para_log))
  
-        def nuggets_exp_cal(t_nuggets_log):
-            return func(scales=np.exp(self.scales_log), nuggets=np.exp(t_nuggets_log))
+        self.grad_exp = grad(exp_cal)
 
-        self.grad_scales_exp = grad(scales_exp_cal)
-        self.grad_nuggets_exp = grad(nuggets_exp_cal)
+    def StepDescent(self, para):
+        self.para_log = np.log(para)
+        gradient = self.grad_exp(self.para_log)
 
-    def StepDescent(self, scales, nuggets):
-        self.scales_log = np.log(scales)
-        self.nuggets_log = np.log(nuggets)
-        gradient_scales = self.grad_scales_exp(self.scales_log)
-        gradient_nuggets = self.grad_nuggets_exp(self.nuggets_log)
+        para = self.para_log + gradient*self.step_size
 
-        scale_temp = self.scales_log + gradient_scales*self.step_scales_size
-        nuggets_temp = self.nuggets_log + gradient_nuggets*self.step_nuggets_size
-
-        return np.exp(scale_temp), np.exp(nuggets_temp), gradient_scales, gradient_nuggets
+        return np.exp(para), gradient
         
-    def Descent(self, scales, nuggets, nsteps=10, tolerance=1e-4):
-        history_scales = []
-        history_nuggets = []
-        scales = np.array(scales)
-        nuggets = np.array(nuggets)
+    def Descent(self, scales, nuggets, nsteps=10, tolerance=1e-4, progress=DefaultOutput):
+        history_para = []
+        scales = np.atleast_1d(scales)
+        nuggets = np.atleast_1d(nuggets)
+        para = np.concatenate([scales, nuggets])
+        self.step_size = np.full((1,),self.step_nuggets_size)
+        self.step_size = np.concatenate([self.step_size, np.full(scales.shape, self.step_scales_size)])
         for i in range(nsteps):
-        
-            hist_scales, hist_nuggets, grad_scales, grad_nuggets = self.StepDescent(scales, nuggets)
-            history_scales.append(hist_scales)
-            history_nuggets.append(hist_nuggets)
-            (scales, nuggets) = history_scales[-1], history_nuggets[-1]
+            new_para, grad = self.StepDescent(para)
+            para = new_para
+            history_para.append(new_para)
+            (scales, nuggets) = new_para[1:], new_para[0]
 
-            mag_scales = np.linalg.norm(grad_scales)*self.step_scales_size
-            mag_nuggets = np.linalg.norm(grad_nuggets)*self.step_nuggets_size
-            mag = np.sqrt(mag_scales*mag_scales + mag_nuggets*mag_nuggets)
+            mag = np.linalg.norm(grad*self.step_size)
 
-            sys.stdout.write("\rProcessing %i iteration, gradient magnitude = %2.6f, nuggets = %2.3f, scales = %s              " % (i, mag, nuggets, np.array2string(scales, formatter={'float_kind':lambda x: '%02.3f' % x})))
-            sys.stdout.flush()
+            pub.sendMessage('GradientProgress', step=i, mag=mag, nuggets=nuggets, scales=scales)
             if mag < tolerance: #or mag < 0.5*(self.step_scales_size + self.step_nuggets_size):
                 break
-
-        print('')
-        return np.array(history_scales), np.array(history_nuggets)
+        pub.sendMessage('GradientEnd')
+        return np.array(history_para)
         
 class MomentumDescentForEmulator(GradientDescentForEmulator):
 
@@ -77,29 +81,20 @@ class MomentumDescentForEmulator(GradientDescentForEmulator):
     def __init__(self, step_size_scales, step_size_nuggets, momentum=0.95):
         GradientDescentForEmulator.__init__(self, step_size_scales, step_size_nuggets)
         self.momentum = momentum
-        self.momentum_vector_scale = None
-        self.momentum_vector_nugget = None
+        self.momentum_vector = None
 
-    def StepDescent(self, scales, nuggets):
-        self.scales_log = np.log(scales)
-        self.nuggets_log = np.log(nuggets)
-        if self.momentum_vector_scale is None:
-            self.momentum_vector_scale = np.zeros_like(self.scales_log)
-        if self.momentum_vector_nugget is None:
-            self.momentum_vector_nugget = np.zeros_like(self.nuggets_log)
+    def StepDescent(self, para):
+        self.para_log = np.log(para)
+        if self.momentum_vector is None:
+            self.momentum_vector = np.zeros_like(self.para_log)
 
-        gradient_scales = self.grad_scales_exp(self.scales_log)
-        gradient_nuggets = self.grad_nuggets_exp(self.nuggets_log)
+        gradient = self.grad_exp(self.para_log)
             
-        self.momentum_vector_scale = self.momentum*self.momentum_vector_scale \
-                                     - self.step_scales_size*gradient_scales
-        self.momentum_vector_nugget = self.momentum*self.momentum_vector_nugget \
-                                      - self.step_nuggets_size*gradient_nuggets
+        self.momentum_vector = self.momentum*self.momentum_vector \
+                                     - self.step_size*gradient
 
-        scales_temp = self.scales_log - self.momentum_vector_scale
-        nuggets_temp = self.nuggets_log - self.momentum_vector_nugget
-
-        return np.exp(scales_temp), np.exp(nuggets_temp), gradient_scales, gradient_nuggets       
+        para_temp = self.para_log - self.momentum_vector
+        return np.exp(para_temp), gradient   
 
 class RMSPropForEmulator(GradientDescentForEmulator):
 
@@ -107,28 +102,20 @@ class RMSPropForEmulator(GradientDescentForEmulator):
     def __init__(self, step_size_scales, step_size_nuggets, momentum=0.9):
         GradientDescentForEmulator.__init__(self, step_size_scales, step_size_nuggets)
         self.momentum = momentum
-        self.momentum_vector_scale = None
-        self.momentum_vector_nugget = None
+        self.momentum_vector = None
 
-    def StepDescent(self, scales, nuggets):
-        self.scales_log = np.log(scales)
-        self.nuggets_log = np.log(nuggets)
-        gradient_scales = self.grad_scales_exp(self.scales_log)
-        gradient_nuggets = self.grad_nuggets_exp(self.nuggets_log)
-        if self.momentum_vector_scale is None:
-            self.momentum_vector_scale = np.zeros_like(self.scales_log)
-        if self.momentum_vector_nugget is None:
-            self.momentum_vector_nugget = np.zeros_like(self.nuggets_log)
+    def StepDescent(self, para):
+        self.para_log = np.log(para)
+        gradient = self.grad_exp(self.para_log)
+        if self.momentum_vector is None:
+            self.momentum_vector = np.zeros_like(self.para_log)
             
-        self.momentum_vector_scale = self.momentum*self.momentum_vector_scale \
-                                     + (1 - self.momentum)*gradient_scales*gradient_scales
-        self.momentum_vector_nugget = self.momentum*self.momentum_vector_nugget \
-                                      + (1 - self.momentum)*gradient_nuggets*gradient_nuggets
+        self.momentum_vector = self.momentum*self.momentum_vector \
+                                     + (1 - self.momentum)*gradient*gradient
 
-        scales_temp = self.scales_log + self.step_scales_size*gradient_scales/np.sqrt(self.momentum_vector_scale + 1e-10)
-        nuggets_temp = self.nuggets_log + self.step_nuggets_size*gradient_nuggets/np.sqrt(self.momentum_vector_nugget + 1e-10)
+        para_temp = self.para_log + self.step_size*gradient/np.sqrt(self.momentum_vector + 1e-10)
 
-        return np.exp(scales_temp), np.exp(nuggets_temp), gradient_scales, gradient_nuggets       
+        return np.exp(para_temp), gradient       
 
 class AdamForEmulator(GradientDescentForEmulator):
 
@@ -137,41 +124,20 @@ class AdamForEmulator(GradientDescentForEmulator):
         GradientDescentForEmulator.__init__(self, step_size_scales, step_size_nuggets)
         self.beta1 = beta1
         self.beta2 = beta2
-        self.m_scales = None
-        self.m_nuggets = None
-        self.s_scales = None
-        self.s_nuggets = None
+        self.m_para = None
+        self.s_para = None
         self.iteration = 1
 
-    def StepDescent(self, scales, nuggets):
-        self.scales_log = np.log(scales)
-        self.nuggets_log = np.log(nuggets)
-        gradient_scales = self.grad_scales_exp(self.scales_log)
-        gradient_nuggets = self.grad_nuggets_exp(self.nuggets_log)
-        if self.m_scales is None:
-            self.m_scales = np.zeros_like(self.scales_log)
-            self.s_scales = np.zeros_like(self.scales_log)
+    def StepDescent(self, parameters):
+        self.para_log = np.log(parameters)
+        gradient = self.grad_exp(self.para_log)
+        if self.m_para is None:
+            self.m_para = np.zeros_like(self.para_log)
+            self.s_para = np.zeros_like(self.para_log)
 
-            self.m_nuggets = np.zeros_like(self.nuggets_log)
-            self.s_nuggets = np.zeros_like(self.nuggets_log)
-            
-        self.m_scales = self.beta1*self.m_scales - (1 - self.beta1)*gradient_scales
-        self.m_nuggets = self.beta1*self.m_nuggets - (1 - self.beta1)*gradient_nuggets
+        self.m_para = self.beta1*self.m_para - (1 - self.beta1)*gradient
+        self.s_para = self.beta2*self.s_para + (1 - self.beta2)*gradient*gradient
 
-        self.s_scales = self.beta2*self.s_scales + (1 - self.beta2)*gradient_scales*gradient_scales
-        self.s_nuggets = self.beta2*self.s_nuggets + (1 - self.beta2)*gradient_nuggets*gradient_nuggets
-
-        """
-        self.m_scales = self.m_scales/(1 - self.beta1**self.iteration)
-        self.m_nuggets = self.m_nuggets/(1 - self.beta1**self.iteration)
-
-        self.s_scales = self.s_scales/(1 - self.beta2**self.iteration)
-        self.s_nuggets = self.s_nuggets/(1 - self.beta2**self.iteration)
-
-        self.iteration = self.iteration + 1
-        """
-        scales_temp = self.scales_log - self.step_scales_size*self.m_scales/np.sqrt(self.s_scales + 1e-10)
-        nuggets_temp = self.nuggets_log - self.step_nuggets_size*self.m_nuggets/np.sqrt(self.s_nuggets + 1e-10)
-
-        return np.exp(scales_temp), np.exp(nuggets_temp), gradient_scales, gradient_nuggets       
+        para_temp = self.para_log - self.step_size*self.m_para/np.sqrt(self.s_para + 1e-10)
+        return np.exp(para_temp), gradient       
 

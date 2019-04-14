@@ -11,6 +11,8 @@ from matplotlib.backends.backend_wx import NavigationToolbar2Wx
 from GUI.EmulatorController.SliderCustom import CustomSlider
 from pubsub import pub
 from numpy import array 
+
+import Utilities.Utilities as utl
 from Preprocessor.PipeLine import * 
 
 class EmulatorViewer(wx.Frame):
@@ -38,24 +40,32 @@ class EmulatorViewer(wx.Frame):
             self.sliders.append(slider)
         #self.highlighter2 = CustomSlider(panel, 1, 1, 8) 
         self.clb = wx.CheckListBox(panel, -1, (50, -1), wx.DefaultSize, [])
-
+        self.retrain = wx.Button(panel, -1, 'Retrain')
 
         hsizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer = wx.BoxSizer(wx.VERTICAL)
+        rsizer = wx.BoxSizer(wx.VERTICAL)
         # This way of adding to sizer allows resizing
-        sizer.Add(self.canvas, 1, wx.EXPAND)
+        rsizer.Add(self.canvas, 1, wx.EXPAND)
         for slider in self.sliders:
-            sizer.Add(slider, 0, wx.EXPAND | wx.RIGHT)# | wx.LEFT | wx.RIGHT, 20)
-        sizer.Add(self.toolbar, 0, wx.GROW | wx.RIGHT)
+            rsizer.Add(slider, 0, wx.EXPAND | wx.RIGHT)# | wx.LEFT | wx.RIGHT, 20)
+        rsizer.Add(self.toolbar, 0, wx.GROW | wx.RIGHT)
 
-        hsizer.Add(self.clb, 0, wx.EXPAND)
-        hsizer.Add(sizer, 1, wx.EXPAND)
+        lsizer = wx.BoxSizer(wx.VERTICAL)
+        lsizer.Add(self.clb, 1, wx.EXPAND)
+        lsizer.Add(self.retrain, 0)
+
+        hsizer.Add(lsizer, 0, wx.EXPAND)
+        hsizer.Add(rsizer, 1, wx.EXPAND)
 
         self.Bind(wx.EVT_LISTBOX, self.OnListBox)
         self.Bind(wx.EVT_CHECKLISTBOX, self.OnCheckListBox)
+        self.Bind(wx.EVT_BUTTON, self.OnRetrain)
         panel.SetSizer(hsizer)
         self.Layout()
         self.Centre()
+
+    def OnRetrain(self, evt):
+        pub.sendMessage('Emulator_Retrain', obj=self, evt=evt)
 
     def OnListBox(self, evt):
         pub.sendMessage('Emulator_ListSelect', obj=self, evt=evt)
@@ -68,16 +78,16 @@ class EmulatorViewer(wx.Frame):
 
 class EmulatorController:
 
-    def __init__(self, store):
-        prior = store['PriorAndConfig']
-        self.exp_Y = store['Exp_Y']
-        self.exp_Yerr = store['Exp_YErr']
-        self.model_Y = store['Model_Y']
-        self.model_X = store['Model_X']
-
-        config = store.get_storer('PriorAndConfig').attrs.my_attribute
-        emulator  = eval(config['repr'])
-        emulator.Fit(self.model_X.values, self.model_Y.values)  
+    def __init__(self, store_file):
+        self.store_file = store_file
+        args = utl.GetTrainedEmulator(store_file)
+        emulator = args[0] 
+        prior = args[1]
+        self.exp_Y = args[2] 
+        self.exp_Yerr = args[3] 
+        self.model_X = args[4] 
+        self.model_Y = args[5]
+        init_training_idx = args[6]
 
         self.viewer = EmulatorViewer(prior.index, prior['Min'], prior['Max'], 0.5*(prior['Min'] + prior['Max']),size=(1000,700), parent=None)
         self.model = emulator
@@ -98,11 +108,12 @@ class EmulatorController:
 
         self.items = ['Check All', 'Exp'] + self.model_Y.index.astype(str).tolist()
         self.viewer.clb.SetItems(self.items)
-        self.viewer.clb.SetCheckedItems(np.arange(0, len(self.items)))
+        self.viewer.clb.SetCheckedItems([0, 1] + [item+2 for item in init_training_idx])
 
         pub.subscribe(self.CheckObj, 'Slider_Value', func=self.OnSlider)
         pub.subscribe(self.CheckObj, 'Emulator_ListSelect', func=self.OnListSelect)
         pub.subscribe(self.CheckObj, 'Emulator_CheckSelect', func=self.OnCheckboxSelect)
+        pub.subscribe(self.CheckObj, 'Emulator_Retrain', func=self.OnRetrain)
 
     def CheckObj(self, func, obj, evt):
         orig_obj = obj
@@ -113,6 +124,13 @@ class EmulatorController:
             obj = obj.GetParent()
             if obj is None:
                 break
+
+    def OnRetrain(self, obj, evt):
+        checked = np.array(self.viewer.clb.GetCheckedItems(), dtype=int) - 2
+        training_idx = checked[checked >= 0]
+        store = pd.HDFStore(self.store_file, 'a')
+        store['Training_idx'] = pd.DataFrame(training_idx, dtype=int)
+        store.close()
 
     def OnListSelect(self, obj, evt):
         selected = evt.GetString()
@@ -137,8 +155,6 @@ class EmulatorController:
             self.viewer.clb.Check(0, False)
         checked = np.array(self.viewer.clb.GetCheckedItems(), dtype=np.int) - 2
         checked = checked[checked >= 0]
-        print(checked)
-        print(self.model_Y)
         self.model.Fit(self.model_X.loc[checked].values, self.model_Y.loc[checked].values)
         self.ChangeValue(0, self.current_values[0])
 
@@ -164,10 +180,9 @@ class EmulatorController:
  
 
 if __name__ == '__main__':
-    store = pd.HDFStore('result/newhist.h5')
 
     app = wx.App()
-    controller = EmulatorController(store)
+    controller = EmulatorController('result/newhist.h5')
     ex = controller.viewer
     ex.Show()
     app.MainLoop()

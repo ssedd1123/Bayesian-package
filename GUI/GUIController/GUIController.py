@@ -9,7 +9,7 @@ from Utilities.Utilities import PlotTrace
 from GUI.GridController.GridController import GridController, PriorController
 from GUI.GUIController.GUIMenu import GUIMenuBar
 from GUI.EmulatorController.EmulatorViewer import EmulatorController
-from TrainEmulator import Training
+from TrainEmulator import Training, TrainingCurve
 from ChangeFileContent import ChangeFileContent
 from GUI.SelectTrainingOption import SelectOption
 from matplotlib.figure import Figure
@@ -18,6 +18,8 @@ from Utilities.MasterSlave import MasterSlave
 from GUI.Model import CalculationFrame
 from GUI.MatplotlibFrame import MatplotlibFrame
 from GUI.SelectEmulationOption import SelectEmulationOption
+import Utilities.GradientDescent as gd
+from PlotPosterior import PlotOutput
 
 class GUIController:
 
@@ -31,7 +33,6 @@ class GUIController:
         self.model_par_model = self.view.model_par_controller.model
         self.exp_model = self.view.exp_controller.model
 
-        self.store = None 
         self.filename = None
         self.correlation_frame = None
         
@@ -45,6 +46,9 @@ class GUIController:
         pub.subscribe(self.CheckObj, 'MenuBar_SaveNew', func=self.SaveNew)
         pub.subscribe(self.CheckObj, 'MenuBar_Save', func=self.Save)
         pub.subscribe(self.CheckObj, 'MenuBar_Emulate', func=self.Emulate)
+        pub.subscribe(self.CheckObj, 'MenuBar_Report', func=self.TrainReport)
+        pub.subscribe(self.CheckObj, 'MenuBar_Correlation', func=self.Correlation)
+        pub.subscribe(self.CheckObj, 'MenuBar_Posterior', func=self.Posterior)
 
     def CheckObj(self, func, obj, evt):
         orig_obj = obj
@@ -56,10 +60,17 @@ class GUIController:
             if obj is None:
                 break
 
-    def Emulate(self, obj, evt):
-        if self.store is not None:
-            self.store.close()
+    def TrainReport(self, obj, evt):
+        if self.filename is not None:
+            fig = Figure((15,12), 75)
+            frame = MatplotlibFrame(None, fig)
+            TrainingCurve(fig, config_file=self.filename)
+            frame.SetData()
+            frame.Show()
+            
 
+    def Emulate(self, obj, evt):
+        if self.filename is not None:
             EmuOption = SelectEmulationOption(self.view)
             res = EmuOption.ShowModal()
             if res == wx.ID_OK:
@@ -67,16 +78,28 @@ class GUIController:
                 nevent = options['nevent']
                 frame = CalculationFrame(None, -1, 'Progress', self.workenv, nevent)
                 frame.Show()
-                frame.OnCalculate({'config_file': self.filename, 'nsteps': nevent})
-
-                self.store = pd.HDFStore(self.filename, 'r')
-                if not self.correlation_frame:
-                    fig = Figure((15,12), 75)
-                    self.correlation_frame = MatplotlibFrame(None, fig)
-                PlotTrace(self.filename, self.correlation_frame.fig)
-                self.correlation_frame.SetData()
-                self.correlation_frame.Show()
+                frame.OnCalculate({'config_file': self.filename, 'nsteps': nevent, 'clear_trace': options['clear_trace']})
+                self.Correlation(None, None)
         
+    def Correlation(self, obj, evt):
+        if self.filename is not None:
+            if not self.correlation_frame:
+                fig = Figure((15,12), 75)
+                self.correlation_frame = MatplotlibFrame(None, fig)
+            self.correlation_frame.fig.clf()
+            PlotTrace(self.filename, self.correlation_frame.fig)
+            self.correlation_frame.SetData()
+            self.correlation_frame.Show()
+
+    def Posterior(self, obj, evt):
+        if self.filename is not None:
+            if not self.correlation_frame:
+                fig = Figure((15,12), 75)
+                self.correlation_frame = MatplotlibFrame(None, fig)
+            self.correlation_frame.fig.clf()
+            PlotOutput(self.filename, self.correlation_frame.fig)
+            self.correlation_frame.SetData()
+            self.correlation_frame.Show()
 
 
     def Save(self, obj, evt):
@@ -85,12 +108,12 @@ class GUIController:
         model_Y = self.model_obs_model.GetData().astype('float')
         exp = self.exp_model.GetData(drop_index=False).astype('float')
 
-        if model_X.equals(self.store['Model_X']) and model_Y.equals(self.store['Model_Y']):
-            self.store.close()
-            ChangeFileContent(self.filename, prior, exp)
-            self.store = pd.HDFStore(self.filename)
+        store = pd.HDFStore(self.filename, 'a')
+        if model_X.equals(store['Model_X']) and model_Y.equals(store['Model_Y']):
+            ChangeFileContent(store, prior, exp)
         else:
             wx.MessageBox('Model values has changed. You must train the emulator again', 'Error', wx.OK | wx.ICON_ERROR)
+        store.close()
 
     def SaveNew(self, obj, evt):
         """
@@ -118,18 +141,11 @@ class GUIController:
         model_X = self.model_par_model.GetData()
         model_Y = self.model_obs_model.GetData()
         exp = self.exp_model.GetData(drop_index=False)
-        self.store.close()
-        Training(prior, model_X, model_Y, exp, outFile[0], abs_output=True, **args)
 
-        if self.store is not None:
-            self.store.close()
-        self.store = pd.HDFStore(outFile[0])
+        Training(prior, model_X, model_Y, exp, outFile[0], abs_output=True, **args)
         self.filename = outFile[0]
     
     def OpenFile(self, obj, evt):
-        if self.store is not None:
-            self.store.close()
-
         dlg = wx.FileDialog(
             obj, message="Choose a file",
             defaultFile="",
@@ -141,27 +157,26 @@ class GUIController:
 
         if result != wx.ID_OK:
             return False
-
         self.LoadFile(path[0])
 
     def LoadFile(self, filename):
         self.filename = filename
-        self.store = pd.HDFStore(self.filename, 'r')
+        store = pd.HDFStore(self.filename, 'r')
 
-        self.prior_model.SetData(self.store['PriorAndConfig'].T)
-        self.model_par_model.SetData(self.store['Model_X'])
-        self.model_obs_model.SetData(self.store['Model_Y'])
-        self.exp_model.SetData(pd.concat([self.store['Exp_Y'], self.store['Exp_YErr']], axis=1).T)
+        self.prior_model.SetData(store['PriorAndConfig'].T)
+        self.model_par_model.SetData(store['Model_X'])
+        self.model_obs_model.SetData(store['Model_Y'])
+        self.exp_model.SetData(pd.concat([store['Exp_Y'], store['Exp_YErr']], axis=1).T)
 
         self.prior_model.ResetUndo()
         self.model_par_model.ResetUndo()
         self.model_obs_model.ResetUndo()
         self.exp_model.ResetUndo()
-
+        store.close()
 
     def EmulatorCheck(self, obj, evt):
-        if self.store is not None:
-            controller = EmulatorController(self.store)
+        if self.filename is not None:
+            controller = EmulatorController(self.filename)
             controller.viewer.Show()
  
 
@@ -265,6 +280,7 @@ if __name__ == '__main__':
 
     work_environment = MasterSlave(comm)
 
+    gd.UseDefaultOutput()
     app = wx.App(0)
     controller = GUIController(None, app=app, workenv=work_environment)
     controller.view.Show()

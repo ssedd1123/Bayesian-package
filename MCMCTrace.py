@@ -22,7 +22,7 @@ from scipy.stats import multivariate_normal as mvn
 from contextlib import contextmanager
 
 from Preprocessor.PipeLine import *
-from Utilities.Utilities import PlotTrace
+from Utilities.Utilities import PlotTrace, GetTrainedEmulator
 from Utilities.MasterSlave import MasterSlave
 
 def GenerateTrace(emulator, exp_Y, exp_Yerr, prior, id_, iter, output_filename):
@@ -62,26 +62,21 @@ def GenerateTrace(emulator, exp_Y, exp_Yerr, prior, id_, iter, output_filename):
  
 
 def MCMCParallel(config_file, dirpath=None, nevents=10000):
-    store = pd.HDFStore(config_file, 'r')
-
-    config = store.get_storer('PriorAndConfig').attrs.my_attribute
-    prior = store['PriorAndConfig']
-    model_X = store['Model_X'].values
-    model_Y = store['Model_Y'].values
-    exp_Y = store['Exp_Y'].values
-    exp_Yerr = store['Exp_YErr'].values
-
-    clf = eval(config['repr'])
-    clf.Fit(model_X, model_Y)
+    args = GetTrainedEmulator(config_file)
+    clf = args[0]
+    prior = args[1]
+    exp_Y = args[2]
+    exp_Yerr = args[3]
 
     if dirpath is None:
         dirpath = tempfile.mkdtemp()
     result = GenerateTrace(clf, exp_Y, exp_Yerr, prior, MPI.COMM_WORLD.Get_rank(), nevents, os.path.join(dirpath, 'temp'))
-    store.close()
     return result    
 
-def Merging(config_file, list_of_traces):
+def Merging(config_file, list_of_traces, clear_trace=False):
     store = pd.HDFStore(config_file)
+    if clear_trace and 'trace' in store:
+        store.remove('trace')
     for f in list_of_traces:
         df = pd.read_hdf(f)
         store.append(key='trace', value=df)

@@ -19,6 +19,8 @@ class SelectEmulationOption(wx.Dialog):
             sizer.Add(hsizer) 
             self.values[key] = value_ctrl
 
+        self.clear_trace = wx.CheckBox(self, label='Clear Previous Trace?')
+        sizer.Add(self.clear_trace)
         self.button = wx.Button(self, wx.ID_OK, 'Submit')
         sizer.Add(self.button)
         self.SetSizer(sizer)
@@ -38,6 +40,7 @@ class SelectEmulationOption(wx.Dialog):
             except Exception as e:
                 print('Cannot cast result to integers')
                 print(e, flush=True)
+        result['clear_trace'] = self.clear_trace.GetValue()
         return result
 
 

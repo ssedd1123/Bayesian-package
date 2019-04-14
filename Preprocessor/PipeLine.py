@@ -39,6 +39,12 @@ class Transformer:
     def Fit(self, X, Y):
         pass
 
+    def Score(self, X, Y):
+        predict_Y, _ = self.Predict(X)
+        u = Y - predict_Y
+        v = Y - np.mean(Y, axis=0)
+        return 1 - ((u*u).sum()/(v*v).sum())
+
     def _TransformX(self, X):
         return X
 
@@ -73,6 +79,12 @@ class PipeLine(Transformer):
     def __init__(self, named_steps):
         self.named_steps = named_steps
         self.predictor = named_steps[-1][1]
+        self._steps = {}
+        for name, step in self.named_steps:
+            self._steps[name] = step
+
+    def __getitem__(self, key):
+        return self._steps[key]
 
     def Fit(self, X, Y):
         for name, step in self.named_steps:
@@ -226,7 +238,8 @@ class Emulator(Transformer):
                  nuggets_rate=0.05,
                  max_steps=1000,
                  scales=None,
-                 nuggets=None):
+                 nuggets=None,
+                 save_train_history=False):
         self.covariance = squared_exponential
         self.initial_scales = initial_scales
         self.scales_rate = scales_rate
@@ -235,6 +248,7 @@ class Emulator(Transformer):
         self.max_steps = max_steps
         self.scales = scales
         self.nuggets = nuggets
+        self.save_train_history = save_train_history
 
     def Fit(self, X, Y):
         assert X.shape[0] == Y.shape[0], \
@@ -246,15 +260,18 @@ class Emulator(Transformer):
 
         self.X = X
         self.Y = Y
+        history_para = None
         if self.scales is None or self.nuggets is None:
             gd = GetOptimizer('Adam', self.scales_rate, self.nuggets_rate)
             gd.SetFunc(self._LOOCrossValidation)
-            history_scale, history_nuggets = gd.Descent(self.initial_scales, self.initial_nuggets, self.max_steps)
+            history_para = gd.Descent(self.initial_scales, self.initial_nuggets, self.max_steps)
 
-            self.scales = history_scale[-1]
-            self.nuggets = history_nuggets[-1]
+            self.scales = history_para[-1][1:]
+            self.nuggets = history_para[-1][0]
 
         self._CalculateNecessaryMatrices(self.scales, self.nuggets)
+        if self.save_train_history:
+            self.history_para = history_para
 
     def _CalculateNecessaryMatrices(self, scales, nuggets):
         K = self.covariance(self.X, self.X, scales)
@@ -264,8 +281,8 @@ class Emulator(Transformer):
         self.cholesky = L
         self.cov_matrix = K
 
-    def _LOOCrossValidation(self, scales, nuggets):
-        self._CalculateNecessaryMatrices(scales, nuggets)
+    def _LOOCrossValidation(self, hyperparameters):#scales, nuggets):
+        self._CalculateNecessaryMatrices(scales=hyperparameters[1:], nuggets=hyperparameters[0])
         Kinv_diag = np.diag(np.linalg.inv(self.cov_matrix)).reshape(-1,1)
         LOO_mean_minus_target = self.alpha/Kinv_diag
         LOO_sigma = np.reciprocal(Kinv_diag)
@@ -274,7 +291,7 @@ class Emulator(Transformer):
         return log_CV.sum()
 
     def __repr__(self):
-        return("{}(covariance={}, initial_scales={}, initial_nuggets={}, scales_rate={}, nuggets_rate={}, max_steps={}, scales={!r}, nuggets={!r})").format(self.__class__.__name__, self.covariance.__name__, self.initial_scales, self.initial_nuggets, self.scales_rate, self.nuggets_rate, self.max_steps, self.scales, self.nuggets)
+        return("{}(covariance={}, initial_scales={}, initial_nuggets={}, scales_rate={}, nuggets_rate={}, max_steps={}, scales={!r}, nuggets={!r}, save_train_history={!r})").format(self.__class__.__name__, self.covariance.__name__, self.initial_scales, self.initial_nuggets, self.scales_rate, self.nuggets_rate, self.max_steps, self.scales, self.nuggets, self.save_train_history)
 
     def Predict(self, X):
         kstar = self.covariance(X, self.X, self.scales)
@@ -282,44 +299,7 @@ class Emulator(Transformer):
         v = solve_triangular(self.cholesky, kstar, lower=True)
         predictive_variance = self.covariance(X, X, self.scales) - np.matmul(np.transpose(v), v)
         return predictive_mean.reshape(-1,1), np.diag(predictive_variance).reshape(-1,1,1)
-        """
-        return JITPredict(X, self.X, self.cholesky, self.scales, self.alpha)
-        """
         
-  # will only return SD of individual predictions. No covariances between each prediction
-"""
-@numba.jit(nopython=True)
-def DistWithScale(xp, xq, scales):
-    nrows = xp.shape[0]
-    ncols = xq.shape[0]
-    nfeatures = xp.shape[1]
-    D = nnp.empty((nrows, ncols), dtype=np.float64)
-    for i in range(nrows):
-        for j in range(ncols):
-            d = 0
-            for k in range(nfeatures):
-                tmp = (xp[i, k] - xq[j, k])/scales[k]
-                d += tmp*tmp
-            D[i, j] = d
-    return nnp.exp(-D).T
-"""
-@numba.jit(nopython=True, fastmath=True)
-def DistWithScale(xp, xq, scales):
-    xps2 = nnp.sum(nnp.square(xp/scales.reshape(1,-1)), 1)
-    xqs2 = nnp.sum(nnp.square(xq/scales.reshape(1,-1)), 1)
-    #return np.sum(np.square(xp[:, np.newaxis, :] - xq[np.newaxis, :, :]), axis=-1)
-    return nnp.exp(-(xps2.reshape((-1,1)) + xqs2.reshape((1,-1)) - 2*(xp.dot(xq.T)))).T
-
-
-
-@numba.jit(nopython=True, fastmath=True)
-def JITPredict(X, self_X, self_cholesky, self_scales, self_alpha):
-    kstar = DistWithScale(X, self_X, self_scales)
-    predictive_mean = kstar.T.dot(self_alpha)
-    v = nnp.linalg.solve(self_cholesky, kstar)
-    predictive_variance = DistWithScale(X, X, self_scales) - v.T.dot(v)
-    return predictive_mean.reshape(-1,1), nnp.diag(predictive_variance).reshape(-1,1,1)
-
 class MultEmulator(Transformer):
 
     def __init__(self, *args, scales=None, nuggets=None, **kwargs):

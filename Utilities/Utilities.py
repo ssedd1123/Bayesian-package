@@ -8,6 +8,7 @@ else:
 import pandas as pd
 from pandas.plotting import scatter_matrix
 import numpy as np
+from numpy import array
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import matplotlib.gridspec as gridspec
@@ -17,6 +18,31 @@ import pymc
 
 
 from Preprocessor.PipeLine import *
+
+def GetTrainedEmulator(store):
+    if type(store) is str:
+        newstore = pd.HDFStore(store, 'r')
+    else:
+        newstore = store
+    prior = newstore['PriorAndConfig']
+    exp_Y = newstore['Exp_Y']
+    exp_Yerr = newstore['Exp_YErr']
+    model_Y = newstore['Model_Y']
+    model_X = newstore['Model_X']
+    history_para = newstore['ParaHistory']
+   
+    emulator = eval(newstore.get_storer('PriorAndConfig').attrs.my_attribute['repr'])
+
+    if 'Training_idx' in newstore:
+        training_idx = newstore['Training_idx'].astype('int').values.flatten()
+    else:
+        training_idx = np.arange(model_X.shape[0])
+    emulator.Fit(model_X.values[training_idx], model_Y.values[training_idx])
+
+    if type(store) is str:
+        newstore.close()
+ 
+    return emulator, prior, exp_Y, exp_Yerr, model_X, model_Y, training_idx, history_para
 
 # input is the pymc3 trace and list of parameters
 def PlotTrace(config_file, fig=None):
