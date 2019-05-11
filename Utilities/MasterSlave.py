@@ -19,22 +19,37 @@ def enum(*sequential, **named):
     enums = dict(zip(sequential, range(len(sequential))), **named)
     return type('Enum', (), enums)
 
-tags = enum('FUNC', 'START', 'END', 'ERROR', 'READY', 'IO', 'EXIT', 'NOTHING')
+tags = enum('FUNC', 'START', 'END', 'ERROR', 'READY', 'IO', 'EXIT', 'NOTHING', 'REFRESH_RATE')
 
 class OutputPipe(object):
-  def __init__(self, comm, root):
+  def __init__(self, comm, root, refresh_interval=5):
     self.comm = comm
     self.root = root
+    self.refresh_interval = refresh_interval
+    self.last_refresh = time.time()
+    self.last_sentence = None
 
   def write(self, output):
-    if output.rstrip():
-      self.comm.send(output, tag=tags.IO, dest=self.root)
+    current_time = time.time()
+    last_sentence = output.rstrip()
+    if last_sentence:       
+      self.last_sentence = last_sentence
+      if current_time - self.last_refresh > self.refresh_interval:
+        self.comm.send(self.last_sentence, tag=tags.IO, dest=self.root)
+        self.last_refresh = current_time
 
   def flush(self):
     pass
+    #if self.last_sentence:
+    #  self.comm.send(last_sentence, tag=tags.IO, dest=self.root)
+
+  def CustomFlush(self):
+    if self.last_sentence:
+      self.comm.send(self.last_sentence, tag=tags.IO, dest=self.root)
+    
 
 class MasterSlave(object):
-  def __init__(self, comm):
+  def __init__(self, comm, refresh_interval=5):
     self.comm = comm
     self.rank = comm.Get_rank()
     self.size = comm.Get_size()
@@ -43,11 +58,15 @@ class MasterSlave(object):
     self.func = None
     self.results = []
     if self.rank != 0:
-      sys.stdout = OutputPipe(comm, 0)
+      sys.stdout = OutputPipe(comm, 0, refresh_interval)
     self.EventLoop()
 
   def __del__(self):
     self.Close()
+
+  def RefreshRate(self, refresh_interval):
+    for worker in range(1, self.size):
+      self.comm.send(refresh_interval, tag=tags.REFRESH_RATE, dest=worker)
 
   def Submit(self, func, **kwargs):
     self.results = []
@@ -58,7 +77,7 @@ class MasterSlave(object):
         self.comm.send(func, tag=tags.FUNC, dest=worker)
 
       self.nworking = self.nworkers
-      for worker in range(1, self.size):
+      for worker in reversed(range(1, self.size)):
         self.comm.send(kwargs, tag=tags.START, dest=worker)
 
   def IsRunning(self, duration=0.05):
@@ -118,9 +137,12 @@ class MasterSlave(object):
           except Exception as e:
             self.comm.send(e, tag=tags.ERROR, dest=0)
           else:
+            sys.stdout.CustomFlush()
             self.comm.send(result, tag=tags.END, dest=0)
         elif source == 0 and tag == tags.FUNC:
             self.func = kwargs
+        elif source == 0 and tag == tags.REFRESH_RATE:
+            sys.stdout.refresh_interval = kwargs
         elif source == 0 and tag == tags.EXIT:
           sys.exit(0)
     

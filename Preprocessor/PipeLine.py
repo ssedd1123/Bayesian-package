@@ -3,7 +3,6 @@ import autograd.numpy as np
 import autograd.scipy.linalg as linalg
 from functools import partial
 from autograd.scipy.linalg import solve_triangular
-import numba
 from scipy.spatial.distance import cdist
 
 from Utilities.GradientDescent import *

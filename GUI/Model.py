@@ -45,11 +45,9 @@ class InfoBar(wx.StaticText):
     
 
 class EvtSpeedMeter(SM.SpeedMeter):
-  def __init__(self, num_ranks, max_speed_per_cpu, refresh_interval, *args, **kwargs):
+  def __init__(self, num_ranks, max_speed_per_cpu, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self.num_ranks = num_ranks
-    self.refresh_interval = refresh_interval
-    self.num_refresh = 0
 
     # Set The Region Of Existence Of SpeedMeter (Always In Radians!!!!)
     self.SetAngleRange(-math.pi/6, 7*math.pi/6)
@@ -92,12 +90,10 @@ class EvtSpeedMeter(SM.SpeedMeter):
     self.prev_speed = 0
 
   def UpdateSpeed(self, int_speed):
-    self.num_refresh += 1
     speed = self.SpeedCalculator.GetAve(int_speed)#np.sum(self.speed_list))
-    if self.num_refresh > self.refresh_interval:
-      if speed > self.max_speed:
-        speed = self.max_speed
-      self.SetSpeedValue(speed)
+    if speed > self.max_speed:
+      speed = self.max_speed
+    self.SetSpeedValue(speed)
 
   def ReturnZero(self, refresh_rate=0.03):
     # graduately reduce the speed to 0
@@ -111,9 +107,7 @@ class EvtSpeedMeter(SM.SpeedMeter):
   
 
 class ProgressBar(FigureCanvasWxAgg):
-  def __init__(self, tot_num, refresh_interval, width, height, parent):
-    self.refresh_interval = refresh_interval
-    self.num_refresh = 0
+  def __init__(self, tot_num, width, height, parent):
     self.tot_num = tot_num
     self.fig = Figure((width, height), dpi=wx.ScreenDC().GetPPI()[0])
     self.fig.subplots_adjust(left=0., bottom=0., right=1., top=1.) 
@@ -126,16 +120,15 @@ class ProgressBar(FigureCanvasWxAgg):
     self.title = self.progress.text(0., -0.1, 'Percentage', horizontalalignment='center', verticalalignment='top', fontsize=20)
     self.fig.canvas.draw_idle()
 
-  def UpdateProgress(self, tot_completed, forced=False):
-    self.num_refresh += 1
-    if self.num_refresh > self.refresh_interval or forced:
-      self.num_refresh = 0
-      theta = - tot_completed*360/self.tot_num - 90           
-      self.wedges[0].set_theta1(theta)
-      self.wedges[1].set_theta2(theta)            
-      self.text.set_text('Finished %d out of %d evts' % (tot_completed, self.tot_num))
-      self.title.set_text('%.1f%%' % (100.*tot_completed/self.tot_num))
-      self.fig.canvas.draw_idle()
+  def UpdateProgress(self, tot_completed):
+    if tot_completed > self.tot_num:
+      tot_completed = self.tot_num
+    theta = - tot_completed*360/self.tot_num - 90           
+    self.wedges[0].set_theta1(theta)
+    self.wedges[1].set_theta2(theta)            
+    self.text.set_text('Finished %d out of %d evts' % (tot_completed, self.tot_num))
+    self.title.set_text('%.1f%%' % (100.*tot_completed/self.tot_num))
+    self.fig.canvas.draw_idle()
 
 
     
@@ -154,19 +147,18 @@ class CalculationFrame(wx.Frame):
 
     self.tot_per_rank = tot_per_rank
     self.tot = self.tot_per_rank*enviro.nworkers
+    """
     if enviro.nworkers < 10:
       self.refresh_rate = 0.02
     elif enviro.nworkers < 40:
       self.refresh_rate = 0.2/enviro.nworkers
     else:
       self.refresh_rate = 0
+    """
+    self.refresh_rate = 0.3
+    self.refresh_interval = enviro.size*self.refresh_rate
+    enviro.RefreshRate(self.refresh_interval)
     
-    self.speed_refresh_interval = 10
-    self.progress_refresh_interval = 10
-    if self.refresh_rate > 0:
-      self.speed_refresh_interval = 0.05/self.refresh_rate
-      self.progress_refresh_interval = 0.1/self.refresh_rate
-
     self.vspacer = self.pixel_height*self.spacer_prop
     self.hspacer = self.pixel_width*self.spacer_prop
 
@@ -180,14 +172,14 @@ class CalculationFrame(wx.Frame):
     """
     Draw Speedometer
     """
-    self.speedmeter = EvtSpeedMeter(enviro.nworkers, self.max_speed_per_cpu, self.speed_refresh_interval, parent=self, agwStyle=SM.SM_DRAW_HAND|SM.SM_DRAW_SECTORS|SM.SM_DRAW_MIDDLE_TEXT|SM.SM_DRAW_SECONDARY_TICKS)
+    self.speedmeter = EvtSpeedMeter(enviro.nworkers, self.max_speed_per_cpu, parent=self, agwStyle=SM.SM_DRAW_HAND|SM.SM_DRAW_SECTORS|SM.SM_DRAW_MIDDLE_TEXT|SM.SM_DRAW_SECONDARY_TICKS)
 
     """
     Draw Progress bar
     """
     width = 0.5*(self.pixel_width - 3*self.hspacer)/wx.ScreenDC().GetPPI()[0]
     height = 0.9*self.pixel_height/wx.ScreenDC().GetPPI()[0]
-    self.progress_bar = ProgressBar(self.tot, self.progress_refresh_interval, width, height, self)
+    self.progress_bar = ProgressBar(self.tot, width, height, self)
     
     MatPlotSizer = wx.BoxSizer(wx.HORIZONTAL)
     MatPlotSizer.Add(self.progress_bar, 1, wx.EXPAND)
@@ -247,8 +239,9 @@ class CalculationFrame(wx.Frame):
     num_list = [0]*self.enviro.nworkers
     num_prev = 0
     time_prev = start_time
+    last_update = start_time
 
-    while self.enviro.IsRunning(self.refresh_rate):
+    while self.enviro.IsRunning():#self.refresh_rate):
       source, result, tag = self.enviro.stdout
       idx = source - 1
       new_time = time.time()
@@ -262,30 +255,28 @@ class CalculationFrame(wx.Frame):
           speed = 0
           print('Error from worker %d: %s' % (idx, str(result)))
           sys.stdout.flush()
-        else: 
+        else:
           num = re.findall(r"\d+\.?\d*", result)
+          last_num = int(num[1])
+          num_list[idx] = last_num
+
           if len(num) > 1:
-            last_num = int(num[1])
-            num_list[idx] = last_num
+
             new_tot = np.sum(num_list)
             dn = new_tot - num_prev
             dt = new_time-time_prev
             
-            if dt > 0.1 or last_num == self.tot_per_rank: # prevents spikes in speed when information from a particular rank comes in consecutive burst
-              time_prev = new_time
-              num_prev = new_tot
-              speed = dn/dt 
-            else:
-              speed = None
-          else:
-            speed = None
-          
-      self.speedmeter.UpdateSpeed(speed)
-      self.progress_bar.UpdateProgress(np.sum(num_prev))
-      wx.YieldIfNeeded()
+            time_prev = new_time
+            num_prev = new_tot
+            speed = dn/dt 
+  
+            self.speedmeter.UpdateSpeed(speed)
+            self.progress_bar.UpdateProgress(np.sum(num_prev))
+            last_update = new_time
+            wx.YieldIfNeeded()
 
     self.info_bar.PrintInfo('All calculations completed. Merging...')
-    self.progress_bar.UpdateProgress(np.sum(num_prev), forced=True)
+    self.progress_bar.UpdateProgress(np.sum(num_prev))
     self.speedmeter.ReturnZero()
     wx.YieldIfNeeded()
 

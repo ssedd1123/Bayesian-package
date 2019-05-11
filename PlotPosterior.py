@@ -77,5 +77,5 @@ def PlotOutput(filename, fig):
 
 if __name__ == '__main__':
     fig = plt.figure(figsize=(13,10))
-    PlotOutput('result/junk.h5', fig)
+    PlotOutput('result/new_e120.h5', fig)
     plt.show()
