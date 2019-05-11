@@ -1,3 +1,4 @@
+import tables
 from mpi4py import MPI
 import random
 import sys
@@ -47,10 +48,10 @@ def GenerateTrace(emulator, exp_Y, exp_Yerr, prior, id_, iter, output_filename):
         return np.array(mvn.logpdf(value, np.squeeze(mean), np.squeeze(var)+exp_cov))
 
 
-    model = pymc.Model(parameters)
+    #model = pymc.Model(parameters)
     # prepare for MCMC
     new_output_filename = '%s_%d.h5' % (output_filename, id_)
-    mcmc = pymc.MCMC(model, dbname=new_output_filename, db='hdf5', dbmode='w')
+    mcmc = pymc.MCMC(parameters, dbname=new_output_filename, db='hdf5', dbmode='w')
      
     # sample from our posterior distribution 50,000 times, but
     # throw the first 20,000 samples out to ensure that we're only
@@ -74,14 +75,15 @@ def MCMCParallel(config_file, dirpath=None, nevents=10000):
     return result    
 
 def Merging(config_file, list_of_traces, clear_trace=False):
-    store = pd.HDFStore(config_file)
-    if clear_trace and 'trace' in store:
-        store.remove('trace')
-    for f in list_of_traces:
-        df = pd.read_hdf(f)
-        store.append(key='trace', value=df)
-    prior = store['PriorAndConfig']
-    store.close()
+    with pd.HDFStore(config_file) as store:
+        if clear_trace and 'trace' in store:
+            store.remove('trace')
+        for f in list_of_traces:
+            tab = tables.open_file(f)
+            df = pd.DataFrame.from_records(tab.root.chain0.PyMCsamples.read())
+            store.append(key='trace', value=df.astype(float))
+            tab.close()
+        prior = store['PriorAndConfig']
     return prior
 
     

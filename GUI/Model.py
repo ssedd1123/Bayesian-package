@@ -1,3 +1,4 @@
+import traceback
 from Utilities.MasterSlave import MasterSlave, tags
 
 import numpy as np
@@ -283,6 +284,7 @@ class CalculationFrame(wx.Frame):
     try:
       result = Merging(args['config_file'], self.enviro.results, args['clear_trace'])
     except Exception as e:
+      traceback.print_exc()
       print('Error merging files. Read result in %s' % dirpath)
       sys.stdout.flush()
     else:
