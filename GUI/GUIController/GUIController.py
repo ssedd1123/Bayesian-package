@@ -27,11 +27,14 @@ class GUIController:
         self.workenv = workenv
         self.view = GUIViewer(parent, app)
         self.prior_model = self.view.prior_controller.model
+        self.prior_view = self.view.prior_controller.view
         self.model_obs_model = self.view.model_obs_controller.model
         self.model_obs_view = self.view.model_obs_controller.view
-        self.model_par_view = self.view.model_par_controller.view
         self.model_par_model = self.view.model_par_controller.model
+        self.model_par_view = self.view.model_par_controller.view
+        self.exp_view = self.view.exp_controller.view
         self.exp_model = self.view.exp_controller.model
+
 
         self.filename = None
         self.correlation_frame = None
@@ -172,6 +175,7 @@ class GUIController:
         self.model_par_model.ResetUndo()
         self.model_obs_model.ResetUndo()
         self.exp_model.ResetUndo()
+        
         store.close()
 
     def EmulatorCheck(self, obj, evt):
@@ -209,7 +213,7 @@ class GUIController:
 class GUIViewer(wx.Frame):
  
     def __init__(self, parent, app):
-        wx.Frame.__init__(self, parent, wx.NewId(), "Common", size=(1000,400))
+        wx.Frame.__init__(self, parent, wx.NewId(), "Common", size=wx.ScreenDC().GetPPI().Scale(13,8))#1000,400))
         self.app=app
 
         panel = wx.Panel(self)
@@ -242,7 +246,7 @@ class GUIViewer(wx.Frame):
         grid_sizer.Add(self.model_par_controller.view, 1, wx.EXPAND)
         left_panel.SetSizer(grid_sizer)
 
-        splitterLR.SplitVertically(left_panel, right_panel, 300)
+        splitterLR.SplitVertically(left_panel, right_panel, wx.ScreenDC().GetPPI()[0]*6)
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(splitterLR, 1, wx.EXPAND)
         grid_panel.SetSizer(sizer)

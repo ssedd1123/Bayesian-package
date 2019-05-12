@@ -33,7 +33,7 @@ class RunningAve(object):
 class InfoBar(wx.StaticText):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
-    font = wx.Font(22, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
+    font = wx.Font(int(200/wx.Font().GetPixelSize()[0]), wx.DEFAULT, wx.NORMAL, wx.NORMAL)
     self.SetFont(font)
 
   def PrintInfo(self, message):
@@ -71,14 +71,14 @@ class EvtSpeedMeter(SM.SpeedMeter):
     self.SetNumberOfSecondaryTicks(5)
 
     # Set The Font For The Ticks Markers
-    self.SetTicksFont(wx.Font(15, wx.FONTFAMILY_SWISS, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+    self.SetTicksFont(wx.Font(int(200/wx.Font().GetPixelSize()[0]), wx.FONTFAMILY_SWISS, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
 
     # Set The Text In The Center Of SpeedMeter
     self.SetMiddleText("Evts/s")
     # Assign The Colour To The Center Text
     self.SetMiddleTextColour(wx.BLACK)
     # Assign A Font To The Center Text
-    self.SetMiddleTextFont(wx.Font(20, wx.FONTFAMILY_SWISS, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD))
+    self.SetMiddleTextFont(wx.Font(int(300/wx.Font().GetPixelSize()[0]), wx.FONTFAMILY_SWISS, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD))
 
     # Set The Colour For The Hand Indicator
     self.SetHandColour(wx.Colour(255, 50, 0))
@@ -101,9 +101,11 @@ class EvtSpeedMeter(SM.SpeedMeter):
     while True:
       time.sleep(refresh_rate)
       speed = self.SpeedCalculator.GetAve(0)
-      self.SetSpeedValue(speed)
       if speed <= 0:
         break
+      elif speed >= self.max_speed:
+        speed = self.max_speed
+      self.SetSpeedValue(speed)
  
   
 

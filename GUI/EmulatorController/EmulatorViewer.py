@@ -35,11 +35,11 @@ class EmulatorViewer(wx.Frame):
         maxs = np.atleast_1d(maxs).flatten()
         values = np.array(values).flatten()
         for idx, (min_, max_, val, tit) in enumerate(zip(mins, maxs, values, title)):
-            slider = CustomSlider(panel, val, min_, max_, title=tit, pads=50)
+            slider = CustomSlider(panel, val, min_, max_, title=tit, height=wx.ScreenDC().GetPPI()[0]*0.6, pads=wx.ScreenDC().GetPPI()[0]*0.1)
             slider.idx = idx
             self.sliders.append(slider)
         #self.highlighter2 = CustomSlider(panel, 1, 1, 8) 
-        self.clb = wx.CheckListBox(panel, -1, (50, -1), wx.DefaultSize, [])
+        self.clb = wx.CheckListBox(panel, -1, (wx.ScreenDC().GetPPI()[0]*2, -1), wx.DefaultSize, [])
         self.retrain = wx.Button(panel, -1, 'Retrain')
 
         hsizer = wx.BoxSizer(wx.HORIZONTAL)

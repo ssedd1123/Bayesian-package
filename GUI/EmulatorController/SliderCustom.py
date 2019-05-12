@@ -60,7 +60,7 @@ class CustomSlider(wx.Control):
         radius = 7
 
         dc.SetDeviceOrigin(0, 0)
-        font = wx.Font(pointSize = 15, family = wx.DEFAULT, 
+        font = wx.Font(pointSize = int(wx.ScreenDC().GetPPI()[0]/10), family = wx.DEFAULT, 
                        style = wx.NORMAL, weight = wx.NORMAL)
         dc.SetFont(font)
         tw, th = dc.GetTextExtent(self.title)

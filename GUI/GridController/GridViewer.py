@@ -9,6 +9,8 @@ class MyGrid(gridlib.Grid):
         if initial_df is not None:
              size = initial_df.shape
         super().__init__(parent, -1)
+        self.SetDefaultColSize(wx.ScreenDC().GetPPI()[1]*1.2, True)
+        self.SetRowLabelSize(wx.ScreenDC().GetPPI()[1]*1.2)
         self.parent = parent
         #self.table = GridData(num_row=size[0], num_col=size[1], df=initial_df)
 
