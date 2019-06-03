@@ -32,6 +32,7 @@ class GridController:
                                                      
         pub.subscribe(self.CheckObj, 'ToolBar_Undo', func=self.Undo)       
         pub.subscribe(self.CheckObj, 'ToolBar_Redo', func=self.Redo)       
+        pub.subscribe(self.CheckObj, 'ToolBar_Open', func=self.Open)
         pub.subscribe(self.CheckObj, 'Data_CanUndo', func=self.EnableUndo, evt=None) 
         pub.subscribe(self.CheckObj, 'Data_CannotUndo', func=self.DisableUndo, evt=None)
         pub.subscribe(self.CheckObj, 'Data_CanRedo', func=self.EnableRedo, evt=None) 
@@ -47,6 +48,26 @@ class GridController:
             obj = obj.GetParent()
             if obj is None:
                 break
+
+    def Open(self, obj, evt):
+        dlg = wx.FileDialog(
+            obj, message="Choose a file",
+            defaultFile="",
+            style=wx.FD_OPEN | wx.FD_MULTIPLE | wx.FD_CHANGE_DIR
+            )
+        result = dlg.ShowModal()
+        path = dlg.GetPaths()
+        dlg.Destroy()
+
+        if result != wx.ID_OK:
+            return False
+
+        df = pd.read_csv(path[0], index_col=0)
+        if not set(df.index).issubset(set(self.model.data.index)):
+            wx.MessageBox('Index of the dataset does not agree. Will load index as if it\'s content', 'Warning', wx.OK | wx.ICON_WARNING)
+            self.model.SetData(df, include_index=True)
+        else:
+            self.model.SetData(df, include_index=False)
 
     def EnableUndo(self, obj, evt):
         self.toolbar.EnableTool(wx.ID_UNDO, True)
@@ -123,6 +144,7 @@ class PriorController(GridController):
     def __init__(self, parent, ncols, **kwargs):
         nrows = 6 # All rows: Name, Type, Low, Up, Mean, SD
         self.nrows = nrows
+        self.ncols = ncols
         super().__init__(parent, nrows, ncols, **kwargs)
         
         var_types = ['Uniform', 'Gaussian']
@@ -143,19 +165,26 @@ class PriorController(GridController):
         rows = evt[0]#.GetRow()
         cols = evt[1]#.GetCol()
         if 1 in rows:
-            for i in range(2, self.nrows):
-                for col in cols:
+            for i in range(2, 4):
+                for col in range(self.ncols):
                     self.view.SetReadOnly(i, col, False)
                     self.view.SetCellBackgroundColour(i, col, 'White')
                     self.view.SetCellTextColour(i, col, 'Black')
+            for col in range(self.ncols):
+                if self.model.GetValue(1, col) != 'Gaussian':
+                    readOnly = True
+                    bkcolor = 'Grey'
+                    textcolor = 'Grey'
+                else:
+                    readOnly = False
+                    bkcolor = 'White'
+                    textcolor = 'Black'
+                for i in range(4, self.nrows):
+                    self.view.SetReadOnly(i, col, readOnly)
+                    self.view.SetCellBackgroundColour(i, col, bkcolor)
+                    self.view.SetCellTextColour(i, col, textcolor)
 
-            for col in cols:
-                if self.model.GetValue(1, col) == 'Uniform':
-                    for i in range(4, self.nrows):
-                        self.view.SetReadOnly(i, col, True)
-                        self.view.SetCellBackgroundColour(i, col, 'Grey')
-                        self.view.SetCellTextColour(i, col, 'Grey')
-                        self.model.SetValue(i, col, None)
+                        #self.model.SetValue(i, col, None)
         self.view.Refresh()
 
 

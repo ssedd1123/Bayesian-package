@@ -65,7 +65,7 @@ class GridData(gridlib.GridTableBase):
             df = df.reset_index()
         if include_header:
             df = df.T.reset_index().T.reset_index(drop=True)
-        self.ChangeValues(np.arange(df.shape[0]), np.arange(df.shape[1]), df, delete_undo=True)
+        self.ChangeValues(np.arange(df.shape[0]), np.arange(df.shape[1]), df)
 
     def ResetUndo(self):
         self.history = []
@@ -76,57 +76,33 @@ class GridData(gridlib.GridTableBase):
     def Undo(self):
         if len(self.history) > 0:
             change_content = self.history[-1]
-            change_type, change_content = change_content[0], change_content[1:]
-            if change_type == HistoryType.Changed:
-                self.ChangeValues(*change_content, delete_undo=False, send_changed=False)
-                rows = change_content[0]
-                cols = change_content[1]
-            elif change_type == HistoryType.DeleteShift:
-                rows, cols, values, direction = change_content
-                self.Insert(rows, cols, values, OppositeDir(direction), delete_undo=False)
- 
-            elif change_type == HistoryType.Insert:
-                rows, cols, direction = change_content
-                self.DeleteShift(rows, cols, OppositeDir(direction), delete_undo=False)
-
-            self.undo_history.append(self.history[-1])
-            self.history.pop()
+            func, change_content = change_content[0], change_content[1:]
+            func(*change_content, in_undo=True, delete_redo=False)
             self.history.pop()
 
             pub.sendMessage('Data_CanRedo', obj=self)
             if len(self.history) == 0:
                 pub.sendMessage('Data_CannotUndo', obj=self)
-            pub.sendMessage('Data_Changed', obj=self, evt=[rows, cols])
+            #rows = change_content[0]
+            #cols = change_content[1]
+            #pub.sendMessage('Data_Changed', obj=self, evt=[rows, cols])
 
     def Redo(self):
         if len(self.undo_history) > 0:
             change_content = self.undo_history[-1]
-            change_type, change_content = change_content[0], change_content[1:]
-
-            # all value change operation will erase undo_history
-            # to circuvent, we store the list in a temporary variable
-            if change_type == HistoryType.Changed:
-                self.ChangeValues(*change_content, delete_undo=False, send_changed=False)
-                rows = change_content[0]
-                cols = change_content[1]
-            elif change_type == HistoryType.DeleteShift:
-                rows, cols, values, direction = change_content
-                self.Insert(rows, cols, values, OppositeDir(direction), delete_undo=False)
-
-            elif change_type == HistoryType.Insert:
-                rows, cols, direction = change_content
-                self.DeleteShift(rows, cols, OppositeDir(direction), delete_undo=False)
-
-
+            func, change_content = change_content[0], change_content[1:]
+            func(*change_content, in_undo=False, delete_redo=False)
             self.undo_history.pop()
 
             pub.sendMessage('Data_CanUndo', obj=self)
             if len(self.undo_history) == 0:
                 pub.sendMessage('Data_CannotRedo', obj=self)
-            pub.sendMessage('Data_Changed', obj=self, evt=[rows, cols])
+            #rows = change_content[0]
+            #cols = change_content[1]
+            #pub.sendMessage('Data_Changed', obj=self, evt=[rows, cols])
 
 
-    def ChangeValues(self, rows, cols, values, delete_undo=True, send_changed=True):
+    def ChangeValues(self, rows, cols, values, delete_redo=True, send_changed=True, in_undo=False):
         rows = np.atleast_1d(np.asarray(rows))
         cols = np.atleast_1d(np.asarray(cols))
         values = np.atleast_2d(np.asarray(values))
@@ -141,20 +117,28 @@ class GridData(gridlib.GridTableBase):
                 raise RuntimeError('Input 1D values cannot be made to agree with the shape of rows and cols')
         assert nrows == values.shape[0] and ncols == values.shape[1],\
             'Change requested cannot be be done because supplied rows, colums and value sizes are inconsistent.'
-        self.history.append((HistoryType.Changed, rows, cols, self.data.iloc[rows, cols].values))
+        if in_undo:
+            self.undo_history.append((self.ChangeValues, rows, cols, self.data.iloc[rows, cols].values))
+        else:
+            pub.sendMessage('Data_CanUndo', obj=self)
+            self.history.append((self.ChangeValues, rows, cols, self.data.iloc[rows, cols].values))
         self.data.iloc[rows, cols] = values
 
-        if delete_undo:
+        if delete_redo:
             pub.sendMessage('Data_CannotRedo', obj=self)
             self.undo_history.clear()
-        pub.sendMessage('Data_CanUndo', obj=self)
         if send_changed:
             pub.sendMessage('Data_Changed', obj=self, evt=[rows, cols])
 
-    def DeleteShift(self, rows, cols, direction=Direction.Up, delete_undo=True):
+    def DeleteShift(self, rows, cols, direction=Direction.Up, delete_redo=True, in_undo=False):
         rows = np.atleast_1d(np.asarray(rows))
         cols = np.atleast_1d(np.asarray(cols))
-        self.history.append((HistoryType.DeleteShift, rows, cols, self.data.iloc[rows, cols].values, direction))
+        if in_undo:
+            self.undo_history.append((self.Insert, rows, cols, self.data.iloc[rows, cols].values, OppositeDir(direction)))
+        else:
+            self.history.append((self.Insert, rows, cols, self.data.iloc[rows, cols].values, OppositeDir(direction)))
+            pub.sendMessage('Data_CanUndo', obj=self)
+
 
         if direction == Direction.Up:
             self.data.iloc[rows[0]:, cols[0]:cols[-1]+1] = self.data.iloc[rows[0]:, cols[0]:cols[-1]+1].shift(-rows.shape[0])
@@ -165,21 +149,24 @@ class GridData(gridlib.GridTableBase):
         else:
             self.data.iloc[rows[0]:rows[-1]+1, :cols[-1]+1] = self.data.iloc[rows[0]:rows[-1]+1, :cols[-1]+1].T.shift(cols.shape[0]).T
 
-        if delete_undo:
+        if delete_redo:
             pub.sendMessage('Data_CannotRedo', obj=self)
             self.undo_history.clear()
-        pub.sendMessage('Data_CanUndo', obj=self)
         pub.sendMessage('Data_Changed', obj=self, evt=[rows, cols])
 
 
-    def Insert(self, rows, cols, values, direction=Direction.Up, delete_undo=True):
+    def Insert(self, rows, cols, values, direction=Direction.Up, delete_redo=True, in_undo=False):
         rows = np.atleast_1d(np.asarray(rows))
         cols = np.atleast_1d(np.asarray(cols))
         values = np.atleast_2d(np.asarray(values))
 
         assert rows.shape[0] == values.shape[0] and cols.shape[0] == values.shape[1],\
             'Insert requested cannot be be done because supplied rows, colums and value sizes are inconsistent.'
-        self.history.append((HistoryType.Insert, rows, cols, direction))
+        if in_undo:
+            self.undo_history.append((self.DeleteShift, rows, cols, OppositeDir(direction)))
+        else:
+            self.history.append((self.DeleteShift, rows, cols, OppositeDir(direction)))
+            pub.sendMessage('Data_CanUndo', obj=self)
         
         if direction == Direction.Up:
             self.data.iloc[:rows[-1]+1, cols[0]:cols[-1]+1] = self.data.iloc[:rows[-1]+1, cols[0]:cols[-1]+1].shift(-rows.shape[0])
@@ -191,10 +178,9 @@ class GridData(gridlib.GridTableBase):
             self.data.iloc[rows[0]:rows[-1]+1, cols[0]:] = self.data.iloc[rows[0]:rows[-1]+1, cols[0]:].T.shift(cols.shape[0]).T
         self.data.iloc[rows[0]:rows[-1]+1, cols[0]:cols[-1]+1] = values
 
-        if delete_undo:
+        if delete_redo:
             pub.sendMessage('Data_CannotRedo', obj=self)
             self.undo_history.clear()
-        pub.sendMessage('Data_CanUndo', obj=self)
         pub.sendMessage('Data_Changed', obj=self, evt=[rows, cols])
 
 

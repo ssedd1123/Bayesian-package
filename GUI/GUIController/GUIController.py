@@ -203,7 +203,8 @@ class GUIController:
             self.view.Refresh()
 
     def _SyncHeaders2Ways(self, obj, model1, model2):
-        value = obj.data.iloc[0].replace(r'^\s*$', np.nan, regex=True).dropna(how='all')
+        #value = obj.data.iloc[0].replace(r'^\s*$', np.nan, regex=True).dropna(how='all')
+        value = obj.data.iloc[0].replace(r'^\s*$', np.nan, regex=True)
         if obj is model1:
             model2.ChangeValues(0, np.arange(value.shape[0]), value, send_changed=False)
         elif obj is model2:
