@@ -106,6 +106,11 @@ if __name__=="__main__":
     
     #if rank == root:
     work_environment.Submit(MCMCParallel, **args)
+    refresh_rate = 0.3
+    refresh_interval = refresh_rate*size
+    # some stdio must be discarded for MPI network efficiency
+    work_environment.RefreshRate(refresh_interval)
+
     while work_environment.IsRunning():
         out = work_environment.stdout[1]
         if out is not None:
