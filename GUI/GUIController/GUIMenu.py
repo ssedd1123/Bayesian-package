@@ -11,6 +11,7 @@ class GUIMenuBar(wx.MenuBar):
         SaveMenuItem = fileMenu.Append(wx.ID_SAVE, 'Save', '')
         SaveAsMenuItem = fileMenu.Append(wx.ID_SAVEAS, 'Save As', '')
         OpenMenuItem = fileMenu.Append(wx.ID_OPEN, 'Open', '')
+        GenHyperCube = fileMenu.Append(-1, 'Generate hyper-cube', '')
 
         emulatorMenu = wx.Menu()
         EmulatorCheckItem = emulatorMenu.Append(-1, 'Check emulator', '')
@@ -27,6 +28,7 @@ class GUIMenuBar(wx.MenuBar):
         self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('MenuBar_Open', obj=self, evt=evt), OpenMenuItem)
         self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('MenuBar_Save', obj=self, evt=evt), SaveMenuItem)
         self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('MenuBar_SaveNew', obj=self, evt=evt), SaveAsMenuItem)
+        self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('MenuBar_GenHyperCube', obj=self, evt=evt), GenHyperCube)
         self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('MenuBar_Check', obj=self, evt=evt), EmulatorCheckItem)
         self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('MenuBar_Emulate', obj=self, evt=evt), EmulatorItem)
         self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('MenuBar_Posterior', obj=self, evt=evt), PlotPosteriorItem)

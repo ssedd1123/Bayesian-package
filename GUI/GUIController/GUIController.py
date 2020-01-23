@@ -19,6 +19,7 @@ from GUI.Model import CalculationFrame
 from GUI.MatplotlibFrame import MatplotlibFrame
 from GUI.SelectEmulationOption import SelectEmulationOption
 import Utilities.GradientDescent as gd
+from Utilities.LatinHyperCube import GenerateLatinHyperCube
 from PlotPosterior import PlotOutput
 
 class GUIController:
@@ -48,6 +49,7 @@ class GUIController:
         pub.subscribe(self.CheckObj, 'MenuBar_Open', func=self.OpenFile)
         pub.subscribe(self.CheckObj, 'MenuBar_SaveNew', func=self.SaveNew)
         pub.subscribe(self.CheckObj, 'MenuBar_Save', func=self.Save)
+        pub.subscribe(self.CheckObj, 'MenuBar_GenHyperCube', func=self.GenHyperCube)
         pub.subscribe(self.CheckObj, 'MenuBar_Emulate', func=self.Emulate)
         pub.subscribe(self.CheckObj, 'MenuBar_Report', func=self.TrainReport)
         pub.subscribe(self.CheckObj, 'MenuBar_Correlation', func=self.Correlation)
@@ -62,6 +64,30 @@ class GUIController:
             obj = obj.GetParent()
             if obj is None:
                 break
+
+    def GenHyperCube(self, obj, evt):
+        prior = self.prior_model.GetData(drop_index=False)
+        if prior.empty:
+            wx.MessageDialog(self.view, 'You need to fill up your parameter range', 'Warning', wx.OK | wx.ICON_WARNING).ShowModal()
+            return None
+        ranges = prior.loc[['Min', 'Max'], :].astype(float).values.T
+        dlg = wx.TextEntryDialog(self.view, 'Number of points needed')
+        dlg.ShowModal()
+        result = dlg.GetValue()
+        dlg.Destroy()
+        try:
+            result = int(result)
+        except:
+            wx.MessageDialog(self.view, 'Integers needed', 'Warning', wx.OK | wx.ICON_WARNING).ShowModal()
+            return None
+        print(ranges, flush=True)
+        content = GenerateLatinHyperCube(result, ranges)
+        rows = np.arange(1, 1+content.shape[0])
+        cols = np.arange(0, content.shape[1])
+        self.model_par_model.SetValue(rows, cols, content)
+        self.model_par_view.ForceRefresh()
+
+        
 
     def TrainReport(self, obj, evt):
         if self.filename is not None:
