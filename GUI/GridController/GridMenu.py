@@ -7,6 +7,7 @@ class GridPopupMenu(wx.Menu):
         super().__init__()
         self.parent = parent
         clear = self.Append(wx.ID_CLEAR, 'clear')
+        copy = self.Append(wx.ID_COPY, 'copy')
         paste = self.Append(wx.ID_PASTE, 'paste')
         delete = self.Append(wx.ID_DELETE, 'delete')
         undo = self.Append(wx.ID_UNDO, 'undo')
@@ -14,6 +15,7 @@ class GridPopupMenu(wx.Menu):
         
         self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('Menu_Clear', obj=self.parent, evt=evt), clear)
         self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('Menu_Delete', obj=self.parent, evt=evt), delete)
+        self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('Menu_Copy', obj=self.parent, evt=evt), copy)
         self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('Menu_Paste', obj=self.parent, evt=evt), paste)
         self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('Menu_Undo', obj=self.parent, evt=evt), undo)
         self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('Menu_Redo', obj=self.parent, evt=evt), redo)

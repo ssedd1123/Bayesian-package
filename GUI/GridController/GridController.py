@@ -26,6 +26,7 @@ class GridController:
         pub.subscribe(self.CheckObj, 'viewer_right', func=self.ShowMenu)   
         pub.subscribe(self.CheckObj, 'Menu_Clear', func=self.Clear)      
         pub.subscribe(self.CheckObj, 'Menu_Delete', func=self.Delete)     
+        pub.subscribe(self.CheckObj, 'Menu_Copy', func=self.Copy)      
         pub.subscribe(self.CheckObj, 'Menu_Paste', func=self.Paste)      
         pub.subscribe(self.CheckObj, 'Menu_Undo', func=self.Undo)       
         pub.subscribe(self.CheckObj, 'Menu_Redo', func=self.Redo)       
@@ -106,6 +107,23 @@ class GridController:
         cols = np.arange(col, col + data.shape[1])
         self.model.SetValue(rows, cols, data)
         self.view.ForceRefresh()        
+
+    def Copy(self, obj, evt):
+        row = self.view.GetGridCursorRow()
+        col = self.view.GetGridCursorCol()
+
+        data = self.model.GetValue(self.selected_rows, self.selected_cols)
+        if isinstance(data, pd.DataFrame):
+            data = data.to_csv(header=None, index=False, sep='\t').strip('\n')
+
+        dataObj = wx.TextDataObject()
+        dataObj.SetText(str(data))
+
+        if wx.TheClipboard.Open():
+            wx.TheClipboard.SetData(dataObj)
+            wx.TheClipboard.Close()
+        else:
+            wx.MessageBox("Unable to open the clipboard", "Error")
 
 
     def ShowMenu(self, obj, evt):

@@ -51,7 +51,7 @@ class GridData(gridlib.GridTableBase):
     def GetData(self, first_row_as_header=True, drop_index=True):  
         df = self.data.replace(r'^\s*$', np.nan, regex=True)
         df = df.dropna(axis=0, how='all').dropna(axis=1, how='all')
-        if first_row_as_header:
+        if first_row_as_header and not df.empty:
             df.columns=df.iloc[0]
             df = df.drop(df.index[0])
             if drop_index:
@@ -186,7 +186,9 @@ class GridData(gridlib.GridTableBase):
 
     def GetValue(self, row, col):
         value = self.data.iloc[row, col]
-        return value if not pd.isna(value) else None
+        isna = pd.isna(value)
+        isna = isna.all(None) if not isinstance(isna, bool) else isna
+        return value if not isna else None
 
     def SetValue(self, row, col, value):
         self.ChangeValues(row, col, value)
