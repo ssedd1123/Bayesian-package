@@ -16,7 +16,7 @@ This is a gaussian emulator and Baysiean analysis with PyMC <br />
  ```
  3. Activate the environment:
  ```
-     $> conda activate Bayesian2
+     $> conda activate Bayesian
  ```
  4. Start the program with 
  ```
