@@ -24,7 +24,7 @@ class MyGrid(gridlib.Grid):
 class DataDirectionDialog(wx.Dialog):
     
     def __init__(self, parent, title):
-        super().__init__(parent, title=title, size=(110, 110))
+        super().__init__(parent, title=title, size=(110, 110), style=wx.RESIZE_BORDER)
         panel = wx.Panel(self)
         box = wx.BoxSizer(wx.VERTICAL)
 
