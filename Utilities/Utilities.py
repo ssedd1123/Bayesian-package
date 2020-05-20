@@ -72,10 +72,10 @@ def PlotTrace(config_file, fig=None):
             namex = par_name[j]
             namey = par_name[i]
             if namex == namey:
-                cell.hist(trace[namex], bins = 50, range=np.array([prior['Min'][namex], prior['Max'][namex]]))
+                cell.hist(trace[namex], bins = 100, range=np.array([prior['Min'][namex], prior['Max'][namex]]))
                 cell.set_xlim([prior['Min'][namex], prior['Max'][namex]])
             else:
-                im = cell.hist2d(trace[namex], trace[namey], bins=50, 
+                im = cell.hist2d(trace[namex], trace[namey], bins=100, 
                                  range=np.array([(prior['Min'][namex], prior['Max'][namex]),
                                                 (prior['Min'][namey], prior['Max'][namey])]))#, norm=colors.LogNorm())
                 cell.set_xlim([prior['Min'][namex], prior['Max'][namex]])

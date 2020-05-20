@@ -43,15 +43,20 @@ def NumberOfPts(ax, clf, model_X, model_Y, training_idx, validation_idx):
     validation_X = model_X[validation_idx]
     validation_Y = model_Y[validation_idx]
 
+    valid_ntrain = []
     for ntrain in range(2, len(training_X)):
-        clf.Fit(training_X[0:ntrain], training_Y[0:ntrain])
-        pred_Y, _ = clf.Predict(training_X[0:ntrain])
-        training_scores.append(np.sqrt(np.mean((training_Y[0:ntrain] - pred_Y)**2)))
-        pred_Y, _ = clf.Predict(validation_X)
-        validation_scores.append(np.sqrt(np.mean((validation_Y - pred_Y)**2)))
+        try: 
+            clf.Fit(training_X[0:ntrain], training_Y[0:ntrain])
+            pred_Y, _ = clf.Predict(training_X[0:ntrain])
+            training_scores.append(np.sqrt(np.mean((training_Y[0:ntrain] - pred_Y)**2)))
+            pred_Y, _ = clf.Predict(validation_X)
+            validation_scores.append(np.sqrt(np.mean((validation_Y - pred_Y)**2)))
+            valid_ntrain.append(ntrain)
+        except Exception:
+            pass
 
-    ax.plot(range(3, len(training_scores)+3), training_scores, label='training')
-    ax.plot(range(3, len(validation_scores)+3), validation_scores, label='validation')
+    ax.plot(valid_ntrain, training_scores, label='training')
+    ax.plot(valid_ntrain, validation_scores, label='validation')
     ax.set_xlabel('Number of training points')
     ax.set_ylabel('RMSE per feature')
     ax.legend()
