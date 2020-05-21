@@ -1,26 +1,15 @@
+import wx
 import sys
 import pandas as pd
 import numpy as np
-import wx
 from pubsub import pub
 from mpi4py import MPI
 
-from Utilities.Utilities import PlotTrace
-from GUI.GridController.GridController import GridController, PriorController
-from GUI.GUIController.GUIMenu import GUIMenuBar
-from GUI.EmulatorController.EmulatorViewer import EmulatorController
-from TrainEmulator import Training, TrainingCurve
-from ChangeFileContent import ChangeFileContent
-from GUI.SelectTrainingOption import SelectOption
-from matplotlib.figure import Figure
-from GUI.PlotFrame import PlotFrame
 from Utilities.MasterSlave import MasterSlave
-from GUI.Model import CalculationFrame
+from GUI.GridController.GridController import GridController, PriorController
+from matplotlib.figure import Figure
 from GUI.MatplotlibFrame import MatplotlibFrame
-from GUI.SelectEmulationOption import SelectEmulationOption
 import Utilities.GradientDescent as gd
-from Utilities.LatinHyperCube import GenerateLatinHyperCube
-from PlotPosterior import PlotOutput
 
 class GUIController:
 
@@ -81,6 +70,7 @@ class GUIController:
             wx.MessageDialog(self.view, 'Integers needed', 'Warning', wx.OK | wx.ICON_WARNING).ShowModal()
             return None
         print(ranges, flush=True)
+        from Utilities.LatinHyperCube import GenerateLatinHyperCube
         content = GenerateLatinHyperCube(result, ranges)
         rows = np.arange(1, 1+content.shape[0])
         cols = np.arange(0, content.shape[1])
@@ -93,6 +83,7 @@ class GUIController:
         if self.filename is not None:
             fig = Figure((15,12), 75)
             frame = MatplotlibFrame(None, fig)
+            from TrainEmulator import TrainingCurve
             TrainingCurve(fig, config_file=self.filename)
             frame.SetData()
             frame.Show()
@@ -100,11 +91,13 @@ class GUIController:
 
     def Emulate(self, obj, evt):
         if self.filename is not None:
+            from GUI.SelectEmulationOption import SelectEmulationOption
             EmuOption = SelectEmulationOption(self.view)
             res = EmuOption.ShowModal()
             if res == wx.ID_OK:
                 options = EmuOption.GetValue()
                 nevent = options['nevent']
+                from GUI.Model import CalculationFrame
                 frame = CalculationFrame(None, -1, 'Progress', self.workenv, nevent)
                 frame.Show()
                 frame.OnCalculate({'config_file': self.filename, 'nsteps': nevent, 'clear_trace': options['clear_trace']})
@@ -116,6 +109,7 @@ class GUIController:
                 fig = Figure((15,12), 75)
                 self.correlation_frame = MatplotlibFrame(None, fig)
             self.correlation_frame.fig.clf()
+            from Utilities.Utilities import PlotTrace
             PlotTrace(self.filename, self.correlation_frame.fig)
             self.correlation_frame.SetData()
             self.correlation_frame.Show()
@@ -126,6 +120,7 @@ class GUIController:
                 fig = Figure((15,12), 75)
                 self.correlation_frame = MatplotlibFrame(None, fig)
             self.correlation_frame.fig.clf()
+            from PlotPosterior import PlotOutput
             PlotOutput(self.filename, self.correlation_frame.fig)
             self.correlation_frame.SetData()
             self.correlation_frame.Show()
@@ -139,6 +134,7 @@ class GUIController:
 
         store = pd.HDFStore(self.filename, 'a')
         if model_X.equals(store['Model_X']) and model_Y.equals(store['Model_Y']):
+            from ChangeFileContent import ChangeFileContent
             ChangeFileContent(store, prior, exp)
         else:
             wx.MessageBox('Model values has changed. You must train the emulator again', 'Error', wx.OK | wx.ICON_ERROR)
@@ -158,6 +154,7 @@ class GUIController:
         if result == wx.ID_CANCEL:    #Either the cancel button was pressed or the window was closed
             return False
 
+        from GUI.SelectTrainingOption import SelectOption
         frame = SelectOption()
         res = frame.ShowModal()
         if res == wx.ID_CANCEL:
@@ -171,9 +168,21 @@ class GUIController:
         model_Y = self.model_obs_model.GetData()
         exp = self.exp_model.GetData(drop_index=False)
 
+        from GUI.TrainingProgressFrame import TrainingProgressFrame
+        if args['principalcomp'] is not None:
+            gauge = TrainingProgressFrame(args['principalcomp'], None, -1, 'Training progress', size=(300,-1))
+        else:
+            gauge = TrainingProgressFrame(1, None, -1, 'Training progress', size=(300,-1))
+
+        gauge.Show()
+        gaugeUpdate = lambda step, progress, mag, nuggets, scales: [gd.DefaultOutput(step, progress, mag, nuggets, scales), gauge.updateProgress(progress)]
+        pub.subscribe(gaugeUpdate, 'GradientProgress')
+        from TrainEmulator import Training
         Training(prior, model_X, model_Y, exp, outFile[0], abs_output=True, **args)
+        #pub.unsubscribe(gaugeUpdate, 'GradientProgress')
+        gauge.Destroy()
         self.filename = outFile[0]
-    
+
     def OpenFile(self, obj, evt):
         dlg = wx.FileDialog(
             obj, message="Choose a file",
@@ -206,6 +215,7 @@ class GUIController:
 
     def EmulatorCheck(self, obj, evt):
         if self.filename is not None:
+            from GUI.EmulatorController.EmulatorViewer import EmulatorController
             controller = EmulatorController(self.filename)
             controller.viewer.Show()
  
@@ -245,6 +255,7 @@ class GUIViewer(wx.Frame):
 
         panel = wx.Panel(self)
         notebook = wx.Notebook(panel)
+        from GUI.GUIController.GUIMenu import GUIMenuBar
         self.menubar = GUIMenuBar(self)
         self.SetMenuBar(self.menubar)
 
@@ -301,17 +312,16 @@ class GUIViewer(wx.Frame):
         self.app.ExitMainLoop()
 
 
-if __name__ == '__main__':
+def main():
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
     status = MPI.Status()
     root = 0
 
-
     work_environment = MasterSlave(comm)
 
-    gd.UseDefaultOutput()
+    #gd.UseDefaultOutput()
     app = wx.App(0)
     controller = GUIController(None, app=app, workenv=work_environment)
     controller.view.Show()
@@ -321,3 +331,6 @@ if __name__ == '__main__':
 
     app.MainLoop()
     work_environment.Close()
+
+if __name__ == '__main__':
+    main()

@@ -3,12 +3,15 @@ import sys
 from autograd import grad
 from pubsub import pub
 
-def DefaultOutput(step, mag, nuggets, scales):
-    sys.stdout.write("\rProcessing %i iteration, gradient magnitude = %2.6f, nuggets = %2.3f, scales = %s      " % (step, mag, nuggets, np.array2string(scales, formatter={'float_kind':lambda x: '%02.3f' % x})))
+def DefaultOutput(step, progress, mag, nuggets, scales):
+    sys.stdout.write("\rProcessing %i iteration, progress = %.1f%% gradient magnitude = %2.6f, nuggets = %2.3f, scales = %s      " % (step, progress, mag, nuggets, np.array2string(scales, formatter={'float_kind':lambda x: '%02.3f' % x})))
+    if progress == 100:
+      sys.stdout.write('\n')
     sys.stdout.flush()
 
 def NewLine():
-    print('')
+    pass
+    #print('')
 
 def UseDefaultOutput():
     pub.subscribe(DefaultOutput, 'GradientProgress')
@@ -28,6 +31,32 @@ def GetOptimizer(name, *args, **kwargs):
 
 class GradientDescentForEmulator:
 
+
+    class ProgressCalculator:
+        def __init__(self):
+            self.startMag = None
+            self.tolMag = None
+            self.magSlope = None
+            self.lastProgress = None
+
+        def Get(self, nsteps, step, mag, tolerance):
+            stepProgress = step/nsteps*100
+            if self.startMag is None:
+                # progress is calculated with log scale, with progress = 0 at first step and 1 when mag = tolerance
+                self.startMag = np.log(mag)
+                self.totMag = np.log(tolerance)
+                self.magSlope = self.totMag - self.startMag
+                self.lastProgress = 0
+            magProgress = (np.log(mag) - self.startMag)*100/self.magSlope
+            progress = magProgress if magProgress > stepProgress else stepProgress
+            # progress could only move forward
+            # prevent it from going back
+            if progress > self.lastProgress:
+                self.lastProgress = progress
+            else:
+                progress = self.lastProgress
+            return progress if progress < 100 else 100
+ 
 
     def __init__(self, step_size_scales, step_size_nuggets):
         self.step_scales_size = step_size_scales
@@ -61,6 +90,9 @@ class GradientDescentForEmulator:
         para = np.concatenate([scales, nuggets])
         self.step_size = np.full((1,),self.step_nuggets_size)
         self.step_size = np.concatenate([self.step_size, np.full(scales.shape, self.step_scales_size)])
+
+        pCalculator = GradientDescentForEmulator.ProgressCalculator()
+        progress = 0
         for i in range(nsteps):
             new_para, grad = self.StepDescent(para)
             para = new_para
@@ -69,11 +101,14 @@ class GradientDescentForEmulator:
 
             mag = np.linalg.norm(grad*self.step_size)
 
-            pub.sendMessage('GradientProgress', step=i, mag=mag, nuggets=nuggets, scales=scales)
+            progress = pCalculator.Get(nsteps, i, mag, tolerance)
+            pub.sendMessage('GradientProgress', step=i, progress=progress, mag=mag, nuggets=nuggets, scales=scales)
             if mag < tolerance: #or mag < 0.5*(self.step_scales_size + self.step_nuggets_size):
                 break
+        if progress < 100:
+            pub.sendMessage('GradientProgress', step=i, progress=100, mag=mag, nuggets=nuggets, scales=scales)
         pub.sendMessage('GradientEnd')
-        return np.array(history_para)
+        return np.array(history_para)          
         
 class MomentumDescentForEmulator(GradientDescentForEmulator):
 

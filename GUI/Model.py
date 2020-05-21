@@ -143,7 +143,7 @@ class CalculationFrame(wx.Frame):
     """
     All parameters that need adjustment
     """
-    self.max_speed_per_cpu = 800
+    self.max_speed_per_cpu = 3200
     self.pixel_width = 700
     self.pixel_height = 400
     self.spacer_prop = 0.05
