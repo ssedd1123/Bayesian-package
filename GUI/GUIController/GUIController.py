@@ -1,3 +1,4 @@
+import os
 import wx
 import sys
 import pandas as pd
@@ -69,7 +70,6 @@ class GUIController:
         except:
             wx.MessageDialog(self.view, 'Integers needed', 'Warning', wx.OK | wx.ICON_WARNING).ShowModal()
             return None
-        print(ranges, flush=True)
         from Utilities.LatinHyperCube import GenerateLatinHyperCube
         content = GenerateLatinHyperCube(result, ranges)
         rows = np.arange(1, 1+content.shape[0])
@@ -187,7 +187,7 @@ class GUIController:
         dlg = wx.FileDialog(
             obj, message="Choose a file",
             defaultFile="",
-            style=wx.FD_OPEN | wx.FD_MULTIPLE | wx.FD_CHANGE_DIR
+            style=wx.FD_OPEN | wx.FD_MULTIPLE 
             )
         result = dlg.ShowModal() 
         path = dlg.GetPaths()
