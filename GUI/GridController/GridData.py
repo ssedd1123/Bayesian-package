@@ -106,6 +106,7 @@ class GridData(gridlib.GridTableBase):
         rows = np.atleast_1d(np.asarray(rows))
         cols = np.atleast_1d(np.asarray(cols))
         values = np.atleast_2d(np.asarray(values))
+
         nrows = rows.shape[0] 
         ncols = cols.shape[0]
         if values.shape[0] == 1 and values.shape[1] == 1:
@@ -115,8 +116,20 @@ class GridData(gridlib.GridTableBase):
                 values = values.reshape(-1, 1)
             elif nrows != 1:
                 raise RuntimeError('Input 1D values cannot be made to agree with the shape of rows and cols')
+
+
         assert nrows == values.shape[0] and ncols == values.shape[1],\
             'Change requested cannot be be done because supplied rows, colums and value sizes are inconsistent.'
+        # size check to prevent data being written outside of the range
+        id_row_exceed = rows >= self.GetNumberRows()
+        id_col_exceed = cols >= self.GetNumberCols()
+        rows = rows[~id_row_exceed]
+        cols = cols[~id_col_exceed]
+        if np.any(id_row_exceed):
+            values = values[~id_row_exceed]
+        if np.any(id_col_exceed):
+            values = values[:, ~id_col_exceed]
+ 
         if in_undo:
             self.undo_history.append((self.ChangeValues, rows, cols, self.data.iloc[rows, cols].values))
         else:

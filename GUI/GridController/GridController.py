@@ -218,6 +218,50 @@ class PriorController(GridController):
                         #self.model.SetValue(i, col, None)
         self.view.Refresh()
 
+class SplitViewController:
+
+    def __init__(self, parent, nrows=100, nlayers=100):
+        self.view = wx.SplitterWindow(parent)
+        left_panel = wx.Panel(self.view)
+        right_panel = wx.Panel(self.view)
+        self.controller_right = GridController(right_panel, nrows, nlayers)
+        grid_sizer = wx.BoxSizer(wx.VERTICAL)
+        grid_sizer.Add(self.controller_right.toolbar)
+        grid_sizer.Add(self.controller_right.view, 1, wx.EXPAND)
+        self.controller_right.view.SetRowLabelSize(5)
+        right_panel.SetSizer(grid_sizer)
+
+        self.controller_left = GridController(left_panel, nrows, nlayers)
+        grid_sizer = wx.BoxSizer(wx.VERTICAL)
+        grid_sizer.Add(self.controller_left.toolbar)
+        grid_sizer.Add(self.controller_left.view, 1, wx.EXPAND)
+        left_panel.SetSizer(grid_sizer)
+
+        self.view.SplitVertically(left_panel, right_panel, wx.ScreenDC().GetPPI()[0]*6)
+
+        # assign variable name for easier access
+        self.left_view = self.controller_left.view
+        self.left_model = self.controller_left.model
+        self.right_view = self.controller_right.view
+        self.right_model = self.controller_right.model
+
+        # link-up the behavior of the two panels
+        self._SyncScrollPos()
+
+    def _SyncScrollPos(self):
+        self.left_view.Bind(wx.EVT_SCROLLWIN, self._onScrollL)
+        self.right_view.Bind(wx.EVT_SCROLLWIN, self._onScrollR)
+
+    def _onScrollL(self, evt):
+        if evt.Orientation == wx.SB_VERTICAL:
+            self.right_view.Scroll(-1, evt.Position)
+        evt.Skip()
+
+    def _onScrollR(self, evt):
+        if evt.Orientation == wx.SB_VERTICAL:
+            self.left_view.Scroll(-1, evt.Position)
+        evt.Skip()
+
 
 class TestFrame(wx.Frame):
     def __init__(self, parent, title, size, prior=False):
