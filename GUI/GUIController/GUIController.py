@@ -38,7 +38,6 @@ class GUIController:
         self.filename = None
         self.correlation_frame = None
         
-
         pub.subscribe(self._SyncHeaders, 'Data_Changed')
         pub.subscribe(self.CheckObj, 'MenuBar_Check', func=self.EmulatorCheck)
         pub.subscribe(self.CheckObj, 'MenuBar_Open', func=self.OpenFile)
@@ -330,7 +329,11 @@ class GUIViewer(wx.Frame):
         attr.SetReadOnly(True)
         attr.SetBackgroundColour('Grey')
         self.manual_emulation_controller.left_view.SetRowAttr(0, attr)
+
+        EvalEmuButton = wx.Button(manual_emulation_panel, -1, 'Evaluate emulator')
         sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(EvalEmuButton)
+        EvalEmuButton.Bind(wx.EVT_BUTTON, lambda evt: pub.sendMessage('MenuBar_EvalEmu', obj=self, evt=evt))
         sizer.Add(self.manual_emulation_controller.view, 1, wx.EXPAND)
         manual_emulation_panel.SetSizer(sizer)
         notebook.AddPage(manual_emulation_panel, "Ask emulator")
