@@ -6,19 +6,19 @@ class GridPopupMenu(wx.Menu):
     def __init__(self, parent):
         super().__init__()
         self.parent = parent
-        clear = self.Append(wx.ID_CLEAR, 'clear')
-        copy = self.Append(wx.ID_COPY, 'copy')
-        paste = self.Append(wx.ID_PASTE, 'paste')
-        delete = self.Append(wx.ID_DELETE, 'delete')
-        undo = self.Append(wx.ID_UNDO, 'undo')
-        redo = self.Append(wx.ID_REDO, 'redo')
+        self.clear = self.Append(wx.ID_CLEAR, 'clear')
+        self.copy = self.Append(wx.ID_COPY, 'copy')
+        self.paste = self.Append(wx.ID_PASTE, 'paste')
+        self.delete = self.Append(wx.ID_DELETE, 'delete')
+        self.undo = self.Append(wx.ID_UNDO, 'undo')
+        self.redo = self.Append(wx.ID_REDO, 'redo')
         
-        self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('Menu_Clear', obj=self.parent, evt=evt), clear)
-        self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('Menu_Delete', obj=self.parent, evt=evt), delete)
-        self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('Menu_Copy', obj=self.parent, evt=evt), copy)
-        self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('Menu_Paste', obj=self.parent, evt=evt), paste)
-        self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('Menu_Undo', obj=self.parent, evt=evt), undo)
-        self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('Menu_Redo', obj=self.parent, evt=evt), redo)
+        self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('Menu_Clear', obj=self.parent, evt=evt), self.clear)
+        self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('Menu_Delete', obj=self.parent, evt=evt), self.delete)
+        self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('Menu_Copy', obj=self.parent, evt=evt), self.copy)
+        self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('Menu_Paste', obj=self.parent, evt=evt), self.paste)
+        self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('Menu_Undo', obj=self.parent, evt=evt), self.undo)
+        self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('Menu_Redo', obj=self.parent, evt=evt), self.redo)
 
 
 class GridToolBar(wx.ToolBar):

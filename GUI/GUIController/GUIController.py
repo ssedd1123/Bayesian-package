@@ -5,7 +5,9 @@ import pandas as pd
 import numpy as np
 from pubsub import pub
 from mpi4py import MPI
+import wx.grid as gridlib
 
+from Utilities.Utilities import GetTrainedEmulator
 from Utilities.MasterSlave import MasterSlave
 from GUI.GridController.GridController import GridController, PriorController
 from matplotlib.figure import Figure
@@ -19,20 +21,29 @@ class GUIController:
         self.view = GUIViewer(parent, app)
         self.prior_model = self.view.prior_controller.model
         self.prior_view = self.view.prior_controller.view
+
         self.model_obs_model = self.view.model_obs_controller.model
         self.model_obs_view = self.view.model_obs_controller.view
         self.model_par_model = self.view.model_par_controller.model
         self.model_par_view = self.view.model_par_controller.view
+        self.model_par_view.Bind(wx.EVT_SCROLLWIN, self.onScrollWin1)
+        self.model_obs_view.Bind(wx.EVT_SCROLLWIN, self.onScrollWin2)
+        self.model_obs_view.SetRowLabelSize(5)
+
         self.exp_view = self.view.exp_controller.view
         self.exp_model = self.view.exp_controller.model
 
+        self.emulator_input_model = self.view.emulator_input_controller.model
+        self.emulator_input_view =  self.view.emulator_input_controller.view
+        self.emulator_output_model = self.view.emulator_output_controller.model
+        self.emulator_output_view =  self.view.emulator_output_controller.view
+        self.emulator_input_view.Bind(wx.EVT_SCROLLWIN, self.onScrollEmuIn)
+        self.emulator_output_view.Bind(wx.EVT_SCROLLWIN, self.onScrollEmuOut)
+        self.emulator_output_view.SetRowLabelSize(5)
 
         self.filename = None
         self.correlation_frame = None
         
-        self.model_par_view.Bind(wx.EVT_SCROLLWIN, self.onScrollWin1)
-        self.model_obs_view.Bind(wx.EVT_SCROLLWIN, self.onScrollWin2)
-        self.model_obs_view.SetRowLabelSize(5)
 
         pub.subscribe(self._SyncHeaders, 'Data_Changed')
         pub.subscribe(self.CheckObj, 'MenuBar_Check', func=self.EmulatorCheck)
@@ -41,6 +52,7 @@ class GUIController:
         pub.subscribe(self.CheckObj, 'MenuBar_Save', func=self.Save)
         pub.subscribe(self.CheckObj, 'MenuBar_GenHyperCube', func=self.GenHyperCube)
         pub.subscribe(self.CheckObj, 'MenuBar_Emulate', func=self.Emulate)
+        pub.subscribe(self.CheckObj, 'MenuBar_EvalEmu', func=self.EvalEmu)
         pub.subscribe(self.CheckObj, 'MenuBar_Report', func=self.TrainReport)
         pub.subscribe(self.CheckObj, 'MenuBar_Correlation', func=self.Correlation)
         pub.subscribe(self.CheckObj, 'MenuBar_Posterior', func=self.Posterior)
@@ -112,6 +124,25 @@ class GUIController:
                 frame.Show()
                 frame.OnCalculate({'config_file': self.filename, 'nsteps': nevent, 'clear_trace': options['clear_trace']})
                 self.Correlation(None, None)
+
+    def EvalEmu(self, obj, evt):
+        data = self.emulator_input_model.GetData()
+        if data.shape[0] > 0: # emulator_input contains more than the header
+            np_data = data.astype(float).to_numpy()
+            if self.filename is not None:
+                clf = GetTrainedEmulator(self.filename)[0]
+                for idx, row in enumerate(np_data):
+                    if not np.isnan(row).any():
+                        try:
+                            prediction, cov = clf.Predict(row)
+                        except Exception:
+                            continue
+                        prediction = np.squeeze(prediction)
+                        cov = np.squeeze(cov)
+                        self.emulator_output_model.ChangeValues(idx + 1, np.arange(prediction.shape[0]), prediction, send_changed=False) # y-index add one to not overwrite header
+                        self.emulator_output_model.ChangeValues(idx + 1, np.arange(prediction.shape[0], 2*prediction.shape[0]), np.sqrt(np.diag(cov)), send_changed=False)
+                        self.view.Refresh()
+         
         
     def Correlation(self, obj, evt):
         if self.filename is not None:
@@ -246,12 +277,26 @@ class GUIController:
             self.model_par_view.Scroll(-1, evt.Position)
         evt.Skip()
 
+    def onScrollEmuIn(self, evt):
+        if evt.Orientation == wx.SB_VERTICAL:
+            self.emulator_output_view.Scroll(-1, evt.Position)
+        evt.Skip()
+
+    def onScrollEmuOut(self, evt):
+        if evt.Orientation == wx.SB_VERTICAL:
+            self.emulator_input_view.Scroll(-1, evt.Position)
+        evt.Skip()
+
+
+
     def _SyncHeaders(self, obj, evt):
         rows = evt[0]
         cols = evt[1]
         if 0 in rows:
             self._SyncHeaders2Ways(obj, self.prior_model, self.model_par_model)
+            self._SyncHeaders2Ways(self.prior_model, self.prior_model, self.emulator_input_model)
             self._SyncHeaders2Ways(obj, self.exp_model, self.model_obs_model)
+            self._SyncHeaders2Ways(self.exp_model, self.exp_model, self.emulator_output_model)
             self.view.Refresh()
 
     def _SyncHeaders2Ways(self, obj, model1, model2):
@@ -314,6 +359,38 @@ class GUIViewer(wx.Frame):
         exp_sizer.Add(self.exp_controller.view, 1, wx.EXPAND)
         exp_panel.SetSizer(exp_sizer)
         notebook.AddPage(exp_panel, "Experimental data")
+
+        manual_emulation_panel = wx.Panel(notebook)
+        splitterLR = wx.SplitterWindow(manual_emulation_panel)
+       
+        left_panel = wx.Panel(splitterLR)
+        right_panel = wx.Panel(splitterLR)
+        self.emulator_output_controller = GridController(right_panel, 300, 100)
+        self.emulator_output_controller.view.SetDefaultCellBackgroundColour('Grey')
+        # disable edition in all cells in this panel
+        # this panel is only meant to output data, not for editing
+        self.emulator_output_controller.view.EnableEditing(False)
+        grid_sizer = wx.BoxSizer(wx.VERTICAL)
+        grid_sizer.Add(self.emulator_output_controller.toolbar)
+        grid_sizer.Add(self.emulator_output_controller.view, 1, wx.EXPAND)
+        right_panel.SetSizer(grid_sizer)
+
+        self.emulator_input_controller = GridController(left_panel, 300, 100)
+        attr = gridlib.GridCellAttr()
+        # first row is reserved for header
+        attr.SetReadOnly(True)
+        attr.SetBackgroundColour('Grey')
+        self.emulator_input_controller.view.SetRowAttr(0, attr)
+        grid_sizer = wx.BoxSizer(wx.VERTICAL)
+        grid_sizer.Add(self.emulator_input_controller.toolbar)
+        grid_sizer.Add(self.emulator_input_controller.view, 1, wx.EXPAND)
+        left_panel.SetSizer(grid_sizer)
+
+        splitterLR.SplitVertically(left_panel, right_panel, wx.ScreenDC().GetPPI()[0]*6)
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(splitterLR, 1, wx.EXPAND)
+        manual_emulation_panel.SetSizer(sizer)
+        notebook.AddPage(manual_emulation_panel, "Ask emulator")
        
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(notebook, 1, wx.EXPAND | wx.EXPAND, 5)

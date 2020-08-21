@@ -16,6 +16,7 @@ class GUIMenuBar(wx.MenuBar):
         emulatorMenu = wx.Menu()
         EmulatorCheckItem = emulatorMenu.Append(-1, 'Check emulator', '')
         EmulatorItem = emulatorMenu.Append(-1, 'Start Analysis', '')
+        EvalEmuItem = emulatorMenu.Append(-1, 'Eval emulator', '')
 
         plotMenu = wx.Menu()
         PlotPosteriorItem = plotMenu.Append(-1, 'Plot posterior', '')
@@ -31,6 +32,7 @@ class GUIMenuBar(wx.MenuBar):
         self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('MenuBar_GenHyperCube', obj=self, evt=evt), GenHyperCube)
         self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('MenuBar_Check', obj=self, evt=evt), EmulatorCheckItem)
         self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('MenuBar_Emulate', obj=self, evt=evt), EmulatorItem)
+        self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('MenuBar_EvalEmu', obj=self, evt=evt), EvalEmuItem)
         self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('MenuBar_Posterior', obj=self, evt=evt), PlotPosteriorItem)
         self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('MenuBar_Correlation', obj=self, evt=evt), PlotCorrelationItem)
         self.Bind(wx.EVT_MENU, lambda evt: pub.sendMessage('MenuBar_Report', obj=self, evt=evt), TrainReportItem)

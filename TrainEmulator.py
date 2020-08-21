@@ -132,7 +132,6 @@ def Training(prior, model_X, model_Y, exp, training_file,
     if len(initialscale) == 1:
         initialscale = np.full(len(parameter_names), initialscale[0])
 
-    print("ini_scale ", initialscale, flush=True)
     clf = pl.PipeLine([('Normalize', pl.Normalize()), 
                        ('PCA', pl.PCA(principalcomp, fraction)), 
                        ('NormalizeNew', pl.Normalize(ignore_X=True)),

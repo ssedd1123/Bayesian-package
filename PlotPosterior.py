@@ -20,7 +20,7 @@ from Utilities.Utilities import GetTrainedEmulator
 one_sigma_confidence = 0.6827
 two_sigma_confidence = 0.9545
 
-def PlotOutput(filename, fig):
+def PlotOutput(filename, fig, n_samples=20000):
 
     """
     Function to plot both the posterior and prior point
@@ -32,13 +32,16 @@ def PlotOutput(filename, fig):
     trace = store['trace']
     store.close()
 
-    section_size = 1000
+    n_progress_divisions = 20
+    section_size = n_samples if n_samples < trace.shape[0] else trace.shape[0]
+    section_size /= n_progress_divisions
+
     dfs = np.array_split(trace, trace.shape[0]/section_size, axis=0)
     num_obs = model_Y.shape[1]
     prior_predictions = []
     posterior_predictions = []
     start = time.time()
-    for index, df in enumerate(dfs):
+    for index, df in enumerate(dfs[:n_progress_divisions]):
         par = np.random.uniform(low=prior['Min'], high=prior['Max'], size=(df.shape[0], prior.shape[0]))
         # transform input by input_pipe and put it in our emulator
         result, _ = clf.Predict(par)
@@ -48,11 +51,7 @@ def PlotOutput(filename, fig):
         result, _ = clf.Predict(par)
         posterior_predictions.append(result)
         
-        print('time used %f' % (time.time() - start), flush=True)
-        start = time.time()
-        print('Processing %d' % index, flush=True)
-        if index > 10:
-            break
+        pub.sendMessage('PosteriorOutputProgress', progress=(index + 1)/n_progress_divisions)
     
     # plot the result
     ax = fig.subplots(1, 1)

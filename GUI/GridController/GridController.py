@@ -141,11 +141,24 @@ class GridController:
             self.selected_rows = np.arange(0, obj.GetNumberRows())
         elif rows:
             self.selected_cols = np.arange(0, obj.GetNumberCols())
-            self.selectedrows = np.arange(rows[0], rows[-1]+1)
+            self.selected_rows = np.arange(rows[0], rows[-1]+1)
         else:
-            self.selected_rows = evt.GetRow()
-            self.selected_cols = evt.GetCol()
-        obj.PopupMenu(GridPopupMenu(obj),evt.GetPosition()) 
+            self.selected_rows = [evt.GetRow()]
+            self.selected_cols = [evt.GetCol()]
+        menu = GridPopupMenu(obj)
+        # check if selected range contains read only cell, if so paste, clear and delete will be disabled
+        for row in self.selected_rows:
+            for col in self.selected_cols:
+                if self.view.IsReadOnly(row, col) or not self.view.CanEnableCellControl():
+                    menu.paste.Enable(False)
+                    menu.delete.Enable(False)
+                    menu.clear.Enable(False)
+                    # break out of both loops once a read only cell is found
+                    break
+            else:
+                continue
+            break
+        obj.PopupMenu(menu,evt.GetPosition()) 
 
     def Clear(self, obj, evt):
         self.model.SetValue(self.selected_rows, self.selected_cols, None)
