@@ -2,17 +2,25 @@ import wx
 
 class TrainingProgressFrame(wx.Frame):
 
-    def __init__(self, npca, *args, **kwargs):
+    def __init__(self, npca, *args, col_labels=None, text_label=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.gauges = [wx.Gauge(self) for i in range(npca)]
-        self.gaugesLabel = [wx.StaticText(self, label='PCA %d' % i) for i in range(npca)]
+        if col_labels is not None:
+            assert len(col_labels) == npca, 'Number of column labels does not agree with the number of progresses to display'
+            for label in col_labels:
+                self.gaugesLabel = [wx.StaticText(self, label=label) for i in range(npca)]
+        else:
+            self.gaugesLabel = [wx.StaticText(self, label='PCA %d' % i) for i in range(npca)]
         overallSizer = wx.BoxSizer(wx.VERTICAL)
 
         '''
         Description of the frame
         '''
         titleSizer = wx.BoxSizer(wx.HORIZONTAL)
-        titleSizer.Add(wx.StaticText(self, label='Training progress of emulators on each PCA component'), 0, wx.ALIGN_CENTER | wx.EXPAND | wx.ALL, 10)
+        if text_label is not None:
+            titleSizer.Add(wx.StaticText(self, label=text_label), 0, wx.ALIGN_CENTER | wx.EXPAND | wx.ALL, 10)
+        else:
+            titleSizer.Add(wx.StaticText(self, label='Training progress of emulators on each PCA component'), 0, wx.ALIGN_CENTER | wx.EXPAND | wx.ALL, 10)
 
         '''
         progress display for each PCA components

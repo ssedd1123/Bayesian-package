@@ -83,8 +83,18 @@ class GUIController:
         if self.filename is not None:
             fig = Figure((15,12), 75)
             frame = MatplotlibFrame(None, fig)
+            from GUI.TrainingProgressFrame import TrainingProgressFrame
+            gauge = TrainingProgressFrame(1, None, -1, 'Generating report', size=(300,-1), text_label='Training report generation in progress', col_labels=[''])
+            PtsFraction = 0.1
+            gaugeUpdatePts = lambda progress: gauge.updateProgress(progress*PtsFraction*100) # first half of calculation contributes ~ 10 percent
+            gaugeUpdateSteps = lambda progress: gauge.updateProgress(progress*(1 - PtsFraction)*100 + PtsFraction*100) # second half of the calculation
+            pub.subscribe(gaugeUpdatePts, 'NumberOfPtsProgress')
+            pub.subscribe(gaugeUpdateSteps, 'NumberOfStepsProgress')
+
             from TrainEmulator import TrainingCurve
+            gauge.Show()
             TrainingCurve(fig, config_file=self.filename)
+            gauge.Destroy()
             frame.SetData()
             frame.Show()
             
@@ -121,7 +131,13 @@ class GUIController:
                 self.correlation_frame = MatplotlibFrame(None, fig)
             self.correlation_frame.fig.clf()
             from PlotPosterior import PlotOutput
+            from GUI.TrainingProgressFrame import TrainingProgressFrame
+            gauge = TrainingProgressFrame(1, None, -1, 'Generating output posterior', size=(300,-1), text_label='Output posterior generation in progress', col_labels=[''])
+            gaugeProgress = lambda progress : gauge.updateProgress(progress*100)
+            pub.subscribe(gaugeProgress, 'PosteriorOutputProgress')
+            gauge.Show()
             PlotOutput(self.filename, self.correlation_frame.fig)
+            gauge.Destroy()
             self.correlation_frame.SetData()
             self.correlation_frame.Show()
 

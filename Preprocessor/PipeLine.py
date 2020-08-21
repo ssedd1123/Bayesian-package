@@ -44,6 +44,20 @@ class Transformer:
         v = Y - np.mean(Y, axis=0)
         return 1 - ((u*u).sum()/(v*v).sum())
 
+    def ChiSq(self, X, Y):
+        num_pts = X.shape[0]
+        if num_pts > 0:
+          deg_free = Y.shape[1]
+          predict_Y, cov = self.Predict(X)
+          chisq = 0
+          for y, p_y, co in zip(Y, predict_Y, cov):
+            #var = np.diag(co)
+            #chisq += (np.square(y - p_y)/var).sum()
+            chisq += np.dot(y - p_y, np.linalg.solve(co, (y - p_y)).T)
+          return chisq/num_pts/deg_free
+        else:
+          return 0
+
     def _TransformX(self, X):
         return X
 

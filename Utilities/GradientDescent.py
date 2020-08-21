@@ -87,7 +87,7 @@ class GradientDescentForEmulator:
         history_para = []
         scales = np.atleast_1d(scales)
         nuggets = np.atleast_1d(nuggets)
-        para = np.concatenate([scales, nuggets])
+        para = np.concatenate([nuggets, scales])
         self.step_size = np.full((1,),self.step_nuggets_size)
         self.step_size = np.concatenate([self.step_size, np.full(scales.shape, self.step_scales_size)])
 

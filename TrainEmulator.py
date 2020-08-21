@@ -44,7 +44,9 @@ def NumberOfPts(ax, clf, model_X, model_Y, training_idx, validation_idx):
     validation_Y = model_Y[validation_idx]
 
     valid_ntrain = []
-    for ntrain in range(2, len(training_X)):
+    num_train = len(training_X)
+    for ntrain in range(2, num_train):
+        pub.sendMessage('NumberOfPtsProgress', progress=ntrain/num_train)
         try: 
             clf.Fit(training_X[0:ntrain], training_Y[0:ntrain])
             pred_Y, _ = clf.Predict(training_X[0:ntrain])
@@ -71,6 +73,7 @@ def NumberOfSteps(ax, clf, model_X, model_Y, training_idx, validation_idx, histo
     validation_X = model_X[validation_idx]
     validation_Y = model_Y[validation_idx]
     for idx, para in history_para.iterrows():
+        pub.sendMessage('NumberOfStepsProgress', progress=idx/history_para.shape[0])
         nuggets = []
         scales = []
         for idemu, emulator in enumerate(clf['Emulator'].emulators):
@@ -80,13 +83,16 @@ def NumberOfSteps(ax, clf, model_X, model_Y, training_idx, validation_idx, histo
         clf['Emulator'].nuggets = np.atleast_1d(nuggets)
 
         clf.Fit(training_X, training_Y)
-        training_scores.append(clf.Score(training_X, training_Y))
-        validation_scores.append(clf.Score(validation_X, validation_Y))
+        #training_scores.append(clf.Score(training_X, training_Y))
+        #validation_scores.append(clf.Score(validation_X, validation_Y))
+        training_scores.append(clf.ChiSq(training_X, training_Y))
+        validation_scores.append(clf.ChiSq(validation_X, validation_Y))
 
-    ax.plot(range(history_para.shape[0]), training_scores, label=r'Training $R^2$')
-    ax.plot(range(history_para.shape[0]), validation_scores, label=r'Validation $R^2$')
+
+    ax.plot(range(history_para.shape[0]), training_scores, label=r'Training $\chi^2$/deg. free')
+    ax.plot(range(history_para.shape[0]), validation_scores, label=r'Validation $\chi^2$/deg. free')
     ax.set_xlabel('Number of ephoes')
-    ax.set_ylabel(r'$R^2$')
+    ax.set_ylabel(r'$\chi^2$/deg. free')
     ax.legend()
 
 
@@ -126,6 +132,7 @@ def Training(prior, model_X, model_Y, exp, training_file,
     if len(initialscale) == 1:
         initialscale = np.full(len(parameter_names), initialscale[0])
 
+    print("ini_scale ", initialscale, flush=True)
     clf = pl.PipeLine([('Normalize', pl.Normalize()), 
                        ('PCA', pl.PCA(principalcomp, fraction)), 
                        ('NormalizeNew', pl.Normalize(ignore_X=True)),
