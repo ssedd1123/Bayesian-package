@@ -136,7 +136,7 @@ class ProgressBar(FigureCanvasWxAgg):
 
     
 class CalculationFrame(wx.Frame):
-  def __init__(self, parent, id, title, enviro, tot_per_rank=50000):
+  def __init__(self, parent, id, title, enviro, tot_per_rank=50000, burnin=1000):
     self.enviro = enviro
     self.orig_stdout = sys.stdout
 
@@ -233,7 +233,8 @@ class CalculationFrame(wx.Frame):
     self.enviro.Submit(MCMCParallel,
                        config_file=args['config_file'], 
                        dirpath=dirpath, 
-                       nevents=args['nsteps'])
+                       nevents=args['nsteps'],
+                       burnin=args['burnin'])
     self.info_bar.PrintInfo('%d workers are working' % self.enviro.nworking)
 
     # check for jobs completions and collect results

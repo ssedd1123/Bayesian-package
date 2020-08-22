@@ -101,7 +101,8 @@ def NumberOfSteps(ax, clf, model_X, model_Y, training_idx, validation_idx, histo
 def Training(prior, model_X, model_Y, exp, training_file,
              principalcomp=None, fraction=0.99,
              initialscale=[1], initialnugget=0.1, 
-             scalerate=0.01, nuggetrate=0.01, maxsteps=1000, abs_output=False):
+             scalerate=0.01, nuggetrate=0.01, maxsteps=1000, abs_output=False, 
+             gradthreshold=1e-5):
 
     if type(prior) is str:
         prior = pd.read_csv(prior, index_col=0)
@@ -143,7 +144,7 @@ def Training(prior, model_X, model_Y, exp, training_file,
                                                     save_train_history=True))])
     X = model_X.values
     Y = model_Y.values
-    clf.Fit(X, Y) 
+    clf.Fit(X, Y, tolerance=gradthreshold) 
 
     """
     Write all the training result, together with training points and pipe used to a file

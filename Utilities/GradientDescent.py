@@ -83,7 +83,7 @@ class GradientDescentForEmulator:
 
         return np.exp(para), gradient
         
-    def Descent(self, scales, nuggets, nsteps=10, tolerance=1e-4, progress=DefaultOutput):
+    def Descent(self, scales, nuggets, nsteps=10, tolerance=1e-5, progress=DefaultOutput):
         history_para = []
         scales = np.atleast_1d(scales)
         nuggets = np.atleast_1d(nuggets)

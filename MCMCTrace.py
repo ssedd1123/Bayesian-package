@@ -26,7 +26,7 @@ from Preprocessor.PipeLine import *
 from Utilities.Utilities import PlotTrace, GetTrainedEmulator
 from Utilities.MasterSlave import MasterSlave
 
-def GenerateTrace(emulator, exp_Y, exp_Yerr, prior, id_, iter, output_filename):
+def GenerateTrace(emulator, exp_Y, exp_Yerr, prior, id_, iter, output_filename, burnin=1000):
     """
     The main function to generate pandas trace file after comparing the emulator with experimental value
     Uses pymc2 as it is found to be faster
@@ -56,13 +56,13 @@ def GenerateTrace(emulator, exp_Y, exp_Yerr, prior, id_, iter, output_filename):
     # sample from our posterior distribution 50,000 times, but
     # throw the first 20,000 samples out to ensure that we're only
     # sampling from our steady-state posterior distribution
-    mcmc.sample(iter, burn=1000)
+    mcmc.sample(iter, burn=burnin)
     mcmc.db.close()
     return new_output_filename#pd.DataFrame.from_dict(trace_dict)
     
  
 
-def MCMCParallel(config_file, dirpath=None, nevents=10000):
+def MCMCParallel(config_file, dirpath=None, nevents=10000, burnin=1000):
     args = GetTrainedEmulator(config_file)
     clf = args[0]
     prior = args[1]
@@ -71,7 +71,7 @@ def MCMCParallel(config_file, dirpath=None, nevents=10000):
 
     if dirpath is None:
         dirpath = tempfile.mkdtemp()
-    result = GenerateTrace(clf, exp_Y, exp_Yerr, prior, MPI.COMM_WORLD.Get_rank(), nevents, os.path.join(dirpath, 'temp'))
+    result = GenerateTrace(clf, exp_Y, exp_Yerr, prior, MPI.COMM_WORLD.Get_rank(), nevents, os.path.join(dirpath, 'temp'), burnin)
     return result    
 
 def Merging(config_file, list_of_traces, clear_trace=False):

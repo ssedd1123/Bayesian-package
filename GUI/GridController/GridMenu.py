@@ -32,13 +32,13 @@ class GridToolBar(wx.ToolBar):
         self.AddTool(wx.ID_REDO, 'Redo', redo_ico, '')
         open_ico = wx.ArtProvider.GetBitmap(wx.ART_FILE_OPEN, wx.ART_TOOLBAR, (16,16))
         self.AddTool(wx.ID_OPEN, 'Open csv', open_ico, '')
-        print_ico = wx.ArtProvider.GetBitmap(wx.ART_PRINT, wx.ART_TOOLBAR, (16,16))
-        self.AddTool(wx.ID_PRINT, 'Plot data', print_ico, '')
+        #print_ico = wx.ArtProvider.GetBitmap(wx.ART_PRINT, wx.ART_TOOLBAR, (16,16))
+        #self.AddTool(wx.ID_PRINT, 'Plot data', print_ico, '')
  
         self.Bind(wx.EVT_TOOL, lambda evt: pub.sendMessage('ToolBar_Undo', obj=self, evt=evt), id=wx.ID_UNDO)
         self.Bind(wx.EVT_TOOL, lambda evt: pub.sendMessage('ToolBar_Redo', obj=self, evt=evt), id=wx.ID_REDO)
         self.Bind(wx.EVT_TOOL, lambda evt: pub.sendMessage('ToolBar_Open', obj=self, evt=evt), id=wx.ID_OPEN)
-        self.Bind(wx.EVT_TOOL, lambda evt: pub.sendMessage('ToolBar_Paint', obj=self, evt=evt), id=wx.ID_PRINT)
+        #self.Bind(wx.EVT_TOOL, lambda evt: pub.sendMessage('ToolBar_Paint', obj=self, evt=evt), id=wx.ID_PRINT)
 
         self.EnableTool(wx.ID_UNDO, False)
         self.EnableTool(wx.ID_REDO, False)

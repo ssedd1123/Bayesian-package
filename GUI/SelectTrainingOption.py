@@ -33,7 +33,8 @@ class SelectOption(wx.Dialog):
                           ('Initial nugget', '0.1'), 
                           ('Scale learning rate', '0.01'), 
                           ('Nugget learning rate', '0.01'), 
-                          ('Maximum iterations', '1000')]
+                          ('Maximum iterations', '1000'),
+                          ('Gradient threshold', '0.001')]
          self.output = {}
          self.title = {}
          
@@ -85,4 +86,5 @@ class SelectOption(wx.Dialog):
         args['scalerate'] = float(self.output['Scale learning rate'].GetValue())
         args['nuggetrate'] = float(self.output['Nugget learning rate'].GetValue())
         args['maxsteps'] = int(self.output['Maximum iterations'].GetValue())
+        args['gradthreshold'] = float(self.output['Gradient threshold'].GetValue())
         return args

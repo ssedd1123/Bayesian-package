@@ -99,6 +99,8 @@ class GUIController:
             from TrainEmulator import TrainingCurve
             gauge.Show()
             TrainingCurve(fig, config_file=self.filename)
+            pub.unsubscribe(gaugeUpdatePts, 'NumberOfPtsProgress')
+            pub.unsubscribe(gaugeUpdateSteps, 'NumberOfStepsProgress')
             gauge.Destroy()
             frame.SetData()
             frame.Show()
@@ -115,7 +117,7 @@ class GUIController:
                 from GUI.Model import CalculationFrame
                 frame = CalculationFrame(None, -1, 'Progress', self.workenv, nevent)
                 frame.Show()
-                frame.OnCalculate({'config_file': self.filename, 'nsteps': nevent, 'clear_trace': options['clear_trace']})
+                frame.OnCalculate({'config_file': self.filename, 'nsteps': nevent, 'clear_trace': options['clear_trace'], 'burnin': options['burnin']})
                 self.Correlation(None, None)
 
     def EvalEmu(self, obj, evt):
@@ -161,6 +163,7 @@ class GUIController:
             pub.subscribe(gaugeProgress, 'PosteriorOutputProgress')
             gauge.Show()
             PlotOutput(self.filename, self.correlation_frame.fig)
+            pub.unsubscribe(gaugeProgress, 'PosteriorOutputProgress')
             gauge.Destroy()
             self.correlation_frame.SetData()
             self.correlation_frame.Show()
@@ -220,6 +223,7 @@ class GUIController:
         from TrainEmulator import Training
         Training(prior, model_X, model_Y, exp, outFile[0], abs_output=True, **args)
         #pub.unsubscribe(gaugeUpdate, 'GradientProgress')
+        pub.unsubscribe(gaugeUpdate, 'GradientProgress')
         gauge.Destroy()
         self.filename = outFile[0]
 

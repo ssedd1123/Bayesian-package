@@ -39,6 +39,7 @@ class TrainingProgressFrame(wx.Frame):
         self.SetMinSize((width, -1))
         self.Fit()
         self.NCompleted = 0
+        self.Bind(wx.EVT_CLOSE, self.OnClose)
 
    
     def updateProgress(self, progress):
@@ -53,6 +54,14 @@ class TrainingProgressFrame(wx.Frame):
         if len(self.gauges) == 1 and self.NCompleted >= 1:
             self.gaugesLabel[-1].SetLabel('PCA %d' % self.NCompleted)
         wx.Yield()
+
+    def OnClose(self,evt):
+       #Turn closes into hides unless this is a quit application message / or OS shutting down
+       if evt.CanVeto():
+           evt.Veto()
+       else:
+       #if we don't veto it we allow the event to propogate
+           evt.Skip() 
      
 #----------------------------------------------------------------------
 # Run the program

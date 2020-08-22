@@ -35,7 +35,7 @@ class Transformer:
     def __repr__(self):
         return("{}()").format(self.__class__.__name__)
 
-    def Fit(self, X, Y):
+    def Fit(self, X, Y, **kwargs):
         pass
 
     def Score(self, X, Y):
@@ -99,9 +99,9 @@ class PipeLine(Transformer):
     def __getitem__(self, key):
         return self._steps[key]
 
-    def Fit(self, X, Y):
+    def Fit(self, X, Y, **kwargs):
         for name, step in self.named_steps:
-            step.Fit(X, Y)
+            step.Fit(X, Y, **kwargs)
             X, Y = step.Transform(X, Y)
 
     def __repr__(self):
@@ -160,7 +160,7 @@ class Normalize(Transformer):
     def __repr__(self):
         return("{}(ignore_X={!r})").format(self.__class__.__name__, self.ignore_X)
 
-    def Fit(self, X, Y):
+    def Fit(self, X, Y, **kwargs):
         if self.ignore_X:
             self.Xmean = 0
             self.Xsigma = 1
@@ -204,7 +204,7 @@ class PCA(Transformer):
     def __repr__(self):
         return('{}({}, {})').format(self.__class__.__name__, self.component, self.percentage)
 
-    def Fit(self, X, Y):
+    def Fit(self, X, Y, **kwargs):
         self.cov = np.cov(Y.T)
         if not self.cov.shape:
             # you could be spllied with a 1 feature data set, in which cas self.cov is just a number
@@ -220,6 +220,8 @@ class PCA(Transformer):
                 total_val = sum(self.eigval)
                 running_fraction = np.cumsum(self.eigval)/total_val
                 self.component = np.searchsorted(running_fraction, self.percentage)
+                if self.component == 0:
+                    self.component = 1
 
             assert self.component <= Y.shape[1], "number of components cannot exceed number of variables"
             self.reconstruction_error = np.mean(self.eigval[self.component:])
@@ -263,7 +265,7 @@ class Emulator(Transformer):
         self.nuggets = nuggets
         self.save_train_history = save_train_history
 
-    def Fit(self, X, Y):
+    def Fit(self, X, Y, tolerance=1e-5, **kwargs):
         assert X.shape[0] == Y.shape[0], \
             "Number of samples in X = %d and Y = %d are not the same." \
             % (X.shape[0], Y.shape[0])
@@ -277,7 +279,7 @@ class Emulator(Transformer):
         if self.scales is None or self.nuggets is None:
             gd = GetOptimizer('Adam', self.scales_rate, self.nuggets_rate)
             gd.SetFunc(self._LOOCrossValidation)
-            history_para = gd.Descent(self.initial_scales, self.initial_nuggets, self.max_steps)
+            history_para = gd.Descent(self.initial_scales, self.initial_nuggets, self.max_steps, tolerance=tolerance)
 
             self.scales = history_para[-1][1:]
             self.nuggets = history_para[-1][0]
@@ -330,7 +332,7 @@ class MultEmulator(Transformer):
         output += ', scales={!r}, nuggets={!r}'.format(self.scales, self.nuggets)
         return("{}({})").format(self.__class__.__name__, output)
 
-    def Fit(self, X, Y):
+    def Fit(self, X, Y, **kwargs):
         self.num_features = Y.shape[1]
         self.emulators = []
         Ys = np.hsplit(Y, self.num_features)
@@ -351,7 +353,7 @@ class MultEmulator(Transformer):
                 scales = self.scales[idx, :]
 
             emulator = Emulator(*self.args, **self.kwargs, scales=scales, nuggets=nuggets)
-            emulator.Fit(X, Ysplit)
+            emulator.Fit(X, Ysplit, **kwargs)
             self.emulators.append(emulator)
 
         """
