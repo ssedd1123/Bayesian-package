@@ -118,7 +118,7 @@ class GUIController:
                 frame = CalculationFrame(None, -1, 'Progress', self.workenv, nevent)
                 frame.Show()
                 frame.OnCalculate({'config_file': self.filename, 'nsteps': nevent, 'clear_trace': options['clear_trace'], 'burnin': options['burnin']})
-                self.Correlation(None, None)
+                self.Correlation(None, None, False)
 
     def EvalEmu(self, obj, evt):
         data = self.emulator_input_model.GetData()
@@ -139,14 +139,24 @@ class GUIController:
                         self.view.Refresh()
          
         
-    def Correlation(self, obj, evt):
+    def Correlation(self, obj, evt, ask_options=True):
         if self.filename is not None:
+            kwargs = {}
+            if ask_options:
+                from GUI.SelectPosteriorOption import SelectPosteriorOption
+                options = SelectPosteriorOption(self.view)
+                res = options.ShowModal()
+                if res == wx.ID_OK:
+                    kwargs = options.GetValue()
+                else:
+                    # don't show correlation if the user close the option dialog
+                    return 
             if not self.correlation_frame:
                 fig = Figure((15,12), 75)
                 self.correlation_frame = MatplotlibFrame(None, fig)
             self.correlation_frame.fig.clf()
             from Utilities.Utilities import PlotTrace
-            PlotTrace(self.filename, self.correlation_frame.fig)
+            PlotTrace(self.filename, self.correlation_frame.fig, **kwargs)
             self.correlation_frame.SetData()
             self.correlation_frame.Show()
 
