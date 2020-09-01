@@ -226,14 +226,14 @@ class SplitViewController:
         right_panel = wx.Panel(self.view)
         self.controller_right = GridController(right_panel, nrows, nlayers)
         grid_sizer = wx.BoxSizer(wx.VERTICAL)
-        grid_sizer.Add(self.controller_right.toolbar)
+        grid_sizer.Add(self.controller_right.toolbar, 0, wx.EXPAND)
         grid_sizer.Add(self.controller_right.view, 1, wx.EXPAND)
         self.controller_right.view.SetRowLabelSize(5)
         right_panel.SetSizer(grid_sizer)
 
         self.controller_left = GridController(left_panel, nrows, nlayers)
         grid_sizer = wx.BoxSizer(wx.VERTICAL)
-        grid_sizer.Add(self.controller_left.toolbar)
+        grid_sizer.Add(self.controller_left.toolbar, 0, wx.EXPAND)
         grid_sizer.Add(self.controller_left.view, 1, wx.EXPAND)
         left_panel.SetSizer(grid_sizer)
 

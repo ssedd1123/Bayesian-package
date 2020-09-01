@@ -42,4 +42,4 @@ class GridToolBar(wx.ToolBar):
 
         self.EnableTool(wx.ID_UNDO, False)
         self.EnableTool(wx.ID_REDO, False)
-        #self.Realize()
+        self.Realize()

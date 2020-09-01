@@ -1,5 +1,6 @@
 import os
 import wx
+import wx.lib.inspection
 import sys
 import pandas as pd
 import numpy as np
@@ -311,7 +312,7 @@ class GUIViewer(wx.Frame):
         prior_panel = wx.Panel(notebook)
         self.prior_controller = PriorController(prior_panel, 100)
         prior_sizer = wx.BoxSizer(wx.VERTICAL)
-        prior_sizer.Add(self.prior_controller.toolbar)
+        prior_sizer.Add(self.prior_controller.toolbar, 0, wx.EXPAND)
         prior_sizer.Add(self.prior_controller.view, 1, wx.EXPAND)
         prior_panel.SetSizer(prior_sizer)
         notebook.AddPage(prior_panel, "Parameters prior")
@@ -327,7 +328,7 @@ class GUIViewer(wx.Frame):
         self.exp_controller = GridController(exp_panel, 3, 100)
         self.exp_controller.model.data.index = ['Name', 'Values', 'Errors']
         exp_sizer = wx.BoxSizer(wx.VERTICAL)
-        exp_sizer.Add(self.exp_controller.toolbar)
+        exp_sizer.Add(self.exp_controller.toolbar, 0, wx.EXPAND)
         exp_sizer.Add(self.exp_controller.view, 1, wx.EXPAND)
         exp_panel.SetSizer(exp_sizer)
         notebook.AddPage(exp_panel, "Experimental data")
@@ -356,7 +357,7 @@ class GUIViewer(wx.Frame):
         sizer.Add(notebook, 1, wx.EXPAND | wx.EXPAND, 5)
        
         self.Bind(wx.EVT_CLOSE, self.OnClose)
-        panel.SetSizer(sizer)
+        panel.SetSizerAndFit(sizer)
         self.Layout()
         self.Show()
 
