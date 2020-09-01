@@ -22,9 +22,9 @@ This is a gaussian emulator and Baysiean analysis with PyMC <br />
  2. Go to /path/to/Bayesian-package and create virtual environment by running the following command:
  ```
      $> conda env create -f environment.yml
-   
-    Or, if you are using Windows,
-
+ ```   
+     Or, if you are using Windows,
+ ```
      $> conda env create -f environmentCrossPlatform.yml
  ```
  3. Activate the environment:
@@ -34,6 +34,10 @@ This is a gaussian emulator and Baysiean analysis with PyMC <br />
  4. Start the program with 
  ```
      $> ./Bayesian.sh <number of cores>
+ ```
+ Or, if you are using Windows,
+ ```
+    $> mpiexec -n <number of cores + 1> python -m GUI.GUIController.GUIController
  ```
 
  Running GUI on HPCC
