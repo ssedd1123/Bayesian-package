@@ -1,4 +1,4 @@
-name: BayesianCP
+name: Bayesian
 channels:
   - defaults
 dependencies:
