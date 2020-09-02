@@ -143,7 +143,7 @@ class CalculationFrame(wx.Frame):
     """
     All parameters that need adjustment
     """
-    self.max_speed_per_cpu = 3200
+    self.max_speed_per_cpu = 400
     self.pixel_width = 700
     self.pixel_height = 400
     self.spacer_prop = 0.05
@@ -161,6 +161,7 @@ class CalculationFrame(wx.Frame):
     self.refresh_rate = 0.3
     self.refresh_interval = enviro.size*self.refresh_rate
     enviro.RefreshRate(self.refresh_interval)
+    enviro.RefreshSmear(self.refresh_interval)
     
     self.vspacer = self.pixel_height*self.spacer_prop
     self.hspacer = self.pixel_width*self.spacer_prop
@@ -245,7 +246,7 @@ class CalculationFrame(wx.Frame):
     time_prev = start_time
     last_update = start_time
 
-    while self.enviro.IsRunning():#self.refresh_rate):
+    while self.enviro.IsRunning(self.refresh_rate/10):#self.refresh_rate):
       source, result, tag = self.enviro.stdout
       idx = source - 1
       new_time = time.time()
@@ -267,8 +268,8 @@ class CalculationFrame(wx.Frame):
           if len(num) > 1:
 
             new_tot = np.sum(num_list)
-            dn = new_tot - num_prev
-            dt = new_time-time_prev
+            dn = new_tot#new_tot - num_prev
+            dt = new_time - start_time#new_time-time_prev
             
             time_prev = new_time
             num_prev = new_tot

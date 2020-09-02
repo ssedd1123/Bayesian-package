@@ -10,6 +10,7 @@ from mpi4py import MPI
 import dill
 MPI.pickle.__init__(dill.dumps, dill.loads)
 
+import random
 import tempfile
 import shutil
 import pickle
@@ -19,22 +20,25 @@ def enum(*sequential, **named):
     enums = dict(zip(sequential, range(len(sequential))), **named)
     return type('Enum', (), enums)
 
-tags = enum('FUNC', 'START', 'END', 'ERROR', 'READY', 'IO', 'EXIT', 'NOTHING', 'REFRESH_RATE')
+tags = enum('FUNC', 'START', 'END', 'ERROR', 'READY', 'IO', 'EXIT', 'NOTHING', 'REFRESH_RATE', 'REFRESH_SMEAR')
 
 class OutputPipe(object):
-  def __init__(self, comm, root, refresh_interval=5):
+  def __init__(self, comm, root, refresh_interval=5, refresh_delay=0):
     self.comm = comm
     self.root = root
     self.refresh_interval = refresh_interval
+    self.smeared_refresh_interval = refresh_interval # smear the refresh interval so the update from all workers won't come all at once which skew the speedometer
     self.last_refresh = time.time()
     self.last_sentence = None
+    self.refresh_delay = 0
 
   def write(self, output):
     current_time = time.time()
     last_sentence = output.rstrip()
     if last_sentence:       
       self.last_sentence = last_sentence
-      if current_time - self.last_refresh > self.refresh_interval:
+      if current_time - self.last_refresh > self.smeared_refresh_interval:# + self.refresh_delay*random.uniform(-1, 1):
+        self.smeared_refresh_interval = self.refresh_interval + self.refresh_delay*random.uniform(-1, 1)
         self.comm.send(self.last_sentence, tag=tags.IO, dest=self.root)
         self.last_refresh = current_time
 
@@ -67,6 +71,10 @@ class MasterSlave(object):
   def RefreshRate(self, refresh_interval):
     for worker in range(1, self.size):
       self.comm.send(refresh_interval, tag=tags.REFRESH_RATE, dest=worker)
+
+  def RefreshSmear(self, refresh_smear):
+    for worker in range(1, self.size):
+      self.comm.send(refresh_smear, tag=tags.REFRESH_SMEAR, dest=worker)
 
   def Submit(self, func, **kwargs):
     self.results = []
@@ -143,6 +151,8 @@ class MasterSlave(object):
             self.func = kwargs
         elif source == 0 and tag == tags.REFRESH_RATE:
             sys.stdout.refresh_interval = kwargs
+        elif source == 0 and tag == tags.REFRESH_SMEAR:
+            sys.stdout.refresh_delay = kwargs
         elif source == 0 and tag == tags.EXIT:
           sys.exit(0)
     
