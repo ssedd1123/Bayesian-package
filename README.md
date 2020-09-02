@@ -23,7 +23,7 @@ This is a gaussian emulator and Baysiean analysis with PyMC <br />
  ```
      $> conda env create -f environment.yml
  ```   
-     Or, if you are using Windows,
+Or, if you are using Windows,
  ```
      $> conda env create -f environmentCrossPlatform.yml
  ```
