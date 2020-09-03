@@ -218,6 +218,36 @@ class PriorController(GridController):
                         #self.model.SetValue(i, col, None)
         self.view.Refresh()
 
+class ScrollSync(wx.EvtHandler):
+    def __init__(self, grid1, grid2):
+        super(ScrollSync, self).__init__()
+        self.grid1 = grid1
+        self.grid2 = grid2
+        self.grid1ScrollPos = self.getGrid1Pos()
+        self.grid2ScrollPos = self.getGrid2Pos()
+        self.Bind(wx.EVT_TIMER, self.onTimer)
+        self.timer = wx.Timer(self)
+        self.timer.Start(20)
+
+    def onTimer(self, event):
+        if not self.grid1 or not self.grid2:
+            self.timer.Stop()
+            return
+        if self.grid1ScrollPos != self.getGrid1Pos():
+            self.grid1ScrollPos = self.getGrid1Pos()
+            self.grid2.Scroll(self.grid1ScrollPos)
+        elif self.grid2ScrollPos != self.getGrid2Pos():
+            self.grid2ScrollPos = self.getGrid2Pos()
+            self.grid1.Scroll(self.grid2ScrollPos)
+
+    def getGrid1Pos(self):
+        vertical = self.grid1.GetScrollPos(wx.SB_VERTICAL)
+        return -1, vertical
+
+    def getGrid2Pos(self):
+        vertical = self.grid2.GetScrollPos(wx.SB_VERTICAL)
+        return -1, vertical
+
 class SplitViewController:
 
     def __init__(self, parent, nrows=100, nlayers=100):
@@ -246,21 +276,24 @@ class SplitViewController:
         self.right_model = self.controller_right.model
 
         # link-up the behavior of the two panels
-        self._SyncScrollPos()
+        # new sync function based on timer instead of event is used to handle mouse wheel events
+        # old version won't sync when it is scrolled with mouse wheel or page up/down
+        ScrollSync(self.left_view, self.right_view)
+        #self._SyncScrollPos()
 
-    def _SyncScrollPos(self):
-        self.left_view.Bind(wx.EVT_SCROLLWIN, self._onScrollL)
-        self.right_view.Bind(wx.EVT_SCROLLWIN, self._onScrollR)
+    #def _SyncScrollPos(self):
+    #    self.left_view.Bind(wx.EVT_SCROLLWIN, self._onScrollL)
+    #    self.right_view.Bind(wx.EVT_SCROLLWIN, self._onScrollR)
 
-    def _onScrollL(self, evt):
-        if evt.Orientation == wx.SB_VERTICAL:
-            self.right_view.Scroll(-1, evt.Position)
-        evt.Skip()
+    #def _onScrollL(self, evt):
+    #    if evt.Orientation == wx.SB_VERTICAL:
+    #        self.right_view.Scroll(-1, evt.Position)
+    #    evt.Skip()
 
-    def _onScrollR(self, evt):
-        if evt.Orientation == wx.SB_VERTICAL:
-            self.left_view.Scroll(-1, evt.Position)
-        evt.Skip()
+    #def _onScrollR(self, evt):
+    #    if evt.Orientation == wx.SB_VERTICAL:
+    #        self.left_view.Scroll(-1, evt.Position)
+    #    evt.Skip()
 
 
 class TestFrame(wx.Frame):
