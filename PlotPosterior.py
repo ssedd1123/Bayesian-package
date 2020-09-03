@@ -62,8 +62,8 @@ def PlotOutput(filename, fig, n_samples=20000):
     posterior_interval = scipy.stats.norm.interval(0.95, loc=np.mean(posterior_predictions, axis=0), scale=np.std(posterior_predictions, axis=0))
 
     X = np.arange(num_obs)
-    ax.fill_between(X, prior_interval[0], prior_interval[1], alpha=0.3, color='r', label=r'$Prior 2 \sigma region$')
-    ax.fill_between(X, posterior_interval[0], posterior_interval[1], alpha=0.3, color='b', label=r'$Posterior 2 \sigma region$')
+    ax.fill_between(X, prior_interval[0], prior_interval[1], alpha=0.3, color='r', label=r'Prior $2 \sigma$ region')
+    ax.fill_between(X, posterior_interval[0], posterior_interval[1], alpha=0.3, color='b', label=r'Posterior $2 \sigma$ region')
     ax.plot(X, np.mean(posterior_predictions, axis=0), label=r'Posterior mean value', linestyle='--', marker='o')
     ax.errorbar(X, exp_Y, yerr=exp_Yerr, label='Experimental results', ecolor='g', color='g')
     par_name = [name[0:15] if len(name) > 14 else name for name in list(model_Y)]
@@ -72,7 +72,7 @@ def PlotOutput(filename, fig, n_samples=20000):
     ax.margins(0.2)
     ax.set_xlim([-1, num_obs+1])
     
-    ax.legend()
+    ax.legend(fontsize='large')
 
 if __name__ == '__main__':
     fig = plt.figure(figsize=(13,10))
