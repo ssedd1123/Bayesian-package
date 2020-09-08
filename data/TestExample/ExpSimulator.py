@@ -1,10 +1,11 @@
-import pandas as pd
-import numpy as np
 import math
-import random
 import os
+import random
 
-title ='SineCosine'
+import numpy as np
+import pandas as pd
+
+title = "SineCosine"
 
 description = """
 This is an experiment where the theory tells us
@@ -19,32 +20,33 @@ We have added an absolute error of +/-0.01 to both the experimental result and m
 """
 
 if os.path.exists(title):
-    print('Directory %s exist! Will abort' % title)
+    print("Directory %s exist! Will abort" % title)
     sys.exit()
 
 os.makedirs(title)
-with open(os.path.join(title, 'Description.txt'), 'w') as text_file:
+with open(os.path.join(title, "Description.txt"), "w") as text_file:
     text_file.write(description)
 
-# assume a force law of the form 
+# assume a force law of the form
 # F = A*r^n + C*r
 # observable is force in different distance
 # experimental result is A = 1 and n = -1, C = 1
 def Exp_model(par, r):
-    return math.sin(par['A'])*math.cos(2*par['C'])*r
+    return math.sin(par["A"]) * math.cos(2 * par["C"]) * r
 
-par_prior = {'A':[-3, 3], 'C':[-3, 3]}
+
+par_prior = {"A": [-3, 3], "C": [-3, 3]}
 par_dict = dict([(key, []) for key, value in par_prior.iteritems()])
-correct_par = {'A':0.25, 'C':0.25}
+correct_par = {"A": 0.25, "C": 0.25}
 
 exp_distance = np.linspace(0.5, 3, 1)
-obs_name = dict([('F' + str(r), r) for r in exp_distance])
+obs_name = dict([("F" + str(r), r) for r in exp_distance])
 obs_dict = dict([(key, []) for key in obs_name])
 correct_obs = {}
 for r in exp_distance:
-    correct_obs[('F' + str(r))] = [0]
+    correct_obs[("F" + str(r))] = [0]
 for r in exp_distance:
-    correct_obs[('F' + str(r) + '_Error')] = [0.01]
+    correct_obs[("F" + str(r) + "_Error")] = [0.01]
 
 num_simulate = 50
 for i in xrange(num_simulate):
@@ -59,14 +61,13 @@ for index, row in par_pd.iterrows():
 obs_pd = pd.DataFrame.from_dict(obs_dict)
 
 for key, r in obs_name.iteritems():
-    err = correct_obs[key + '_Error'][-1]
-    correct_obs[key][-1] = (Exp_model(correct_par, r) \
-                            + random.uniform(-err, err))
+    err = correct_obs[key + "_Error"][-1]
+    correct_obs[key][-1] = Exp_model(correct_par, r) + random.uniform(-err, err)
 
 exp_result = pd.DataFrame.from_dict(correct_obs)
 par_prior = pd.DataFrame.from_dict(par_prior)
 model_result = pd.concat([par_pd, obs_pd], axis=1)
 
-exp_result.to_csv(os.path.join(title, 'SimulatedExpResult.csv'), index=False)
-par_prior.to_csv(os.path.join(title, 'SimulatedExpPrior.csv'), index=False)
-model_result.to_csv(os.path.join(title, 'SimulatedExpModel.csv'), index=False)
+exp_result.to_csv(os.path.join(title, "SimulatedExpResult.csv"), index=False)
+par_prior.to_csv(os.path.join(title, "SimulatedExpPrior.csv"), index=False)
+model_result.to_csv(os.path.join(title, "SimulatedExpModel.csv"), index=False)

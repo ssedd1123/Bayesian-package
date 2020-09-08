@@ -2,6 +2,7 @@ import wx
 
 GAP = 12
 
+
 class VideoSlider(wx.Slider):
     def __init__(self, gap, *args, **kwargs):
         wx.Slider.__init__(self, *args, **kwargs)
@@ -18,15 +19,16 @@ class VideoSlider(wx.Slider):
         result_min = self.GetMin()
         result_max = self.GetMax()
         if click_position > click_min and click_position < click_max:
-            result = self.linapp(click_min, click_max, 
-                                 result_min, result_max, 
-                                 click_position)
+            result = self.linapp(
+                click_min, click_max, result_min, result_max, click_position
+            )
         elif click_position <= click_min:
             result = result_min
         else:
             result = result_max
         self.SetValue(result)
         e.Skip()
+
 
 class MainWindow(wx.Frame):
     def __init__(self, *args, **kwargs):
@@ -39,11 +41,12 @@ class MainWindow(wx.Frame):
         self.sizer = wx.BoxSizer()
         self.sizer.Add(self.slider)
 
-        self.panel.SetSizerAndFit(self.sizer)  
-        self.Show()     
+        self.panel.SetSizerAndFit(self.sizer)
+        self.Show()
 
     def OnSlider(self, e):
-        print(self.slider.GetValue())    
+        print(self.slider.GetValue())
+
 
 app = wx.App(False)
 win = MainWindow(None)

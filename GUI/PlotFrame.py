@@ -1,37 +1,42 @@
 from __future__ import print_function
 
+import gc
+import os
+import pickle as pickle
+import random
+import sys
+import time
+
+import matplotlib
+import pandas as pd
+
 # matplotlib requires wxPython 2.8+
 # set the wxPython version in lib\site-packages\wx.pth file
 # or if you have wxversion installed un-comment the lines below
-#import wxversion
-#wxversion.ensureMinimal('2.8')
+# import wxversion
+# wxversion.ensureMinimal('2.8')
 
-import random
-import pickle as pickle
-import pandas as pd
-import sys
-import time
-import os
-import gc
-import matplotlib
-matplotlib.use('WXAgg')
-import matplotlib.cm as cm
-import matplotlib.cbook as cbook
-from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
-from matplotlib.figure import Figure
+
+matplotlib.use("WXAgg")
 import tempfile
-
-
-#from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
-from matplotlib.backends.backend_wx import NavigationToolbar2Wx
-#from matplotlib.figure import Figure
-
-import numpy as np
 from copy import deepcopy
 
+import matplotlib.cbook as cbook
+import matplotlib.cm as cm
+import numpy as np
 import wx
-#import wx.xrc as xrc
+# import wx.xrc as xrc
 import wx.grid as gridlib
+# from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
+from matplotlib.backends.backend_wx import NavigationToolbar2Wx
+from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
+from matplotlib.figure import Figure
+
+# from matplotlib.figure import Figure
+
+
+
+
 
 class PlotFrame(wx.Frame):
     def __init__(self, parent, xdata, ydata):
@@ -51,9 +56,9 @@ class PlotFrame(wx.Frame):
         sizer.Add(self.toolbar, 0, wx.GROW)
         self.SetSizer(sizer)
         self.Fit()
-       
+
         self.graph = self.fig.add_subplot(111)
-        self.lines = self.graph.plot(xdata, ydata, 'ro')
+        self.lines = self.graph.plot(xdata, ydata, "ro")
 
         self.toolbar.update()  # Not sure why this is needed - ADS
 
@@ -70,9 +75,10 @@ class PlotFrame(wx.Frame):
         # this is supposed to prevent redraw flicker on some X servers...
         pass
 
+
 if __name__ == "__main__":
     app = wx.App(0)
-    x = np.linspace(0,2,100)
+    x = np.linspace(0, 2, 100)
     y = np.sin(x)
     frame = PlotFrame(None, x, y)
     frame.Show()

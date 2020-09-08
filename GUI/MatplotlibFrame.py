@@ -1,44 +1,49 @@
 from __future__ import print_function
 
+import gc
+import os
+import pickle as pickle
+import random
+import sys
+import time
+
+import matplotlib
+import pandas as pd
+
 # matplotlib requires wxPython 2.8+
 # set the wxPython version in lib\site-packages\wx.pth file
 # or if you have wxversion installed un-comment the lines below
-#import wxversion
-#wxversion.ensureMinimal('2.8')
+# import wxversion
+# wxversion.ensureMinimal('2.8')
 
-import random
-import pickle as pickle
-import pandas as pd
-import sys
-import time
-import os
-import gc
-import matplotlib
-matplotlib.use('WXAgg')
-import matplotlib.cm as cm
-import matplotlib.cbook as cbook
-from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
-from matplotlib.figure import Figure
+
+matplotlib.use("WXAgg")
 import tempfile
-
-
-#from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
-from matplotlib.backends.backend_wx import NavigationToolbar2Wx
-#from matplotlib.figure import Figure
-
-import numpy as np
 from copy import deepcopy
 
+import matplotlib.cbook as cbook
+import matplotlib.cm as cm
+import numpy as np
 import wx
-#import wx.xrc as xrc
+# import wx.xrc as xrc
 import wx.grid as gridlib
+# from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
+from matplotlib.backends.backend_wx import NavigationToolbar2Wx
+from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
+from matplotlib.figure import Figure
+
+# from matplotlib.figure import Figure
+
+
+
+
 
 class MatplotlibFrame(wx.Frame):
     def __init__(self, parent, fig):
         wx.Frame.__init__(self, parent, wx.NewId())
         panel = wx.Panel(self)
 
-        self.fig = fig#Figure((5, 4), 75)
+        self.fig = fig  # Figure((5, 4), 75)
         self.canvas = FigureCanvasWxAgg(self, -1, self.fig)
         self.toolbar = NavigationToolbar2Wx(self.canvas)  # matplotlib toolbar
         self.toolbar.Realize()
@@ -51,7 +56,7 @@ class MatplotlibFrame(wx.Frame):
         sizer.Add(self.toolbar, 0, wx.GROW)
         self.SetSizer(sizer)
         self.Fit()
-       
+
         self.Bind(wx.EVT_CLOSE, self.OnClose)
         self.toolbar.update()  # Not sure why this is needed - ADS
 
@@ -70,13 +75,14 @@ class MatplotlibFrame(wx.Frame):
         # this is supposed to prevent redraw flicker on some X servers...
         pass
 
+
 if __name__ == "__main__":
     app = wx.App(0)
-    fig = Figure((15,12), 75)
-    x = np.linspace(0,2,100)
+    fig = Figure((15, 12), 75)
+    x = np.linspace(0, 2, 100)
     y = np.sin(x)
     frame = MatplotlibFrame(None, fig)
-    axes2d = fig.subplots(1,1)
+    axes2d = fig.subplots(1, 1)
     print(axes2d)
     axes2d.plot(x, y)
     frame.SetData()
@@ -86,4 +92,4 @@ if __name__ == "__main__":
     if frame:
         print(frame.IsShown())
     else:
-        print('closed')
+        print("closed")

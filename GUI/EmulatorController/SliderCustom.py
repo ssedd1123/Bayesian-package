@@ -1,15 +1,25 @@
 import wx
 from pubsub import pub
 
-class CustomSlider(wx.Control):
 
-    def __init__(self, parent, value, minValue, maxValue, height=40, pads=20, 
-                 title='tesdfst', title_pad=10, **kwargs):
+class CustomSlider(wx.Control):
+    def __init__(
+        self,
+        parent,
+        value,
+        minValue,
+        maxValue,
+        height=40,
+        pads=20,
+        title="tesdfst",
+        title_pad=10,
+        **kwargs
+    ):
         self.height = height
         self.pads = pads
         self.title = title
         self.title_pad = title_pad
-        super().__init__(parent, -1, size=(-1,height), style=wx.NO_BORDER, **kwargs)
+        super().__init__(parent, -1, size=(-1, height), style=wx.NO_BORDER, **kwargs)
         self.SetBackgroundColour(parent.GetBackgroundColour())
         self.parent = parent
         self.minValue = minValue
@@ -31,10 +41,14 @@ class CustomSlider(wx.Control):
         self.initBuffer()
 
     def ValueToCoord(self, val, xnum_pixel):
-        return (val - self.minValue)/(self.maxValue - self.minValue)*(xnum_pixel - 2*self.pads) + self.pads
+        return (val - self.minValue) / (self.maxValue - self.minValue) * (
+            xnum_pixel - 2 * self.pads
+        ) + self.pads
 
     def CoordToValue(self, coord, xnum_pixel):
-        return (coord - self.pads)/(xnum_pixel - 2*self.pads)*(self.maxValue - self.minValue) + self.minValue
+        return (coord - self.pads) / (xnum_pixel - 2 * self.pads) * (
+            self.maxValue - self.minValue
+        ) + self.minValue
 
     def Highlight(self, value):
         self.highlight = value
@@ -43,8 +57,8 @@ class CustomSlider(wx.Control):
         self.DrawLine(dc)
 
     def initBuffer(self):
-        ''' Initialize the bitmap used for buffering the display. '''
-        size = self.GetSize()# self.parent.ClientSize
+        """ Initialize the bitmap used for buffering the display. """
+        size = self.GetSize()  # self.parent.ClientSize
         if size[0] == 0:
             size[0] = 1
         if size[1] == 0:
@@ -53,41 +67,49 @@ class CustomSlider(wx.Control):
         dc = wx.BufferedDC(None, self.buffer)
         dc.Clear()
         self.DrawLine(dc)
- 
+
     def DrawLine(self, dc):
         width = 10
         height = 10
         radius = 7
 
         dc.SetDeviceOrigin(0, 0)
-        font = wx.Font(pointSize = int(wx.ScreenDC().GetPPI()[0]/10), family = wx.DEFAULT, 
-                       style = wx.NORMAL, weight = wx.NORMAL)
+        font = wx.Font(
+            pointSize=int(wx.ScreenDC().GetPPI()[0] / 10),
+            family=wx.DEFAULT,
+            style=wx.NORMAL,
+            weight=wx.NORMAL,
+        )
         dc.SetFont(font)
         tw, th = dc.GetTextExtent(self.title)
-        dc.DrawText(self.title, self.title_pad, (self.height-th)/2)
+        dc.DrawText(self.title, self.title_pad, (self.height - th) / 2)
         dc.SetBackground(wx.Brush(self.GetBackgroundColour()))
         if self.pads - radius - self.title_pad < tw:
             self.pads = tw + radius + self.title_pad
 
-        #dc.SetAxisOrientation(True, True)
+        # dc.SetAxisOrientation(True, True)
         size = dc.GetSize()
         center = self.ValueToCoord(self.highlight, size[0])
-        dc.SetBrush(wx.Brush('#777'))
+        dc.SetBrush(wx.Brush("#777"))
         dc.SetPen(wx.Pen("#777"))
-        dc.DrawPolygon(((center-width/2, 0), (center, height), (center+width/2, 0)))
+        dc.DrawPolygon(
+            ((center - width / 2, 0), (center, height), (center + width / 2, 0))
+        )
 
         # draw slider line
-        dc.DrawLine(self.pads, self.height/2, dc.GetSize()[0]-self.pads, self.height/2)
+        dc.DrawLine(
+            self.pads, self.height / 2, dc.GetSize()[0] - self.pads, self.height / 2
+        )
 
         # draw slider thumb
-        dc.SetPen(wx.Pen(wx.Colour('orange')))
-        dc.SetBrush(wx.Brush(wx.Colour('orange')))
+        dc.SetPen(wx.Pen(wx.Colour("orange")))
+        dc.SetBrush(wx.Brush(wx.Colour("orange")))
         coord = self.ValueToCoord(self.current_value, dc.GetSize()[0])
-        dc.DrawCircle(coord, self.height/2, radius)
-        
-        value_text = '%.2f' % self.current_value
+        dc.DrawCircle(coord, self.height / 2, radius)
+
+        value_text = "%.2f" % self.current_value
         tw, th = dc.GetTextExtent(value_text)
-        dc.DrawText(value_text, coord+radius, self.height-th)
+        dc.DrawText(value_text, coord + radius, self.height - th)
 
     def OnPressed(self, evt):
         if evt.Dragging() or evt.LeftIsDown():
@@ -98,25 +120,25 @@ class CustomSlider(wx.Control):
                 dc.Clear()
                 self.DrawLine(dc)
                 self.Refresh()
-                pub.sendMessage('Slider_Value', obj=self, evt=self.current_value)
+                pub.sendMessage("Slider_Value", obj=self, evt=self.current_value)
 
     def SetValue(self, val):
-       dc = wx.BufferdDC(wx.ClientDC(self), self.buffer)
-       if self.minValue <= val <= self.maxValue:
-           self.current_value = val
-           dc.Clear()
-           self.DrawLine(dc)
-           self.Refresh()
+        dc = wx.BufferdDC(wx.ClientDC(self), self.buffer)
+        if self.minValue <= val <= self.maxValue:
+            self.current_value = val
+            dc.Clear()
+            self.DrawLine(dc)
+            self.Refresh()
+
 
 class Example(wx.Frame):
-
     def __init__(self, *args, **kw):
         super(Example, self).__init__(*args, **kw)
         sizer = wx.BoxSizer(wx.VERTICAL)
         panel = wx.Panel(self)
 
         self.highlighter1 = CustomSlider(panel, 5, 0, 10)
-        self.highlighter2 = CustomSlider(panel, 1, 1, 8) 
+        self.highlighter2 = CustomSlider(panel, 1, 1, 8)
 
         sizer.Add(self.highlighter1, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 20)
         sizer.Add(self.highlighter2, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 20)
@@ -124,6 +146,7 @@ class Example(wx.Frame):
         self.Fit()
         self.Layout()
         self.Centre()
+
 
 def main():
 
@@ -134,5 +157,5 @@ def main():
     app.MainLoop()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

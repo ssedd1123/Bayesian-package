@@ -1,27 +1,31 @@
-import wx
 import sys
 
-class SelectEmulationOption(wx.Dialog):
+import wx
 
+
+class SelectEmulationOption(wx.Dialog):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        content = {'nevent': ('Events per core', 10000), 'burnin': ('Burn in size', 1000)}
+        content = {
+            "nevent": ("Events per core", 10000),
+            "burnin": ("Burn in size", 1000),
+        }
         self.values = {}
 
         for key, (title, default) in content.items():
             hsizer = wx.BoxSizer(wx.HORIZONTAL)
             title_text = wx.StaticText(self, -1, title)
             value_ctrl = wx.TextCtrl(self, value=str(default))
-            hsizer.Add(title_text, 1, wx.EXPAND|wx.ALIGN_LEFT|wx.ALL, 5)
-            hsizer.Add(value_ctrl, 1, wx.EXPAND|wx.ALIGN_LEFT|wx.ALL, 5)
-            sizer.Add(hsizer) 
+            hsizer.Add(title_text, 1, wx.EXPAND | wx.ALIGN_LEFT | wx.ALL, 5)
+            hsizer.Add(value_ctrl, 1, wx.EXPAND | wx.ALIGN_LEFT | wx.ALL, 5)
+            sizer.Add(hsizer)
             self.values[key] = value_ctrl
 
-        self.clear_trace = wx.CheckBox(self, label='Clear Previous Trace?')
+        self.clear_trace = wx.CheckBox(self, label="Clear Previous Trace?")
         sizer.Add(self.clear_trace)
-        self.button = wx.Button(self, wx.ID_OK, 'Submit')
+        self.button = wx.Button(self, wx.ID_OK, "Submit")
         sizer.Add(self.button)
         self.SetSizer(sizer)
         self.Fit()
@@ -38,9 +42,7 @@ class SelectEmulationOption(wx.Dialog):
             try:
                 result[key] = int(content.GetValue())
             except Exception as e:
-                print('Cannot cast result to integers')
+                print("Cannot cast result to integers")
                 print(e, flush=True)
-        result['clear_trace'] = self.clear_trace.GetValue()
+        result["clear_trace"] = self.clear_trace.GetValue()
         return result
-
-
