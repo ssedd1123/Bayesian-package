@@ -6,10 +6,10 @@ from GUI.GridController.GridData import Direction, HistoryType
 
 
 class MyGrid(gridlib.Grid):
-    def __init__(self, parent, size, initial_df=None, **kwargs):
-        if initial_df is not None:
-            size = initial_df.shape
-        super().__init__(parent, -1)
+    def __init__(self, parent, initial_df=None, **kwargs):
+        #if initial_df is not None:
+        #    size = initial_df.shape
+        super().__init__(parent, -1, **kwargs)
         self.SetDefaultColSize(wx.ScreenDC().GetPPI()[1] * 1.2, True)
         self.SetRowLabelSize(wx.ScreenDC().GetPPI()[1] * 1.2)
         self.parent = parent

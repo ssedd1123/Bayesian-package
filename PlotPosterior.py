@@ -22,7 +22,7 @@ one_sigma_confidence = 0.6827
 two_sigma_confidence = 0.9545
 
 
-def PlotOutput(filename, fig, n_samples=20000):
+def PlotOutput(filename, fig, n_samples=20000, trace_filename=None):
 
     """
     Function to plot both the posterior and prior point
@@ -32,7 +32,13 @@ def PlotOutput(filename, fig, n_samples=20000):
     clf, prior, exp_Y, exp_Yerr, model_X, model_Y, training_idx, _ = GetTrainedEmulator(
         filename
     )
-    store = pd.HDFStore(filename, "r")
+    # trace filename can be different from emulator
+    if trace_filename is None:
+        store = pd.HDFStore(filename, "r")
+        print('Trace file: ' + filename, flush=True)
+    else:
+        store = pd.HDFStore(trace_filename, "r")
+        print('Trace file: ' + trace_filename, flush=True)
     trace = store["trace"]
     store.close()
 

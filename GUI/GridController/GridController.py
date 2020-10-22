@@ -17,7 +17,7 @@ from GUI.GridController.GridViewer import DataDirectionDialog, MyGrid
 class GridController:
     def __init__(self, parent, nrows, ncols, **kwargs):
         self.model = GridData(nrows, ncols)
-        self.view = MyGrid(parent, self.model.data)
+        self.view = MyGrid(parent, **kwargs)
         self.view.CreateGrid(nrows, ncols)
         self.view.SetTable(self.model, True)
         self.toolbar = GridToolBar(
@@ -173,6 +173,10 @@ class GridController:
 
     def Clear(self, obj, evt):
         self.model.SetValue(self.selected_rows, self.selected_cols, None)
+
+    def ClearAll(self, obj=None, evt=None):
+        self.model.SetValue(list(range(self.model.data.shape[0])), 
+                            list(range(self.model.data.shape[1])), None)
 
     def Delete(self, obj, evt):
         dlg = DataDirectionDialog(None, "Data direction")

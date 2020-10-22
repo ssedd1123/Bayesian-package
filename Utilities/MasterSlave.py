@@ -18,6 +18,22 @@ import random
 import shutil
 import tempfile
 
+class ThreadsException(Exception):
+    """ 
+    Save exceptions from each thread
+    throw them in a bundle when all threds complete/exit out
+    """
+ 
+    def __init__(self, threads, exceptions):
+      self.threads = threads
+      self.exceptions = exceptions
+      self.message = 'Exceptions are thrown from some threads.\n'
+      for i, exception in zip(threads, exceptions):
+        self.message += 'Thread %d:\n' % i
+        self.message += '%s\n' % str(exception)
+      super().__init__(self.message)
+   
+
 
 def enum(*sequential, **named):
     enums = dict(zip(sequential, range(len(sequential))), **named)
@@ -83,6 +99,8 @@ class MasterSlave(object):
         self.results = []
         if self.rank != 0:
             sys.stdout = OutputPipe(comm, 0, refresh_interval)
+        self.exception_threads = []
+        self.exception_list = []
         self.EventLoop()
 
     def __del__(self):
@@ -113,6 +131,14 @@ class MasterSlave(object):
     def IsRunning(self, duration=0.05):
         if self.rank == 0:
             if self.nworking == 0:
+                if len(self.exception_list) > 0:
+                    """
+                    Throw exceptions from each threads when calculation is done
+                    """
+                    ex = ThreadsException(self.exception_threads, self.exception_list)
+                    self.exception_list = []
+                    self.exception_threads = []
+                    raise ex
                 return False
 
             # source, tag, result = polling_receive(self.comm)
@@ -131,6 +157,8 @@ class MasterSlave(object):
                     self.nworking = self.nworking - 1
                     self.results.append(result)
                 elif tag == tags.ERROR:
+                    self.exception_list.append(result)
+                    self.exception_threads.append(source)
                     self.nworking = self.nworking - 1
                 self.stdout = (source, result, tag)
             else:

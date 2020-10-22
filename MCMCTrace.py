@@ -28,12 +28,12 @@ from numpy import array
 from scipy.stats import multivariate_normal as mvn
 
 from Preprocessor.PipeLine import *
-from Utilities.MasterSlave import MasterSlave
+from Utilities.MasterSlave import MasterSlave, ThreadsException
 from Utilities.Utilities import GetTrainedEmulator, PlotTrace
 
 
 def GenerateTrace(
-    emulator, exp_Y, exp_Yerr, prior, id_, iter, output_filename, burnin=1000
+    emulators, exp_Ys, exp_Yerrs, prior, id_, iter, output_filename, burnin=1000
 ):
     """
     The main function to generate pandas trace file after comparing the emulator with experimental value
@@ -62,13 +62,14 @@ def GenerateTrace(
                     value=float(row["Mean"]),
                 )
             )
+    
+    for emulator, exp_Y, exp_Yerr in zip(emulators, exp_Ys, exp_Yerrs):
+        exp_cov = np.diag(np.square(exp_Yerr))
 
-    exp_cov = np.diag(np.square(exp_Yerr))
-
-    @pymc.stochastic(observed=True)
-    def emulator_result(value=exp_Y, x=parameters):
-        mean, var = emulator.Predict(np.array(x).reshape(1, -1))
-        return np.array(mvn.logpdf(value, np.squeeze(mean), np.squeeze(var) + exp_cov))
+        @pymc.stochastic(observed=True)
+        def emulator_result(value=exp_Y, x=parameters, exp_cov=exp_cov, emulator=emulator):
+            mean, var = emulator.Predict(np.array(x).reshape(1, -1))
+            return np.array(mvn.logpdf(value, np.squeeze(mean), np.squeeze(var) + exp_cov))
 
     # model = pymc.Model(parameters)
     # prepare for MCMC
@@ -84,11 +85,26 @@ def GenerateTrace(
 
 
 def MCMCParallel(config_file, dirpath=None, nevents=10000, burnin=1000):
-    args = GetTrainedEmulator(config_file)
-    clf = args[0]
-    prior = args[1]
-    exp_Y = args[2]
-    exp_Yerr = args[3]
+    if not isinstance(config_file, list):
+        config_file = [config_file]
+    clf = []
+    prior = []
+    exp_Y = []
+    exp_Yerr = []
+    for file_ in config_file:
+        args = GetTrainedEmulator(file_)
+        clf.append(args[0])
+        prior.append(args[1])
+        exp_Y.append(args[2])
+        exp_Yerr.append(args[3])
+
+    """
+    If config_file is a list of strings, then it means we want to chain up multiple emulators
+    Check if they have the same prior. Can't work if they don't agree
+    """
+    if not all([all(prior[0].columns == prior1.columns) for prior1 in prior]):
+        raise RuntimeError("The variables list from all files are not consistent.")
+    prior = prior[0] # since they all agree, only one prior is needed
 
     if dirpath is None:
         dirpath = tempfile.mkdtemp()
@@ -106,6 +122,8 @@ def MCMCParallel(config_file, dirpath=None, nevents=10000, burnin=1000):
 
 
 def Merging(config_file, list_of_traces, clear_trace=False):
+    if isinstance(config_file, list):
+        config_file = config_file[0]
     with pd.HDFStore(config_file) as store:
         if clear_trace and "trace" in store:
             store.remove("trace")
@@ -131,29 +149,35 @@ if __name__ == "__main__":
         description="This script will choose an optimal set of hyperparameters by minizing loss function"
     )
     parser.add_argument(
-        "config_file",
+        "-i",
+        "--inputs",
+        nargs='+',
         help="Location of the trained parameter (output from Training.py)",
+        required=True
     )
-    parser.add_argument("nevents", type=int, help="Number of events")
+    parser.add_argument("-n", type=int, help="Number of events", required=True)
 
     # parser.add_argument('-p', '--plot', action='store_true', help='Use this if you want to plot posterior immediatly after trace generation')
     args = vars(parser.parse_args())
 
     # if rank == root:
-    work_environment.Submit(MCMCParallel, **args)
+    work_environment.Submit(MCMCParallel, **{"config_file": args['inputs'], "nevents": args['n']})
     refresh_rate = 0.3
     refresh_interval = refresh_rate * size
     # some stdio must be discarded for MPI network efficiency
     work_environment.RefreshRate(refresh_interval)
 
-    while work_environment.IsRunning():
-        out = work_environment.stdout[1]
-        if out is not None:
-            print(out, flush=True)
+    try:
+      while work_environment.IsRunning():
+          out = work_environment.stdout[1]
+          if out is not None:
+              print(out, flush=True)
+    except ThreadsException as ex:
+      print(ex)
 
-    prior = Merging(args["config_file"], work_environment.results)
+    prior = Merging(args["inputs"][0], work_environment.results, clear_trace=True)
     # shutil.rmtree(work_environment.results)
 
-    PlotTrace(args["config_file"])
+    PlotTrace(args["inputs"][0])
     plt.show()
     # work_environment.Close()

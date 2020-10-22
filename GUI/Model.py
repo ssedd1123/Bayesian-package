@@ -286,61 +286,66 @@ class CalculationFrame(wx.Frame):
         time_prev = start_time
         last_update = start_time
 
-        while self.enviro.IsRunning(self.refresh_rate / 10):  # self.refresh_rate):
-            source, result, tag = self.enviro.stdout
-            idx = source - 1
-            new_time = time.time()
-            if tag == tags.NOTHING:
-                speed = None
-            else:
-                if tag == tags.END:
-                    speed = 0
-                    self.info_bar.PrintInfo(
-                        "%d workers are still working. Worker %d completed"
-                        % (self.enviro.nworking, idx)
-                    )
-                elif tag == tags.ERROR:
-                    speed = 0
-                    print("Error from worker %d: %s" % (idx, str(result)))
-                    sys.stdout.flush()
-                else:
-                    num = re.findall(r"\d+\.?\d*", result)
-                    last_num = int(num[1])
-                    num_list[idx] = last_num
-
-                    if len(num) > 1:
-
-                        new_tot = np.sum(num_list)
-                        dn = new_tot  # new_tot - num_prev
-                        dt = new_time - start_time  # new_time-time_prev
-
-                        time_prev = new_time
-                        num_prev = new_tot
-                        speed = dn / dt
-
-                        self.speedmeter.UpdateSpeed(speed)
-                        self.progress_bar.UpdateProgress(np.sum(num_prev))
-                        last_update = new_time
-                        wx.YieldIfNeeded()
-
-        self.info_bar.PrintInfo("All calculations completed. Merging...")
-        self.progress_bar.UpdateProgress(np.sum(num_prev))
-        self.speedmeter.ReturnZero()
-        wx.YieldIfNeeded()
-
         try:
-            result = Merging(
-                args["config_file"], self.enviro.results, args["clear_trace"]
-            )
-        except Exception as e:
-            traceback.print_exc()
-            print("Error merging files. Read result in %s" % dirpath)
-            sys.stdout.flush()
-        else:
-            shutil.rmtree(dirpath)
-            self.info_bar.PrintInfo("Merging completed.")
+            while self.enviro.IsRunning(self.refresh_rate / 10):  # self.refresh_rate):
+                source, result, tag = self.enviro.stdout
+                idx = source - 1
+                new_time = time.time()
+                if tag == tags.NOTHING:
+                    speed = None
+                else:
+                    if tag == tags.END:
+                        speed = 0
+                        self.info_bar.PrintInfo(
+                            "%d workers are still working. Worker %d completed"
+                            % (self.enviro.nworking, idx)
+                        )
+                    elif tag == tags.ERROR:
+                        speed = 0
+                        self.info_bar.PrintInfo('Error from worker %d' % idx)
+                    else:
+                        num = re.findall(r"\d+\.?\d*", result)
+                        last_num = int(num[1])
+                        num_list[idx] = last_num
+
+                        if len(num) > 1:
+
+                            new_tot = np.sum(num_list)
+                            dn = new_tot  # new_tot - num_prev
+                            dt = new_time - start_time  # new_time-time_prev
+
+                            time_prev = new_time
+                            num_prev = new_tot
+                            speed = dn / dt
+
+                            self.speedmeter.UpdateSpeed(speed)
+                            self.progress_bar.UpdateProgress(np.sum(num_prev))
+                            last_update = new_time
+                            wx.YieldIfNeeded()
+
+            self.info_bar.PrintInfo("All calculations completed. Merging...")
+            self.progress_bar.UpdateProgress(np.sum(num_prev))
+            self.speedmeter.ReturnZero()
             wx.YieldIfNeeded()
-        self.Destroy()
+        except Exception as e:
+            raise e
+        else:
+            try:
+                result = Merging(
+                    args["config_file"], self.enviro.results, args["clear_trace"]
+                )
+            except Exception as e:
+                raise e
+                #traceback.print_exc()
+                #print("Error merging files.")
+                #sys.stdout.flush()
+            else:
+                self.info_bar.PrintInfo("Merging completed.")
+                wx.YieldIfNeeded()
+            finally:
+                shutil.rmtree(dirpath)
+        finally:
+            self.Destroy()
 
     def OnClose(self, event):
         # self.enviro.Close()

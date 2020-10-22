@@ -13,8 +13,9 @@ from pubsub import pub
 import Utilities.GradientDescent as gd
 from GUI.GridController.GridController import (GridController, PriorController,
                                                SplitViewController)
+from GUI.FileController.FileController import FileController
 from GUI.MatplotlibFrame import MatplotlibFrame
-from Utilities.MasterSlave import MasterSlave
+from Utilities.MasterSlave import MasterSlave, ThreadsException
 from Utilities.Utilities import GetTrainedEmulator
 
 
@@ -38,7 +39,10 @@ class GUIController:
         self.emulator_output_model = self.view.manual_emulation_controller.right_model
         self.emulator_output_view = self.view.manual_emulation_controller.right_view
 
-        self.filename = None
+        self.file_view = self.view.file_controller.file_view
+        self.display_view = self.view.file_controller.display_view
+        self.file_model = self.view.file_controller.model
+
         self.correlation_frame = None
 
         pub.subscribe(self._SyncHeaders, "Data_Changed")
@@ -48,10 +52,16 @@ class GUIController:
         pub.subscribe(self.CheckObj, "MenuBar_Save", func=self.Save)
         pub.subscribe(self.CheckObj, "MenuBar_GenHyperCube", func=self.GenHyperCube)
         pub.subscribe(self.CheckObj, "MenuBar_Emulate", func=self.Emulate)
+        pub.subscribe(self.CheckObj, "MenuBar_ChainedEmulate", func=self.ChainedEmulate)
         pub.subscribe(self.CheckObj, "MenuBar_EvalEmu", func=self.EvalEmu)
         pub.subscribe(self.CheckObj, "MenuBar_Report", func=self.TrainReport)
         pub.subscribe(self.CheckObj, "MenuBar_Correlation", func=self.Correlation)
         pub.subscribe(self.CheckObj, "MenuBar_Posterior", func=self.Posterior)
+
+        # sync file according the file_controller
+        pub.subscribe(self.LoadFile, 'emulatorFileChanged')
+        pub.subscribe(self.LoadFile, 'listFileChanged')
+        pub.subscribe(self.LoadFile, 'listFileChanged')
 
     def CheckObj(self, func, obj, evt):
         orig_obj = obj
@@ -94,7 +104,7 @@ class GUIController:
         self.model_par_view.ForceRefresh()
 
     def TrainReport(self, obj, evt):
-        if self.filename is not None:
+        if self.file_model.emulator_filename is not None:
             fig = Figure((15, 12), 75)
             frame = MatplotlibFrame(None, fig)
             from GUI.TrainingProgressFrame import TrainingProgressFrame
@@ -121,15 +131,30 @@ class GUIController:
             from TrainEmulator import TrainingCurve
 
             gauge.Show()
-            TrainingCurve(fig, config_file=self.filename)
+            TrainingCurve(fig, config_file=self.file_model.emulator_filename)
             pub.unsubscribe(gaugeUpdatePts, "NumberOfPtsProgress")
             pub.unsubscribe(gaugeUpdateSteps, "NumberOfStepsProgress")
             gauge.Destroy()
             frame.SetData()
             frame.Show()
 
-    def Emulate(self, obj, evt):
-        if self.filename is not None:
+    def ChainedEmulate(self, obj, evt):
+        self.Emulate(obj, evt, False)
+
+    def Emulate(self, obj, evt, single_file=True):
+        if self.file_model.trace_filename is None:
+            wx.MessageBox('No trace file is selected. Cannot start analysis', 'Error', wx.OK | wx.ICON_ERROR)
+            return
+        if self.file_model.trace_filename != self.file_model.emulator_filename:
+            wx.MessageBox('For single file analysis, please make sure trace file and emulator file is the same', 
+                          'Error', wx.OK | wx.ICON_ERROR)
+            return
+        if single_file:
+            filenames = self.file_model.trace_filename
+        else:
+            filenames = self.file_model.get_list_filenames_with_trace_first()
+
+        if filenames is not None:
             from GUI.SelectEmulationOption import SelectEmulationOption
 
             EmuOption = SelectEmulationOption(self.view)
@@ -141,22 +166,26 @@ class GUIController:
 
                 frame = CalculationFrame(None, -1, "Progress", self.workenv, nevent)
                 frame.Show()
-                frame.OnCalculate(
-                    {
-                        "config_file": self.filename,
-                        "nsteps": nevent,
-                        "clear_trace": options["clear_trace"],
-                        "burnin": options["burnin"],
-                    }
-                )
-                self.Correlation(None, None, False)
+                
+                try:
+                    frame.OnCalculate(
+                        {
+                            "config_file": filenames,
+                            "nsteps": nevent,
+                            "clear_trace": options["clear_trace"],
+                            "burnin": options["burnin"],
+                        }
+                    )
+                    self.Correlation(None, None, False)
+                except ThreadsException as ex:
+                    wx.MessageBox(str(ex), 'Error', wx.OK | wx.ICON_ERROR)
 
     def EvalEmu(self, obj, evt):
         data = self.emulator_input_model.GetData()
         if data.shape[0] > 0:  # emulator_input contains more than the header
             np_data = data.astype(float).to_numpy()
-            if self.filename is not None:
-                clf = GetTrainedEmulator(self.filename)[0]
+            if self.file_model.emulator_filename is not None:
+                clf = GetTrainedEmulator(self.file_model.emulator_filename)[0]
                 for idx, row in enumerate(np_data):
                     if not np.isnan(row).any():
                         try:
@@ -180,7 +209,7 @@ class GUIController:
                         self.view.Refresh()
 
     def Correlation(self, obj, evt, ask_options=True):
-        if self.filename is not None:
+        if self.file_model.trace_filename is not None:
             kwargs = {}
             if ask_options:
                 from GUI.SelectPosteriorOption import SelectPosteriorOption
@@ -198,12 +227,12 @@ class GUIController:
             self.correlation_frame.fig.clf()
             from Utilities.Utilities import PlotTrace
 
-            PlotTrace(self.filename, self.correlation_frame.fig, **kwargs)
+            PlotTrace(self.file_model.trace_filename, self.correlation_frame.fig, **kwargs)
             self.correlation_frame.SetData()
             self.correlation_frame.Show()
 
     def Posterior(self, obj, evt):
-        if self.filename is not None:
+        if self.file_model.emulator_filename is not None:
             if not self.correlation_frame:
                 fig = Figure((15, 12), 75)
                 self.correlation_frame = MatplotlibFrame(None, fig)
@@ -223,7 +252,7 @@ class GUIController:
             gaugeProgress = lambda progress: gauge.updateProgress(progress * 100)
             pub.subscribe(gaugeProgress, "PosteriorOutputProgress")
             gauge.Show()
-            PlotOutput(self.filename, self.correlation_frame.fig)
+            PlotOutput(self.file_model.emulator_filename, self.correlation_frame.fig, trace_filename=self.file_model.trace_filename)
             pub.unsubscribe(gaugeProgress, "PosteriorOutputProgress")
             gauge.Destroy()
             self.correlation_frame.SetData()
@@ -235,7 +264,7 @@ class GUIController:
         model_Y = self.model_obs_model.GetData().astype("float")
         exp = self.exp_model.GetData(drop_index=False).astype("float")
 
-        store = pd.HDFStore(self.filename, "a")
+        store = pd.HDFStore(self.file_model.emulator_filename, "a")
         if model_X.equals(store["Model_X"]) and model_Y.equals(store["Model_Y"]):
             from ChangeFileContent import ChangeFileContent
 
@@ -306,45 +335,60 @@ class GUIController:
         # pub.unsubscribe(gaugeUpdate, 'GradientProgress')
         pub.unsubscribe(gaugeUpdate, "GradientProgress")
         gauge.Destroy()
-        self.filename = outFile[0]
+
+        if self.file_model.emulator_filename is not None:
+            self.view.file_controller.remove_file(self.file_model.emulator_filename)
+        self.view.file_controller.add_file(outFile[0])
+        self.LoadFile()
 
     def OpenFile(self, obj, evt):
-        dlg = wx.FileDialog(
-            obj,
-            message="Choose a file",
-            defaultFile="",
-            style=wx.FD_OPEN | wx.FD_MULTIPLE,
-        )
-        result = dlg.ShowModal()
-        path = dlg.GetPaths()
-        dlg.Destroy()
+        #dlg = wx.FileDialog(
+        #    obj,
+        #    message="Choose a file",
+        #    defaultFile="",
+        #    style=wx.FD_OPEN | wx.FD_MULTIPLE,
+        #)
+        #result = dlg.ShowModal()
+        #path = dlg.GetPaths()
+        #dlg.Destroy()
 
-        if result != wx.ID_OK:
-            return False
-        self.LoadFile(path[0])
+        #if result != wx.ID_OK:
+        #    return False
+        #self.view.file_controller.add_file()
+        self.view.file_controller.add_file()
+        self.LoadFile()#path[0])
 
-    def LoadFile(self, filename):
-        self.filename = filename
-        store = pd.HDFStore(self.filename, "r")
+    def LoadFile(self, filename=None):
+        # if filename is given, it will update the gui display
+        # otherwise it will just sync file_model and model_par
+        if filename is not None:
+            self.view.file_controller.add_file(filename)
 
-        self.prior_model.SetData(store["PriorAndConfig"].T)
-        self.model_par_model.SetData(store["Model_X"])
-        self.model_obs_model.SetData(store["Model_Y"])
-        self.exp_model.SetData(pd.concat([store["Exp_Y"], store["Exp_YErr"]], axis=1).T)
+        self.view.prior_controller.ClearAll()
+        self.view.model_input_controller.controller_left.ClearAll()
+        self.view.model_input_controller.controller_right.ClearAll()
+        self.view.exp_controller.ClearAll()
+        
+        if self.file_model.emulator_filename is not None:
+            store = pd.HDFStore(self.file_model.emulator_filename, "r")
+            self.prior_model.SetData(store["PriorAndConfig"].T)
+            self.model_par_model.SetData(store["Model_X"])
+            self.model_obs_model.SetData(store["Model_Y"])
+            self.exp_model.SetData(pd.concat([store["Exp_Y"], store["Exp_YErr"]], axis=1).T)
+            store.close()
 
         self.prior_model.ResetUndo()
         self.model_par_model.ResetUndo()
         self.model_obs_model.ResetUndo()
         self.exp_model.ResetUndo()
 
-        store.close()
 
     def EmulatorCheck(self, obj, evt):
-        if self.filename is not None:
+        if self.file_model.emulator_filename is not None:
             from GUI.EmulatorController.EmulatorViewer import \
                 EmulatorController
 
-            controller = EmulatorController(self.filename)
+            controller = EmulatorController(self.file_model.emulator_filename)
             controller.viewer.Show()
 
     def _SyncHeaders(self, obj, evt):
@@ -389,7 +433,8 @@ class GUIViewer(wx.Frame):
         self.app = app
 
         panel = wx.Panel(self)
-        notebook = wx.Notebook(panel)
+        split_panel = wx.SplitterWindow(panel)
+        notebook = wx.Notebook(split_panel)
         from GUI.GUIController.GUIMenu import GUIMenuBar
 
         self.menubar = GUIMenuBar(self)
@@ -407,17 +452,19 @@ class GUIViewer(wx.Frame):
         self.model_input_controller = SplitViewController(grid_panel)
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.model_input_controller.view, 1, wx.EXPAND)
-        grid_panel.SetSizer(sizer)
+        #grid_panel.SetSizer(sizer)
         notebook.AddPage(grid_panel, "Model calculations")
 
-        exp_panel = wx.Panel(notebook)
-        self.exp_controller = GridController(exp_panel, 3, 100)
+        #exp_panel = wx.Panel(notebook)
+        self.exp_controller = GridController(grid_panel, 3, 100, size=(-1, 120))
         self.exp_controller.model.data.index = ["Name", "Values", "Errors"]
-        exp_sizer = wx.BoxSizer(wx.VERTICAL)
-        exp_sizer.Add(self.exp_controller.toolbar, 0, wx.EXPAND)
-        exp_sizer.Add(self.exp_controller.view, 1, wx.EXPAND)
-        exp_panel.SetSizer(exp_sizer)
-        notebook.AddPage(exp_panel, "Experimental data")
+        #exp_sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(self.exp_controller.toolbar, 0.1, wx.EXPAND)
+        sizer.Add(self.exp_controller.view, 0, wx.EXPAND)
+        grid_panel.SetSizer(sizer)
+
+        #exp_panel.SetSizer(exp_sizer)
+        #notebook.AddPage(exp_panel, "Experimental data")
 
         manual_emulation_panel = wx.Panel(notebook)
         self.manual_emulation_controller = SplitViewController(
@@ -446,8 +493,17 @@ class GUIViewer(wx.Frame):
         manual_emulation_panel.SetSizer(sizer)
         notebook.AddPage(manual_emulation_panel, "Ask emulator")
 
+
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(notebook, 1, wx.EXPAND | wx.EXPAND, 5)
+
+        self.file_controller = FileController(file_viewer_kwargs={'parent': split_panel}, display_kwargs={'parent': panel, 'size': (-1, 25)})
+        split_panel.SplitVertically(notebook, self.file_controller.file_view, wx.ScreenDC().GetPPI()[0] * 30)
+        #hsizer = wx.BoxSizer(wx.HORIZONTAL)
+        #hsizer.Add(notebook, 1, wx.EXPAND | wx.EXPAND, 5)
+        #hsizer.Add(self.file_controller.file_view, 0.2, wx.EXPAND, 0)
+
+        sizer.Add(split_panel, 1, wx.EXPAND, 0)
+        sizer.Add(self.file_controller.display_view, 0., wx.EXPAND)
 
         self.Bind(wx.EVT_CLOSE, self.OnClose)
         panel.SetSizerAndFit(sizer)

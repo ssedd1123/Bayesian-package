@@ -1,0 +1,251 @@
+from pubsub import pub
+from wx.lib.mixins.listctrl import ListCtrlAutoWidthMixin
+import wx
+
+class FileModel:
+    def __init__(self, trace_filename, emulator_filename, list_filenames=None):
+        if list_filenames is None:
+            self.list_filenames = list(set([trace_filename, emulator_filename]) - set([None])) # remove all None elements
+        else:
+            self.list_filenames = list_filenames
+        self.trace_filename = trace_filename
+        self.emulator_filename = emulator_filename
+
+    @property
+    def emulator_filename(self):
+        return self.__emulator_filename
+ 
+    @emulator_filename.setter
+    def emulator_filename(self, emulator_filename):
+        if emulator_filename is not None:
+            assert emulator_filename in self.list_filenames, 'Emulator filename is not found in the given list of files'
+        self.__emulator_filename = emulator_filename
+        pub.sendMessage('emulatorFileChanged')
+
+    @property
+    def trace_filename(self):
+        return self.__trace_filename
+ 
+    @trace_filename.setter
+    def trace_filename(self, trace_filename):
+        if trace_filename is not None:
+            assert trace_filename in self.list_filenames, 'Trace filename is not found in the given list of files'
+        self.__trace_filename = trace_filename
+        pub.sendMessage('traceFileChanged')
+
+    @property
+    def list_filenames(self):
+        return self.__list_filenames
+
+    @list_filenames.setter
+    def list_filenames(self, list_filenames):
+        self.__list_filenames = list_filenames
+        pub.sendMessage('listFileChanged')
+
+    def get_list_filenames_with_trace_first(self):
+        list_return = self.list_filenames.copy()
+        assert self.trace_filename is not None, 'Trace file is not selected'
+        list_return.insert(0, list_return.pop(list_return.index(self.trace_filename)))
+        return list_return
+
+    def remove_file(self, filename):
+        if filename == self.trace_filename:
+            self.trace_filename = None
+        if filename == self.emulator_filename:
+            self.emulator_filename = None
+        try:
+            self.list_filenames.remove(filename)
+            pub.sendMessage('listFileChanged')
+        except Exception as e:
+            print(e)
+
+    def add_file(self, filename):
+        if filename not in self.list_filenames:
+            self.list_filenames = self.list_filenames + [filename]
+
+# custom listCtrl that will resize with width
+class ListCtrlAutoWidth(wx.ListCtrl, ListCtrlAutoWidthMixin):
+    def __init__(self, parent, ID=-1, pos=wx.DefaultPosition,
+                 size=wx.DefaultSize, style=0):
+        wx.ListCtrl.__init__(self, parent, ID, pos, size, style)
+        ListCtrlAutoWidthMixin.__init__(self)
+        self.setResizeColumn(0)
+            
+
+class FileViewer(wx.Panel):
+  
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        self.lst = ListCtrlAutoWidth(self, size=(-1,100), style= wx.LC_REPORT | wx.LC_SINGLE_SEL)
+        self.lst.InsertColumn(0, 'File name', format=wx.LIST_FORMAT_LEFT)
+        self.lst.SetColumnWidth(0, wx.LIST_AUTOSIZE)
+        self.lst.Bind(wx.EVT_LIST_ITEM_SELECTED, self.on_update)
+        self.lst.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self.on_select)
+
+        self.add_btn = wx.Button(self, -1, 'Add file', size=(50, 20))
+        self.add_btn.Bind(wx.EVT_BUTTON, self.on_add)
+        self.remove_btn = wx.Button(self, -1, 'Remove', size=(50, 20))
+        self.remove_btn.Bind(wx.EVT_BUTTON, self.on_remove)
+
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(self.lst, 1., wx.EXPAND)
+
+        btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        btn_sizer.Add(self.add_btn, 0.4)
+        btn_sizer.Add(self.remove_btn, 0.4)
+        sizer.Add(btn_sizer, 0)
+
+        self.selected_item = None
+        self.SetSizerAndFit(sizer)
+
+    def on_update(self, evt):
+        pub.sendMessage("EmulatorSelected", filename=self.lst.GetItem(self.lst.GetFirstSelected()).GetText()) 
+
+    def on_select(self, evt):
+        pub.sendMessage("TraceSelected", filename=self.lst.GetItem(self.lst.GetFirstSelected()).GetText())
+
+    def on_remove(self, evt):
+        if self.lst.GetFirstSelected() is wx.NOT_FOUND:
+            filename = None
+        else:
+            filename = self.lst.GetItem(self.lst.GetFirstSelected()).GetText()
+        pub.sendMessage("FileRemove", filename=filename)
+
+    def on_add(self, evt):
+        pub.sendMessage("FileAdd")
+
+    def SetList(self, list_):
+        self.lst.DeleteAllItems()
+        index = 0
+        for val in list_:
+            if val is not None:
+                self.lst.InsertItem(index, val)
+                index += 1
+   
+    def Select(self, element):
+        i = self.lst.FindItem(-1, element)
+        assert i != wx.NOT_FOUND, 'Element ' + element + ' is not found in listbox'
+        self.lst.Select(i)
+        # function do not emit EVT_LISTBOX_SELECT. Have to do it manually
+        self.on_update(None)
+
+    def highlight_only(self, element=None):
+        # re-highlight current element if it is None
+        # usefule when model list is updated
+        if element is None:
+            if self.selected_item is None:
+                return # do nothing if nothing needs to be highlighted
+            element = self.selected_item
+        i = self.lst.FindItem(-1, element)
+        # un-highlight previously selected item
+        if self.selected_item is not None:
+            item = self.lst.FindItem(-1, self.selected_item)
+            if item != wx.NOT_FOUND:
+                self.lst.SetItemBackgroundColour(item, wx.Colour(255, 255, 255, 255))
+        self.selected_item = element
+        if i != wx.NOT_FOUND:
+            self.lst.SetItemBackgroundColour(i, wx.Colour(255, 0, 0, 255))
+    
+
+class FileDisplay(wx.Panel):
+  
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.trace_file_display = wx.StaticText(self, -1)#, style=wx.ALIGN_LEFT)#, size=(-1,30))
+        self.emulator_file_display = wx.StaticText(self, -1)#, style=wx.ALIGN_LEFT)#, size=(-1,30))
+
+        font = wx.Font(pointSize = 10, family = wx.DEFAULT,
+                       style = wx.NORMAL, weight = wx.NORMAL)
+        self.trace_file_display.SetFont(font)
+        self.emulator_file_display.SetFont(font)
+
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        #sizer.Add(wx.StaticText(self, -1, label='Trace file:', style=wx.ALIGN_LEFT, size=(-1,15)), 0., wx.EXPAND)
+        sizer.Add(self.trace_file_display, 1, wx.EXPAND)
+        #sizer.Add(wx.StaticText(self, -1, label='Emulator file:', style=wx.ALIGN_LEFT, size=(-1,15)), 0., wx.EXPAND)
+        sizer.Add(self.emulator_file_display, 1, wx.EXPAND)
+
+        self.SetSizer(sizer)
+ 
+    def display_file(self, trace_file=None, emulator_file=None):
+        if trace_file is None:
+            trace_file = ''
+        self.trace_file_display.SetLabel('Trace file: ' + trace_file)
+        #1self.trace_file_display.Wrap(self.Size[0])
+        #self.trace_file_display.SetAutoLayout(True)
+        if emulator_file is None:
+            emulator_file = ''
+        self.emulator_file_display.SetLabel('Emulator file: ' + emulator_file)
+        #self.emulator_file_display.Wrap(self.Size[0])
+        if self.GetSizer() is not None:
+            self.GetSizer().Layout()
+
+
+class FileController:
+
+    def __init__(self, trace_filename=None, emulator_filename=None, all_filenames=None, file_viewer_kwargs={}, display_kwargs={}):       
+        self.file_view = FileViewer(**file_viewer_kwargs)
+        self.display_view = FileDisplay(**display_kwargs)
+        self.model = FileModel(trace_filename, emulator_filename, all_filenames)
+
+        pub.subscribe(self.update_emulator, 'EmulatorSelected') 
+        pub.subscribe(self.update_trace, 'TraceSelected') 
+        pub.subscribe(self.remove_file, 'FileRemove')
+        pub.subscribe(self.add_file, 'FileAdd')
+
+        pub.subscribe(self._SyncListContent, 'listFileChanged')
+        pub.subscribe(self._SyncDisplayData, 'emulatorFileChanged')
+        pub.subscribe(self._SyncDisplayData, 'traceFileChanged')
+
+        self._SyncDisplayData()
+        self._SyncListContent()
+
+    def update_emulator(self, filename):
+        self.model.emulator_filename = filename
+        # if trace_file is empty, it will also be assigned as emulator
+        if self.model.trace_filename is None:
+            self.update_trace(filename)
+
+    def update_trace(self, filename):
+        self.model.trace_filename = filename
+        self.file_view.highlight_only(filename)
+
+    def remove_file(self, filename):
+        if filename is not None:
+            self.model.remove_file(filename)
+
+    def add_file(self, filelist=None):
+        if filelist is None:
+            with wx.FileDialog(self.file_view, "Open file", style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE) as fileDialog:
+                if fileDialog.ShowModal() == wx.ID_CANCEL:
+                    return
+                filelist = fileDialog.GetPaths()
+        else:
+            if not isinstance(filelist, list):
+                filelist = [filelist]
+        for filename in filelist:
+            self.model.add_file(filename)
+        self.file_view.Select(filelist[0])
+
+    def _SyncListContent(self):
+        self.file_view.SetList(self.model.list_filenames)
+        self.file_view.highlight_only()
+
+    def _SyncDisplayData(self):
+        self.display_view.display_file(self.model.trace_filename, self.model.emulator_filename)
+        self.file_view.highlight_only(self.model.trace_filename)
+
+
+if __name__ == "__main__":
+    app = wx.App()
+    frame = wx.Frame(None, size=(200, 500))
+    controller = FileController(file_viewer_kwargs={'parent': frame}, display_kwargs={'parent': frame, 'size': (-1, 100)}, \
+                                trace_filename='file1', all_filenames=['file1', 'file2', 'file3'])
+    sizer = wx.BoxSizer(wx.VERTICAL)
+    sizer.Add(controller.file_view, 1, wx.EXPAND)
+    sizer.Add(controller.display_view, 0, wx.EXPAND)
+    sizer.Layout()
+    frame.SetSizer(sizer)
+    frame.Show()
+    app.MainLoop()
