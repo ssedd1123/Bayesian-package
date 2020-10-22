@@ -496,11 +496,12 @@ class GUIViewer(wx.Frame):
 
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        self.file_controller = FileController(file_viewer_kwargs={'parent': split_panel}, display_kwargs={'parent': panel, 'size': (-1, 25)})
+        self.file_controller = FileController(file_viewer_kwargs={'parent': split_panel}, display_kwargs={'parent': panel, 'size': (-1,  wx.ScreenDC().GetPPI()[0]/3)})
         split_panel.SplitVertically(notebook, self.file_controller.file_view, wx.ScreenDC().GetPPI()[0] * 30)
         #hsizer = wx.BoxSizer(wx.HORIZONTAL)
         #hsizer.Add(notebook, 1, wx.EXPAND | wx.EXPAND, 5)
         #hsizer.Add(self.file_controller.file_view, 0.2, wx.EXPAND, 0)
+        print(wx.ScreenDC().GetPPI()[0], flush=True)
 
         sizer.Add(split_panel, 1, wx.EXPAND, 0)
         sizer.Add(self.file_controller.display_view, 0., wx.EXPAND)
