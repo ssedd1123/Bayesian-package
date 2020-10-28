@@ -210,7 +210,7 @@ class GUIController:
 
     def Correlation(self, obj, evt, ask_options=True):
         if self.file_model.trace_filename is not None:
-            kwargs = {}
+            kwargs = {"overlay_pt": False}
             if ask_options:
                 from GUI.SelectPosteriorOption import SelectPosteriorOption
 
@@ -226,6 +226,10 @@ class GUIController:
                 self.correlation_frame = MatplotlibFrame(None, fig)
             self.correlation_frame.fig.clf()
             from Utilities.Utilities import PlotTrace
+
+            if kwargs["overlay_pt"]:
+                kwargs["mark_point"] = self.emulator_input_model.GetData()
+            del kwargs["overlay_pt"]
 
             PlotTrace(self.file_model.trace_filename, self.correlation_frame.fig, **kwargs)
             self.correlation_frame.SetData()

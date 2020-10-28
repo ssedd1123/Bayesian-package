@@ -90,7 +90,7 @@ def smoothed_histogram1D(x, ax, bins=20, sigma=0, range=None, **kwargs):
 
 
 # input is the pymc3 trace and list of parameters
-def PlotTrace(config_file, fig=None, sigma=0, bins=100, cmap="Blues", nlevels=10):
+def PlotTrace(config_file, fig=None, sigma=0, bins=100, cmap="Blues", nlevels=10, mark_point=None):
     """
     Arrange trace in a n*n matrix of plots
     where n is the number of variables
@@ -131,6 +131,9 @@ def PlotTrace(config_file, fig=None, sigma=0, bins=100, cmap="Blues", nlevels=10
                 )
                 dummy.yaxis.set_ticks([])
                 dummy.set_xlim([prior["Min"][namex], prior["Max"][namex]])
+                if mark_point is not None:
+                  for point in np.atleast_1d(mark_point[namex]).astype(np.float):
+                      dummy.axvline(point, color='r')
             else:
                 smoothed_histogram2D(
                     trace[namex].to_numpy(),
@@ -139,6 +142,7 @@ def PlotTrace(config_file, fig=None, sigma=0, bins=100, cmap="Blues", nlevels=10
                     sigma=sigma,
                     ax=cell,
                     cmap=cmap,
+                    vmin=0,
                     extent=[
                         prior["Min"][namex],
                         prior["Max"][namex],
@@ -149,6 +153,9 @@ def PlotTrace(config_file, fig=None, sigma=0, bins=100, cmap="Blues", nlevels=10
 
                 cell.set_xlim([prior["Min"][namex], prior["Max"][namex]])
                 cell.set_ylim([prior["Min"][namey], prior["Max"][namey]])
+
+                if mark_point is not None:
+                  cell.scatter(np.atleast_1d(mark_point[namex]).astype(np.float), np.atleast_1d(mark_point[namey]).astype(np.float), color='r')
 
     # handle axis labes for coner graphs
     for i, row in enumerate(axes2d):
@@ -170,5 +177,6 @@ def PlotTrace(config_file, fig=None, sigma=0, bins=100, cmap="Blues", nlevels=10
                 cell.set_yticklabels([])
 
     plt.subplots_adjust(wspace=0, hspace=0)
+    plt.tight_layout()
     store.close()
     return fig, axes2d

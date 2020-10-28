@@ -102,8 +102,8 @@ def MCMCParallel(config_file, dirpath=None, nevents=10000, burnin=1000):
     If config_file is a list of strings, then it means we want to chain up multiple emulators
     Check if they have the same prior. Can't work if they don't agree
     """
-    if not all([all(prior[0].columns == prior1.columns) for prior1 in prior]):
-        raise RuntimeError("The variables list from all files are not consistent.")
+    #if not all([all(prior[0].columns == prior1.columns) for prior1 in prior]):
+    #    raise RuntimeError("The variables list from all files are not consistent.")
     prior = prior[0] # since they all agree, only one prior is needed
 
     if dirpath is None:

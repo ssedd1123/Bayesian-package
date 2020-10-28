@@ -46,5 +46,7 @@ if __name__ == "__main__":
 
     print("Plotting correlation for %s" % filename)
 
-    fig, axes2d = PlotTrace(filename)
+    fig = plt.figure(figsize=(10, 7))#, 75)
+    fig.clf()
+    PlotTrace(filename, fig, mark_point={'S0': 31, 'L': 60, 'ms': 0.8, 'mv': 0.85, 'etac': 0.1}, sigma=2, bins=50)
     plt.show()
