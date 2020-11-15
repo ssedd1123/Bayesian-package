@@ -84,8 +84,15 @@ def PlotOutput(filename, fig, n_samples=20000, trace_filename=None):
     )
 
     X = np.arange(num_obs)
+    if num_obs == 1: # expand the x-range so that the band is visible
+        X_fill = np.array([-0.5, 0.5])
+        prior_interval = np.repeat(prior_interval, 2, axis=1)
+        posterior_interval = np.repeat(posterior_interval, 2, axis=1)
+        posterior_predictions = np.repeat(posterior_predictions, 2, axis=1)
+    else:
+        X_fill = X
     ax.fill_between(
-        X,
+        X_fill,
         prior_interval[0],
         prior_interval[1],
         alpha=0.3,
@@ -93,7 +100,7 @@ def PlotOutput(filename, fig, n_samples=20000, trace_filename=None):
         label=r"Prior $2 \sigma$ region",
     )
     ax.fill_between(
-        X,
+        X_fill,
         posterior_interval[0],
         posterior_interval[1],
         alpha=0.3,
@@ -101,14 +108,14 @@ def PlotOutput(filename, fig, n_samples=20000, trace_filename=None):
         label=r"Posterior $2 \sigma$ region",
     )
     ax.plot(
-        X,
+        X_fill,
         np.mean(posterior_predictions, axis=0),
         label=r"Posterior mean value",
-        linestyle="--",
-        marker="o",
+        linestyle="--"
+        #marker="o",
     )
     ax.errorbar(
-        X, exp_Y, yerr=exp_Yerr, label="Experimental results", ecolor="g", color="g"
+        X, exp_Y, yerr=exp_Yerr, label="Experimental results", ecolor="g", color="g", marker="o"
     )
     par_name = [name[0:15] if len(name) > 14 else name for name in list(model_Y)]
     ax.set_xticks(X)
@@ -121,5 +128,5 @@ def PlotOutput(filename, fig, n_samples=20000, trace_filename=None):
 
 if __name__ == "__main__":
     fig = plt.figure(figsize=(13, 10))
-    PlotOutput("result/new_e120.h5", fig)
+    PlotOutput("result/Exp/ImQMD_OnlyAveV2", fig)
     plt.show()

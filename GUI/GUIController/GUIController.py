@@ -341,7 +341,7 @@ class GUIController:
         gauge.Destroy()
 
         if self.file_model.emulator_filename is not None:
-            self.view.file_controller.remove_file(self.file_model.emulator_filename)
+            self.view.file_controller.remove_file_highlight_inplace(self.file_model.emulator_filename)
         self.view.file_controller.add_file(outFile[0])
         self.LoadFile()
 
@@ -505,7 +505,6 @@ class GUIViewer(wx.Frame):
         #hsizer = wx.BoxSizer(wx.HORIZONTAL)
         #hsizer.Add(notebook, 1, wx.EXPAND | wx.EXPAND, 5)
         #hsizer.Add(self.file_controller.file_view, 0.2, wx.EXPAND, 0)
-        print(wx.ScreenDC().GetPPI()[0], flush=True)
 
         sizer.Add(split_panel, 1, wx.EXPAND, 0)
         sizer.Add(self.file_controller.display_view, 0., wx.EXPAND)
@@ -534,8 +533,8 @@ def main():
     controller = GUIController(None, app=app, workenv=work_environment)
     controller.view.Show()
 
-    if len(sys.argv) == 2:
-        controller.LoadFile(sys.argv[1])
+    if len(sys.argv) >= 2:
+        controller.LoadFile(sys.argv[1:])
 
     app.MainLoop()
     work_environment.Close()

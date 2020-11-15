@@ -1,3 +1,5 @@
+import os
+import filecmp
 from pubsub import pub
 from wx.lib.mixins.listctrl import ListCtrlAutoWidthMixin
 import wx
@@ -54,12 +56,21 @@ class FileModel:
         if filename == self.emulator_filename:
             self.emulator_filename = None
         try:
+            # highlight the element in the same place
+            index = self.list_filenames.index(filename)
             self.list_filenames.remove(filename)
             pub.sendMessage('listFileChanged')
+            if index < len(self.list_filenames):
+                return index
+            else: 
+                return -1
         except Exception as e:
             print(e)
 
-    def add_file(self, filename):
+    def add_file(self, filename, exist_ok=False):
+        if not exist_ok:
+           if filename in self.list_filenames:
+               raise RuntimeError('File to be added already exist. Suppress this exception by setting exist_ok=True in add_file')
         if filename not in self.list_filenames:
             self.list_filenames = self.list_filenames + [filename]
 
@@ -187,16 +198,26 @@ class FileController:
     def __init__(self, trace_filename=None, emulator_filename=None, all_filenames=None, file_viewer_kwargs={}, display_kwargs={}):       
         self.file_view = FileViewer(**file_viewer_kwargs)
         self.display_view = FileDisplay(**display_kwargs)
-        self.model = FileModel(trace_filename, emulator_filename, all_filenames)
+        self.model = FileModel(None, None)#trace_filename, emulator_filename, all_filenames)
 
+        # sync method must comes first.
         pub.subscribe(self.update_emulator, 'EmulatorSelected') 
         pub.subscribe(self.update_trace, 'TraceSelected') 
-        pub.subscribe(self.remove_file, 'FileRemove')
+        pub.subscribe(self.remove_file_highlight_inplace, 'FileRemove')
         pub.subscribe(self.add_file, 'FileAdd')
 
         pub.subscribe(self._SyncListContent, 'listFileChanged')
         pub.subscribe(self._SyncDisplayData, 'emulatorFileChanged')
         pub.subscribe(self._SyncDisplayData, 'traceFileChanged')
+
+        # convert none in all_filenames to empty list
+        # because add_file with None prompts FileDialog
+        # supress that in constructor
+        if all_filenames is None:
+            all_filenames = [] 
+        self.add_file(all_filenames)
+        #self.update_trace(trace_filename)
+        #self.update_emulator(emulator_filename)
 
         self._SyncDisplayData()
         self._SyncListContent()
@@ -211,9 +232,12 @@ class FileController:
         self.model.trace_filename = filename
         self.file_view.highlight_only(filename)
 
-    def remove_file(self, filename):
+    def remove_file_highlight_inplace(self, filename):
         if filename is not None:
-            self.model.remove_file(filename)
+            idx = self.model.remove_file(filename)
+        if idx < len(self.model.list_filenames) and idx >= 0 and idx is not None:
+            self.model.emulator_file = self.model.list_filenames[idx]
+            self.file_view.Select(self.model.emulator_file)
 
     def add_file(self, filelist=None):
         if filelist is None:
@@ -224,9 +248,28 @@ class FileController:
         else:
             if not isinstance(filelist, list):
                 filelist = [filelist]
-        for filename in filelist:
+            # check if the file exist
+            for filename in filelist:
+                if not os.path.isfile(filename):
+                    wx.MessageBox('File %s does not exist' % filename, 'Error', wx.OK | wx.ICON_ERROR)
+                    return 
+
+        # check if files that you want to add already exist. If so we raise the warning
+        non_repeat_filelist = {} # a set to avoid duplicated entry
+        repeated_filelist = []
+        for new_file in filelist:
+            for old_file in self.model.list_filenames:
+                if filecmp.cmp(new_file, old_file):
+                    repeated_filelist.append(new_file)
+        non_repeat_filelist = set(filelist) - set(repeated_filelist)
+        # raise error if they exist
+        if len(repeated_filelist) > 0:
+            wx.MessageBox('\n'.join(['The following files are not added since they are already included:'] + repeated_filelist), 'Warning', wx.OK | wx.ICON_WARNING)
+        for i, filename in enumerate(non_repeat_filelist):
             self.model.add_file(filename)
-        self.file_view.Select(filelist[0])
+            if i == 0:
+                self.file_view.Select(filename)
+
 
     def _SyncListContent(self):
         self.file_view.SetList(self.model.list_filenames)
@@ -240,8 +283,11 @@ class FileController:
 if __name__ == "__main__":
     app = wx.App()
     frame = wx.Frame(None, size=(200, 500))
+    #controller = FileController(file_viewer_kwargs={'parent': frame}, display_kwargs={'parent': frame, 'size': (-1, 100)}, \
+    #                            trace_filename='file1', all_filenames=['file1', 'file2', 'file3'])
     controller = FileController(file_viewer_kwargs={'parent': frame}, display_kwargs={'parent': frame, 'size': (-1, 100)}, \
-                                trace_filename='file1', all_filenames=['file1', 'file2', 'file3'])
+                                trace_filename=None, all_filenames=None)
+
     sizer = wx.BoxSizer(wx.VERTICAL)
     sizer.Add(controller.file_view, 1, wx.EXPAND)
     sizer.Add(controller.display_view, 0, wx.EXPAND)
