@@ -9,11 +9,14 @@ import wx.lib.inspection
 from matplotlib.figure import Figure
 from mpi4py import MPI
 from pubsub import pub
+from tables import exceptions
+from contextlib import contextmanager
 
 import Utilities.GradientDescent as gd
 from GUI.GridController.GridController import (GridController, PriorController,
                                                SplitViewController)
 from GUI.FileController.FileController import FileController
+from GUI.FlexMessageBox import FlexMessageBox
 from GUI.MatplotlibFrame import MatplotlibFrame
 from Utilities.MasterSlave import MasterSlave, ThreadsException
 from Utilities.Utilities import GetTrainedEmulator
@@ -50,6 +53,7 @@ class GUIController:
         pub.subscribe(self.CheckObj, "MenuBar_Open", func=self.OpenFile)
         pub.subscribe(self.CheckObj, "MenuBar_SaveNew", func=self.SaveNew)
         pub.subscribe(self.CheckObj, "MenuBar_Save", func=self.Save)
+        pub.subscribe(self.CheckObj, "MenuBar_ReTrain", func=self.ReTrain)
         pub.subscribe(self.CheckObj, "MenuBar_GenHyperCube", func=self.GenHyperCube)
         pub.subscribe(self.CheckObj, "MenuBar_Emulate", func=self.Emulate)
         pub.subscribe(self.CheckObj, "MenuBar_ChainedEmulate", func=self.ChainedEmulate)
@@ -57,11 +61,12 @@ class GUIController:
         pub.subscribe(self.CheckObj, "MenuBar_Report", func=self.TrainReport)
         pub.subscribe(self.CheckObj, "MenuBar_Correlation", func=self.Correlation)
         pub.subscribe(self.CheckObj, "MenuBar_Posterior", func=self.Posterior)
+        pub.subscribe(self.CheckObj, "MenuBar_TraceSummary", func=self.ShowSummary)
 
         # sync file according the file_controller
         pub.subscribe(self.LoadFile, 'emulatorFileChanged')
         pub.subscribe(self.LoadFile, 'listFileChanged')
-        pub.subscribe(self.LoadFile, 'listFileChanged')
+        self.block_load_chain_prompt = False # block repeated load chain prompt when some of the chained files has their own list of chained files
 
     def CheckObj(self, func, obj, evt):
         orig_obj = obj
@@ -72,6 +77,34 @@ class GUIController:
             obj = obj.GetParent()
             if obj is None:
                 break
+ 
+    def ShowSummary(self, obj, evt):
+        if self.file_model.trace_filename is None:
+            wx.MessageBox('No trace file is selected. Cannot show trace summary.', 'Error', wx.OK | wx.ICON_ERROR)
+            return
+        if self.file_model.trace_filename != self.file_model.emulator_filename:
+            wx.MessageBox('To display trace summary, please make sure trace file and emulator file are the same.', 
+                          'Error', wx.OK | wx.ICON_ERROR)
+            return
+        with pd.HDFStore(self.file_model.trace_filename, 'r') as store:
+            if 'trace' in store:
+                trace = store['trace']
+                # only select columns in prior
+                par_names = store['PriorAndConfig'].index
+                description = trace[par_names].describe().to_string()
+
+                # show list of files if the trace is chainged
+                if 'chained_files' in store.get_storer('trace').attrs:
+                    chained_files = store.get_storer('trace').attrs.chained_files
+                    description += '\n\nChained files:\n'
+                    description += '\n'.join(chained_files)
+
+                FlexMessageBox(description, None, title='Summary').ShowModal()
+            else:
+                wx.MessageBox('There are no trace in the file. Please start your analysis first.',
+                              'Error', wx.OK | wx.ICON_ERROR)
+                return
+        
 
     def GenHyperCube(self, obj, evt):
         prior = self.prior_model.GetData(drop_index=False)
@@ -281,25 +314,33 @@ class GUIController:
             )
         store.close()
 
-    def SaveNew(self, obj, evt):
-        """
-        Create and show the Open FileDialog
-        """
-        wildcard = "Python source (*.h5)|*.h5|" "All files (*.*)|*.*"
-        dlg = wx.FileDialog(
-            obj,
-            message="Save project as ...",
-            defaultFile="",
-            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
-        )
-        result = dlg.ShowModal()
-        outFile = dlg.GetPaths()
-        dlg.Destroy()
+    def ReTrain(self, obj, evt):
+        if self.file_model.emulator_filename is None:
+            wx.MessageBox('No emulator file is loaded. The emulator will be saved as new file.',
+                          'Warning',
+                          wx.OK | wx.ICON_WARNING)
+        self.SaveNew(obj, evt, [self.file_model.emulator_filename]) #? Why does outFile have to be a list....
 
-        if (
-            result == wx.ID_CANCEL
-        ):  # Either the cancel button was pressed or the window was closed
-            return False
+    def SaveNew(self, obj, evt, outFile=None):
+        if outFile is None:
+            """
+            Create and show the Open FileDialog if no outFile is specified
+            """
+            wildcard = "Python source (*.h5)|*.h5|" "All files (*.*)|*.*"
+            dlg = wx.FileDialog(
+                obj,
+                message="Save project as ...",
+                defaultFile="",
+                style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
+            )
+            result = dlg.ShowModal()
+            outFile = dlg.GetPaths()
+            dlg.Destroy()
+
+            if (
+                result == wx.ID_CANCEL
+            ):  # Either the cancel button was pressed or the window was closed
+                return False
 
         from GUI.SelectTrainingOption import SelectOption
 
@@ -360,7 +401,7 @@ class GUIController:
         #    return False
         #self.view.file_controller.add_file()
         self.view.file_controller.add_file()
-        self.LoadFile()#path[0])
+        #self.SyncFileControllerAndViewer()#path[0])
 
     def LoadFile(self, filename=None):
         # if filename is given, it will update the gui display

@@ -8,6 +8,7 @@ from mpi4py import MPI
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
 os.environ["MKL_NUM_THREADS"] = "1"
 from multiprocessing import Pool, Process, Queue
+from types import SimpleNamespace
 
 if sys.version_info > (3, 0):
     import pickle
@@ -122,7 +123,10 @@ def MCMCParallel(config_file, dirpath=None, nevents=10000, burnin=1000):
 
 
 def Merging(config_file, list_of_traces, clear_trace=False):
+    chained_files = None
     if isinstance(config_file, list):
+        # store list of config file as meta data
+        chained_files = config_file[1:]
         config_file = config_file[0]
     with pd.HDFStore(config_file) as store:
         if clear_trace and "trace" in store:
@@ -133,6 +137,11 @@ def Merging(config_file, list_of_traces, clear_trace=False):
             store.append(key="trace", value=df.astype(float))
             tab.close()
         prior = store["PriorAndConfig"]
+         
+        if chained_files is not None:
+            #store.get_storer('trace').meta = SimpleNamespace()
+            store.get_storer('trace').attrs.chained_files = chained_files
+    
     return prior
 
 
@@ -175,7 +184,7 @@ if __name__ == "__main__":
     except ThreadsException as ex:
       print(ex)
 
-    prior = Merging(args["inputs"][0], work_environment.results, clear_trace=True)
+    prior = Merging(args["inputs"], work_environment.results, clear_trace=True)
     # shutil.rmtree(work_environment.results)
 
     PlotTrace(args["inputs"][0])

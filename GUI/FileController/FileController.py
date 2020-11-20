@@ -3,6 +3,7 @@ import filecmp
 from pubsub import pub
 from wx.lib.mixins.listctrl import ListCtrlAutoWidthMixin
 import wx
+import pandas as pd
 
 class FileModel:
     def __init__(self, trace_filename, emulator_filename, list_filenames=None):
@@ -70,7 +71,7 @@ class FileModel:
     def add_file(self, filename, exist_ok=False):
         if not exist_ok:
            if filename in self.list_filenames:
-               raise RuntimeError('File to be added already exist. Suppress this exception by setting exist_ok=True in add_file')
+               raise FileNotfoundError('File to be added already exist. Suppress this exception by setting exist_ok=True in add_file')
         if filename not in self.list_filenames:
             self.list_filenames = self.list_filenames + [filename]
 
@@ -98,6 +99,9 @@ class FileViewer(wx.Panel):
         self.add_btn.Bind(wx.EVT_BUTTON, self.on_add)
         self.remove_btn = wx.Button(self, -1, 'Remove', size=(50, 20))
         self.remove_btn.Bind(wx.EVT_BUTTON, self.on_remove)
+        self.add_chain_btn = wx.Button(self, -1, 'Load chained', size=(50, 20))
+        self.add_chain_btn.Bind(wx.EVT_BUTTON, self.on_load_chain)
+        self.add_chain_btn.Disable()
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.lst, 1., wx.EXPAND)
@@ -105,10 +109,14 @@ class FileViewer(wx.Panel):
         btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
         btn_sizer.Add(self.add_btn, 0.4)
         btn_sizer.Add(self.remove_btn, 0.4)
+        btn_sizer.Add(self.add_chain_btn, 0.4)
         sizer.Add(btn_sizer, 0)
 
         self.selected_item = None
         self.SetSizerAndFit(sizer)
+
+    def on_load_chain(self, evt):
+        pub.sendMessage('LoadChain')
 
     def on_update(self, evt):
         pub.sendMessage("EmulatorSelected", filename=self.lst.GetItem(self.lst.GetFirstSelected()).GetText()) 
@@ -206,8 +214,10 @@ class FileController:
         pub.subscribe(self.remove_file_highlight_inplace, 'FileRemove')
         pub.subscribe(self.add_file, 'FileAdd')
 
+        pub.subscribe(self._LoadChain, 'LoadChain')
         pub.subscribe(self._SyncListContent, 'listFileChanged')
         pub.subscribe(self._SyncDisplayData, 'emulatorFileChanged')
+        pub.subscribe(self._CheckIfChained, 'emulatorFileChanged')
         pub.subscribe(self._SyncDisplayData, 'traceFileChanged')
 
         # convert none in all_filenames to empty list
@@ -270,6 +280,28 @@ class FileController:
             if i == 0:
                 self.file_view.Select(filename)
 
+    def _LoadChain(self):
+        with pd.HDFStore(self.model.emulator_filename, 'r') as store:
+            self.add_file(store.get_storer('trace').attrs.chained_files)
+            
+
+    def _CheckIfChained(self):
+        # really needs to open the file to inspecf
+        should_enable = False
+        try:
+            if self.model.emulator_filename is not None:
+                with pd.HDFStore(self.model.emulator_filename, 'r') as store:
+                    if 'trace' in store:
+                        if 'chained_files' in store.get_storer('trace').attrs:
+                            should_enable = True
+        except Exception as e:
+            pass
+        finally:
+            if should_enable:
+                self.file_view.add_chain_btn.Enable()
+            else:
+                self.file_view.add_chain_btn.Disable()
+                
 
     def _SyncListContent(self):
         self.file_view.SetList(self.model.list_filenames)

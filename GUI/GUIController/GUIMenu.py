@@ -10,6 +10,7 @@ class GUIMenuBar(wx.MenuBar):
         fileMenu = wx.Menu()
         SaveMenuItem = fileMenu.Append(wx.ID_SAVE, "Save", "")
         SaveAsMenuItem = fileMenu.Append(wx.ID_SAVEAS, "Save As", "")
+        ReTrainMenuItem = fileMenu.Append(wx.ID_SAVEAS, "Re-train", "")
         OpenMenuItem = fileMenu.Append(wx.ID_OPEN, "Open", "")
         GenHyperCube = fileMenu.Append(-1, "Generate hyper-cube", "")
 
@@ -23,6 +24,8 @@ class GUIMenuBar(wx.MenuBar):
         PlotPosteriorItem = plotMenu.Append(-1, "Plot posterior", "")
         PlotCorrelationItem = plotMenu.Append(-1, "Plot correlation", "")
         TrainReportItem = plotMenu.Append(-1, "Training report", "")
+        TraceSummaryItem = plotMenu.Append(-1, "Trace summary", "")
+
 
         self.Append(fileMenu, "&File")
         self.Append(emulatorMenu, "&Emulator")
@@ -41,6 +44,11 @@ class GUIMenuBar(wx.MenuBar):
             wx.EVT_MENU,
             lambda evt: pub.sendMessage("MenuBar_SaveNew", obj=self, evt=evt),
             SaveAsMenuItem,
+        )
+        self.Bind(
+            wx.EVT_MENU,
+            lambda evt: pub.sendMessage("MenuBar_ReTrain", obj=self, evt=evt),
+            ReTrainMenuItem,
         )
         self.Bind(
             wx.EVT_MENU,
@@ -82,6 +90,12 @@ class GUIMenuBar(wx.MenuBar):
             lambda evt: pub.sendMessage("MenuBar_Report", obj=self, evt=evt),
             TrainReportItem,
         )
+        self.Bind(
+            wx.EVT_MENU,
+            lambda evt: pub.sendMessage("MenuBar_TraceSummary", obj=self, evt=evt),
+            TraceSummaryItem,
+        )
+
 
     def GetParent(self):
         return self.parent

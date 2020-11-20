@@ -268,84 +268,82 @@ class CalculationFrame(wx.Frame):
         self.Center()
 
         # create temporary file for which each rank must write to
-        dirpath = tempfile.mkdtemp(dir=os.path.dirname(os.path.realpath(__file__)))
-        self.enviro.Submit(
-            MCMCParallel,
-            config_file=args["config_file"],
-            dirpath=dirpath,
-            nevents=args["nsteps"],
-            burnin=args["burnin"],
-        )
-        self.info_bar.PrintInfo("%d workers are working" % self.enviro.nworking)
+        with tempfile.TemporaryDirectory(dir=os.path.dirname(os.path.realpath(__file__))) as dirpath:
+            self.enviro.Submit(
+                MCMCParallel,
+                config_file=args["config_file"],
+                dirpath=dirpath,
+                nevents=args["nsteps"],
+                burnin=args["burnin"],
+            )
+            self.info_bar.PrintInfo("%d workers are working" % self.enviro.nworking)
 
-        # check for jobs completions and collect results
-        # avarage speed for each rank
-        start_time = time.time()
-        num_list = [0] * self.enviro.nworkers
-        num_prev = 0
-        time_prev = start_time
-        last_update = start_time
+            # check for jobs completions and collect results
+            # avarage speed for each rank
+            start_time = time.time()
+            num_list = [0] * self.enviro.nworkers
+            num_prev = 0
+            time_prev = start_time
+            last_update = start_time
 
-        try:
-            while self.enviro.IsRunning(self.refresh_rate / 10):  # self.refresh_rate):
-                source, result, tag = self.enviro.stdout
-                idx = source - 1
-                new_time = time.time()
-                if tag == tags.NOTHING:
-                    speed = None
-                else:
-                    if tag == tags.END:
-                        speed = 0
-                        self.info_bar.PrintInfo(
-                            "%d workers are still working. Worker %d completed"
-                            % (self.enviro.nworking, idx)
-                        )
-                    elif tag == tags.ERROR:
-                        speed = 0
-                        self.info_bar.PrintInfo('Error from worker %d' % idx)
-                    else:
-                        num = re.findall(r"\d+\.?\d*", result)
-                        last_num = int(num[1])
-                        num_list[idx] = last_num
-
-                        if len(num) > 1:
-
-                            new_tot = np.sum(num_list)
-                            dn = new_tot  # new_tot - num_prev
-                            dt = new_time - start_time  # new_time-time_prev
-
-                            time_prev = new_time
-                            num_prev = new_tot
-                            speed = dn / dt
-
-                            self.speedmeter.UpdateSpeed(speed)
-                            self.progress_bar.UpdateProgress(np.sum(num_prev))
-                            last_update = new_time
-                            wx.YieldIfNeeded()
-
-            self.info_bar.PrintInfo("All calculations completed. Merging...")
-            self.progress_bar.UpdateProgress(np.sum(num_prev))
-            self.speedmeter.ReturnZero()
-            wx.YieldIfNeeded()
-        except Exception as e:
-            raise e
-        else:
             try:
-                result = Merging(
-                    args["config_file"], self.enviro.results, args["clear_trace"]
-                )
+                while self.enviro.IsRunning(self.refresh_rate / 10):  # self.refresh_rate):
+                    source, result, tag = self.enviro.stdout
+                    idx = source - 1
+                    new_time = time.time()
+                    if tag == tags.NOTHING:
+                        speed = None
+                    else:
+                        if tag == tags.END:
+                            speed = 0
+                            self.info_bar.PrintInfo(
+                                "%d workers are still working. Worker %d completed"
+                                % (self.enviro.nworking, idx)
+                            )
+                        elif tag == tags.ERROR:
+                            speed = 0
+                            self.info_bar.PrintInfo('Error from worker %d' % idx)
+                        else:
+                            num = re.findall(r"\d+\.?\d*", result)
+                            last_num = int(num[1])
+                            num_list[idx] = last_num
+
+                            if len(num) > 1:
+
+                                new_tot = np.sum(num_list)
+                                dn = new_tot  # new_tot - num_prev
+                                dt = new_time - start_time  # new_time-time_prev
+
+                                time_prev = new_time
+                                num_prev = new_tot
+                                speed = dn / dt
+
+                                self.speedmeter.UpdateSpeed(speed)
+                                self.progress_bar.UpdateProgress(np.sum(num_prev))
+                                last_update = new_time
+                                wx.YieldIfNeeded()
+
+                self.info_bar.PrintInfo("All calculations completed. Merging...")
+                self.progress_bar.UpdateProgress(np.sum(num_prev))
+                self.speedmeter.ReturnZero()
+                wx.YieldIfNeeded()
             except Exception as e:
                 raise e
-                #traceback.print_exc()
-                #print("Error merging files.")
-                #sys.stdout.flush()
             else:
-                self.info_bar.PrintInfo("Merging completed.")
-                wx.YieldIfNeeded()
+                try:
+                    result = Merging(
+                        args["config_file"], self.enviro.results, args["clear_trace"]
+                    )
+                except Exception as e:
+                    raise e
+                    #traceback.print_exc()
+                    #print("Error merging files.")
+                    #sys.stdout.flush()
+                else:
+                    self.info_bar.PrintInfo("Merging completed.")
+                    wx.YieldIfNeeded()
             finally:
-                shutil.rmtree(dirpath)
-        finally:
-            self.Destroy()
+                self.Destroy()
 
     def OnClose(self, event):
         # self.enviro.Close()
