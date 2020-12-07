@@ -10,17 +10,17 @@ import wx.grid as gridlib
 from pubsub import pub
 
 from GUI.GridController.GridData import GridData
-from GUI.GridController.GridMenu import GridPopupMenu, GridToolBar
+from GUI.GridController.GridMenu import GridPopupMenu, GridToolBar, PriorToolBar
 from GUI.GridController.GridViewer import DataDirectionDialog, MyGrid
 
 
 class GridController:
-    def __init__(self, parent, nrows, ncols, **kwargs):
+    def __init__(self, parent, nrows, ncols, toolbar_type=GridToolBar, **kwargs):
         self.model = GridData(nrows, ncols)
         self.view = MyGrid(parent, **kwargs)
         self.view.CreateGrid(nrows, ncols)
         self.view.SetTable(self.model, True)
-        self.toolbar = GridToolBar(
+        self.toolbar = toolbar_type(
             parent=parent,
             id=100,
             style=wx.TB_HORIZONTAL | wx.NO_BORDER | wx.TB_FLAT | wx.TB_TEXT,
@@ -29,8 +29,11 @@ class GridController:
         pub.subscribe(self.CheckObj, "viewer_right", func=self.ShowMenu)
         pub.subscribe(self.CheckObj, "Menu_Clear", func=self.Clear)
         pub.subscribe(self.CheckObj, "Menu_Delete", func=self.Delete)
+        pub.subscribe(self.SelectCellOnKeyEvt, "viewer_delete", func=self.Clear)
         pub.subscribe(self.CheckObj, "Menu_Copy", func=self.Copy)
+        pub.subscribe(self.SelectCellOnKeyEvt, "viewer_CtrlC", func=self.Copy)
         pub.subscribe(self.CheckObj, "Menu_Paste", func=self.Paste)
+        pub.subscribe(self.SelectCellOnKeyEvt, "viewer_CtrlV", func=self.Paste)
         pub.subscribe(self.CheckObj, "Menu_Undo", func=self.Undo)
         pub.subscribe(self.CheckObj, "Menu_Redo", func=self.Redo)
 
@@ -53,6 +56,10 @@ class GridController:
             obj = obj.GetParent()
             if obj is None:
                 break
+
+    def SelectCellOnKeyEvt(self, func, obj, evt):
+        self.GetSelectedCells(obj)
+        self.CheckObj(func, obj, evt)
 
     def Open(self, obj, evt):
         dlg = wx.FileDialog(
@@ -99,7 +106,21 @@ class GridController:
         self.model.Undo()
         self.view.ForceRefresh()
 
+    def CanBePasted(self, new_data_nrows=0, new_data_ncols=0):
+        for row in range(self.view.GetGridCursorRow(), self.view.GetGridCursorRow() + new_data_nrows):
+            for col in range(self.view.GetGridCursorCol(), self.view.GetGridCursorCol() + new_data_ncols):#self.selected_cols:
+                if (
+                    self.view.IsReadOnly(row, col)
+                    or not self.view.CanEnableCellControl()
+                ):
+                    # break out of both loops once a read only cell is found
+                    return False
+        return True
+
+
     def Paste(self, obj, evt):
+        #self.GetSelectedCells(obj)
+        #if self.CanBeModified():
         dataObj = wx.TextDataObject()
         if wx.TheClipboard.Open():
             wx.TheClipboard.GetData(dataObj)
@@ -111,15 +132,17 @@ class GridController:
         # data = pd.read_csv(StringIO(string), sep='\t', header=None)
         row = self.view.GetGridCursorRow()
         col = self.view.GetGridCursorCol()
-
-        rows = np.arange(row, row + data.shape[0])
-        cols = np.arange(col, col + data.shape[1])
-        self.model.SetValue(rows, cols, data)
-        self.view.ForceRefresh()
+ 
+        if self.CanBePasted(data.shape[0], data.shape[1]):
+            rows = np.arange(row, row + data.shape[0])
+            cols = np.arange(col, col + data.shape[1])
+            self.model.SetValue(rows, cols, data)
+            self.view.ForceRefresh()
 
     def Copy(self, obj, evt):
-        row = self.view.GetGridCursorRow()
-        col = self.view.GetGridCursorCol()
+        #row = self.view.GetGridCursorRow()
+        #col = self.view.GetGridCursorCol()
+        #self.GetSelectedCells(obj)
 
         data = self.model.GetValue(self.selected_rows, self.selected_cols)
         if isinstance(data, pd.DataFrame):
@@ -130,11 +153,12 @@ class GridController:
 
         if wx.TheClipboard.Open():
             wx.TheClipboard.SetData(dataObj)
+            wx.TheClipboard.Flush()
             wx.TheClipboard.Close()
         else:
             wx.MessageBox("Unable to open the clipboard", "Error")
 
-    def ShowMenu(self, obj, evt):
+    def GetSelectedCells(self, obj):
         cell = obj.GetSelectedCells()
         block = obj.GetSelectionBlockTopLeft()
         rows = obj.GetSelectedRows()
@@ -151,10 +175,14 @@ class GridController:
             self.selected_cols = np.arange(0, obj.GetNumberCols())
             self.selected_rows = np.arange(rows[0], rows[-1] + 1)
         else:
-            self.selected_rows = [evt.GetRow()]
-            self.selected_cols = [evt.GetCol()]
+            self.selected_rows = [self.view.GetGridCursorRow()]
+            self.selected_cols = [self.view.GetGridCursorCol()]
+        
+
+    def ShowMenu(self, obj, evt):
+        self.GetSelectedCells(obj)
         menu = GridPopupMenu(obj)
-        # check if selected range contains read only cell, if so paste, clear and delete will be disabled
+
         for row in self.selected_rows:
             for col in self.selected_cols:
                 if (
@@ -169,6 +197,8 @@ class GridController:
             else:
                 continue
             break
+
+        # check if selected range contains read only cell, if so paste, clear and delete will be disabled
         obj.PopupMenu(menu, evt.GetPosition())
 
     def Clear(self, obj, evt):
@@ -191,7 +221,7 @@ class PriorController(GridController):
         nrows = 6  # All rows: Name, Type, Low, Up, Mean, SD
         self.nrows = nrows
         self.ncols = ncols
-        super().__init__(parent, nrows, ncols, **kwargs)
+        super().__init__(parent, nrows, ncols, toolbar_type=PriorToolBar, **kwargs)
 
         var_types = ["Uniform", "Gaussian"]
         self.model.data.index = ["Name", "Type", "Min", "Max", "Mean", "SD"]
@@ -232,6 +262,22 @@ class PriorController(GridController):
 
                     # self.model.SetValue(i, col, None)
         self.view.Refresh()
+
+    def FillPriorRange(self, mins, maxs):
+        existing_var = self.model.GetData(False)
+        # append empty rows if the existing_var has less than 4 rows
+        for i in range(existing_var.shape[0], 4):
+            existing_var = existing_var = existing_var.append(pd.Series(), ignore_index=True)
+
+        # any undefined variable types will be defaulted to uniform
+        existing_var.iloc[1].fillna(value='Uniform', inplace=True)
+        # fill empty numbers
+        id_empty = pd.isna(existing_var.iloc[2])
+        existing_var.iloc[2][id_empty] = mins[id_empty]
+        id_empty = pd.isna(existing_var.iloc[3])
+        existing_var.iloc[3][id_empty] = maxs[id_empty]
+
+        self.model.SetData(existing_var, False)
 
 
 class ScrollSync(wx.EvtHandler):

@@ -20,10 +20,25 @@ class MyGrid(gridlib.Grid):
             gridlib.EVT_GRID_RANGE_SELECT,
             lambda evt: pub.sendMessage("Viewer_RangeSelected", obj=self, evt=evt),
         )
+
         # self.Bind(gridlib.EVT_GRID_CELL_CHANGED, lambda evt: pub.sendMessage('Data_Changed', obj=self.table))
+        # ctrl-C, ctrl-V
+        self.Bind(wx.EVT_KEY_DOWN, self.OnKey)
 
     def RightClick(self, evt):
         pub.sendMessage("viewer_right", obj=self, evt=evt)
+
+    def OnKey(self, evt):
+        # if Ctrl+C is pressed       
+        if evt.ControlDown() and evt.GetKeyCode() == 67:
+            pub.sendMessage('viewer_CtrlC', obj=self, evt=evt)
+        # if Ctrl+V is pressed
+        elif evt.ControlDown() and evt.GetKeyCode() == 86:
+            pub.sendMessage('viewer_CtrlV', obj=self, evt=evt)
+        elif evt.GetKeyCode() == wx.WXK_DELETE:
+            pub.sendMessage('viewer_delete', obj=self, evt=evt)
+        else:
+            evt.Skip()
 
 
 class DataDirectionDialog(wx.Dialog):

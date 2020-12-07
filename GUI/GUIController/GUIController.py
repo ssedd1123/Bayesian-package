@@ -63,6 +63,9 @@ class GUIController:
         pub.subscribe(self.CheckObj, "MenuBar_Posterior", func=self.Posterior)
         pub.subscribe(self.CheckObj, "MenuBar_TraceSummary", func=self.ShowSummary)
 
+        # communication between model_par_model and prior_model
+        pub.subscribe(self.FillPriorRange, 'PriorToolBar_Refresh')
+
         # sync file according the file_controller
         pub.subscribe(self.LoadFile, 'emulatorFileChanged')
         pub.subscribe(self.LoadFile, 'listFileChanged')
@@ -77,6 +80,12 @@ class GUIController:
             obj = obj.GetParent()
             if obj is None:
                 break
+
+    def FillPriorRange(self, obj, evt):
+        par_data = self.model_par_model.GetData()
+        mins = np.min(par_data)
+        maxs = np.max(par_data)
+        self.view.prior_controller.FillPriorRange(mins.values, maxs.values)
  
     def ShowSummary(self, obj, evt):
         if self.file_model.trace_filename is None:
@@ -319,7 +328,9 @@ class GUIController:
             wx.MessageBox('No emulator file is loaded. The emulator will be saved as new file.',
                           'Warning',
                           wx.OK | wx.ICON_WARNING)
-        self.SaveNew(obj, evt, [self.file_model.emulator_filename]) #? Why does outFile have to be a list....
+            self.SaveNew(obj, evt, None)
+        else:
+            self.SaveNew(obj, evt, [self.file_model.emulator_filename]) #? Why does outFile have to be a list....
 
     def SaveNew(self, obj, evt, outFile=None):
         if outFile is None:
@@ -473,7 +484,7 @@ class GUIController:
 class GUIViewer(wx.Frame):
     def __init__(self, parent, app):
         wx.Frame.__init__(
-            self, parent, wx.NewId(), "Common", size=wx.ScreenDC().GetPPI().Scale(13, 8)
+            self, parent, wx.NewId(), "Bayesian analysis GUI", size=wx.ScreenDC().GetPPI().Scale(13, 8)
         )  # 1000,400))
         self.app = app
 
@@ -540,13 +551,11 @@ class GUIViewer(wx.Frame):
 
 
         sizer = wx.BoxSizer(wx.VERTICAL)
-
-        self.file_controller = FileController(file_viewer_kwargs={'parent': split_panel}, display_kwargs={'parent': panel, 'size': (-1,  wx.ScreenDC().GetPPI()[0]/3)})
-        split_panel.SplitVertically(notebook, self.file_controller.file_view, wx.ScreenDC().GetPPI()[0] * 30)
+        self.file_controller = FileController(file_viewer_kwargs={'parent': split_panel}, display_kwargs={'parent': panel})#, 'size': (-1,  wx.ScreenDC().GetPPI()[0]/3)})
+        split_panel.SplitVertically(self.file_controller.file_view, notebook, wx.ScreenDC().GetPPI()[0] * 2)
         #hsizer = wx.BoxSizer(wx.HORIZONTAL)
         #hsizer.Add(notebook, 1, wx.EXPAND | wx.EXPAND, 5)
         #hsizer.Add(self.file_controller.file_view, 0.2, wx.EXPAND, 0)
-
         sizer.Add(split_panel, 1, wx.EXPAND, 0)
         sizer.Add(self.file_controller.display_view, 0., wx.EXPAND)
 

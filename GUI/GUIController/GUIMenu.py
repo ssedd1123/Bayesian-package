@@ -10,7 +10,7 @@ class GUIMenuBar(wx.MenuBar):
         fileMenu = wx.Menu()
         SaveMenuItem = fileMenu.Append(wx.ID_SAVE, "Save", "")
         SaveAsMenuItem = fileMenu.Append(wx.ID_SAVEAS, "Save As", "")
-        ReTrainMenuItem = fileMenu.Append(wx.ID_SAVEAS, "Re-train", "")
+        ReTrainMenuItem = fileMenu.Append(-1, "Re-train", "")
         OpenMenuItem = fileMenu.Append(wx.ID_OPEN, "Open", "")
         GenHyperCube = fileMenu.Append(-1, "Generate hyper-cube", "")
 
