@@ -5,10 +5,13 @@ from wx.lib.mixins.listctrl import ListCtrlAutoWidthMixin
 import wx
 import pandas as pd
 
+
 class FileModel:
     def __init__(self, trace_filename, emulator_filename, list_filenames=None):
         if list_filenames is None:
-            self.list_filenames = list(set([trace_filename, emulator_filename]) - set([None])) # remove all None elements
+            # remove all None elements
+            self.list_filenames = list(
+                set([trace_filename, emulator_filename]) - set([None]))
         else:
             self.list_filenames = list_filenames
         self.trace_filename = trace_filename
@@ -17,7 +20,7 @@ class FileModel:
     @property
     def emulator_filename(self):
         return self.__emulator_filename
- 
+
     @emulator_filename.setter
     def emulator_filename(self, emulator_filename):
         if emulator_filename is not None:
@@ -28,7 +31,7 @@ class FileModel:
     @property
     def trace_filename(self):
         return self.__trace_filename
- 
+
     @trace_filename.setter
     def trace_filename(self, trace_filename):
         if trace_filename is not None:
@@ -48,7 +51,10 @@ class FileModel:
     def get_list_filenames_with_trace_first(self):
         list_return = self.list_filenames.copy()
         assert self.trace_filename is not None, 'Trace file is not selected'
-        list_return.insert(0, list_return.pop(list_return.index(self.trace_filename)))
+        list_return.insert(
+            0, list_return.pop(
+                list_return.index(
+                    self.trace_filename)))
         return list_return
 
     def remove_file(self, filename):
@@ -63,33 +69,37 @@ class FileModel:
             pub.sendMessage('listFileChanged')
             if index < len(self.list_filenames):
                 return index
-            else: 
+            else:
                 return -1
         except Exception as e:
             print(e)
 
     def add_file(self, filename, exist_ok=False):
         if not exist_ok:
-           if filename in self.list_filenames:
-               raise FileNotfoundError('File to be added already exist. Suppress this exception by setting exist_ok=True in add_file')
+            if filename in self.list_filenames:
+                raise FileNotfoundError(
+                    'File to be added already exist. Suppress this exception by setting exist_ok=True in add_file')
         if filename not in self.list_filenames:
             self.list_filenames = self.list_filenames + [filename]
 
 # custom listCtrl that will resize with width
+
+
 class ListCtrlAutoWidth(wx.ListCtrl, ListCtrlAutoWidthMixin):
     def __init__(self, parent, ID=-1, pos=wx.DefaultPosition,
                  size=wx.DefaultSize, style=0):
         wx.ListCtrl.__init__(self, parent, ID, pos, size, style)
         ListCtrlAutoWidthMixin.__init__(self)
         self.setResizeColumn(0)
-            
+
 
 class FileViewer(wx.Panel):
-  
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
-        self.lst = ListCtrlAutoWidth(self, size=(-1,100), style= wx.LC_REPORT | wx.LC_SINGLE_SEL)
+
+        self.lst = ListCtrlAutoWidth(
+            self, size=(-1, 100), style=wx.LC_REPORT | wx.LC_SINGLE_SEL)
         self.lst.InsertColumn(0, 'File name', format=wx.LIST_FORMAT_LEFT)
         self.lst.SetColumnWidth(0, wx.LIST_AUTOSIZE)
         self.lst.Bind(wx.EVT_LIST_ITEM_SELECTED, self.on_update)
@@ -119,10 +129,16 @@ class FileViewer(wx.Panel):
         pub.sendMessage('LoadChain')
 
     def on_update(self, evt):
-        pub.sendMessage("EmulatorSelected", filename=self.lst.GetItem(self.lst.GetFirstSelected()).GetText()) 
+        pub.sendMessage(
+            "EmulatorSelected",
+            filename=self.lst.GetItem(
+                self.lst.GetFirstSelected()).GetText())
 
     def on_select(self, evt):
-        pub.sendMessage("TraceSelected", filename=self.lst.GetItem(self.lst.GetFirstSelected()).GetText())
+        pub.sendMessage(
+            "TraceSelected",
+            filename=self.lst.GetItem(
+                self.lst.GetFirstSelected()).GetText())
 
     def on_remove(self, evt):
         if self.lst.GetFirstSelected() is wx.NOT_FOUND:
@@ -141,7 +157,7 @@ class FileViewer(wx.Panel):
             if val is not None:
                 self.lst.InsertItem(index, val)
                 index += 1
-   
+
     def Select(self, element):
         i = self.lst.FindItem(-1, element)
         assert i != wx.NOT_FOUND, 'Element ' + element + ' is not found in listbox'
@@ -154,28 +170,31 @@ class FileViewer(wx.Panel):
         # usefule when model list is updated
         if element is None:
             if self.selected_item is None:
-                return # do nothing if nothing needs to be highlighted
+                return  # do nothing if nothing needs to be highlighted
             element = self.selected_item
         i = self.lst.FindItem(-1, element)
         # un-highlight previously selected item
         if self.selected_item is not None:
             item = self.lst.FindItem(-1, self.selected_item)
             if item != wx.NOT_FOUND:
-                self.lst.SetItemBackgroundColour(item, wx.Colour(255, 255, 255, 255))
+                self.lst.SetItemBackgroundColour(
+                    item, wx.Colour(255, 255, 255, 255))
         self.selected_item = element
         if i != wx.NOT_FOUND:
             self.lst.SetItemBackgroundColour(i, wx.Colour(255, 0, 0, 255))
-    
+
 
 class FileDisplay(wx.Panel):
-  
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.trace_file_display = wx.StaticText(self, -1)#, style=wx.ALIGN_LEFT)#, size=(-1,30))
-        self.emulator_file_display = wx.StaticText(self, -1)#, style=wx.ALIGN_LEFT)#, size=(-1,30))
+        # , style=wx.ALIGN_LEFT)#, size=(-1,30))
+        self.trace_file_display = wx.StaticText(self, -1)
+        # , style=wx.ALIGN_LEFT)#, size=(-1,30))
+        self.emulator_file_display = wx.StaticText(self, -1)
 
-        font = wx.Font(pointSize = 10, family = wx.DEFAULT,
-                       style = wx.NORMAL, weight = wx.NORMAL)
+        font = wx.Font(pointSize=10, family=wx.DEFAULT,
+                       style=wx.NORMAL, weight=wx.NORMAL)
         self.trace_file_display.SetFont(font)
         self.emulator_file_display.SetFont(font)
 
@@ -186,31 +205,38 @@ class FileDisplay(wx.Panel):
         sizer.Add(self.emulator_file_display, 1, wx.EXPAND)
 
         self.SetSizer(sizer)
- 
+
     def display_file(self, trace_file=None, emulator_file=None):
         if trace_file is None:
             trace_file = ''
         self.trace_file_display.SetLabel('Trace file: ' + trace_file)
-        #1self.trace_file_display.Wrap(self.Size[0])
-        #self.trace_file_display.SetAutoLayout(True)
+        # 1self.trace_file_display.Wrap(self.Size[0])
+        # self.trace_file_display.SetAutoLayout(True)
         if emulator_file is None:
             emulator_file = ''
         self.emulator_file_display.SetLabel('Emulator file: ' + emulator_file)
-        #self.emulator_file_display.Wrap(self.Size[0])
+        # self.emulator_file_display.Wrap(self.Size[0])
         if self.GetSizer() is not None:
             self.GetSizer().Layout()
 
 
 class FileController:
 
-    def __init__(self, trace_filename=None, emulator_filename=None, all_filenames=None, file_viewer_kwargs={}, display_kwargs={}):       
+    def __init__(
+            self,
+            trace_filename=None,
+            emulator_filename=None,
+            all_filenames=None,
+            file_viewer_kwargs={},
+            display_kwargs={}):
         self.file_view = FileViewer(**file_viewer_kwargs)
         self.display_view = FileDisplay(**display_kwargs)
-        self.model = FileModel(None, None)#trace_filename, emulator_filename, all_filenames)
+        # trace_filename, emulator_filename, all_filenames)
+        self.model = FileModel(None, None)
 
         # sync method must comes first.
-        pub.subscribe(self.update_emulator, 'EmulatorSelected') 
-        pub.subscribe(self.update_trace, 'TraceSelected') 
+        pub.subscribe(self.update_emulator, 'EmulatorSelected')
+        pub.subscribe(self.update_trace, 'TraceSelected')
         pub.subscribe(self.remove_file_highlight_inplace, 'FileRemove')
         pub.subscribe(self.add_file, 'FileAdd')
 
@@ -224,10 +250,10 @@ class FileController:
         # because add_file with None prompts FileDialog
         # supress that in constructor
         if all_filenames is None:
-            all_filenames = [] 
+            all_filenames = []
         self.add_file(all_filenames)
-        #self.update_trace(trace_filename)
-        #self.update_emulator(emulator_filename)
+        # self.update_trace(trace_filename)
+        # self.update_emulator(emulator_filename)
 
         self._SyncDisplayData()
         self._SyncListContent()
@@ -245,7 +271,8 @@ class FileController:
     def remove_file_highlight_inplace(self, filename):
         if filename is not None:
             idx = self.model.remove_file(filename)
-        if idx < len(self.model.list_filenames) and idx >= 0 and idx is not None:
+        if idx < len(
+                self.model.list_filenames) and idx >= 0 and idx is not None:
             self.model.emulator_file = self.model.list_filenames[idx]
             self.file_view.Select(self.model.emulator_file)
 
@@ -261,11 +288,14 @@ class FileController:
             # check if the file exist
             for filename in filelist:
                 if not os.path.isfile(filename):
-                    wx.MessageBox('File %s does not exist' % filename, 'Error', wx.OK | wx.ICON_ERROR)
-                    return 
+                    wx.MessageBox(
+                        'File %s does not exist' %
+                        filename, 'Error', wx.OK | wx.ICON_ERROR)
+                    return
 
-        # check if files that you want to add already exist. If so we raise the warning
-        non_repeat_filelist = {} # a set to avoid duplicated entry
+        # check if files that you want to add already exist. If so we raise the
+        # warning
+        non_repeat_filelist = {}  # a set to avoid duplicated entry
         repeated_filelist = []
         for new_file in filelist:
             for old_file in self.model.list_filenames:
@@ -274,7 +304,12 @@ class FileController:
         non_repeat_filelist = set(filelist) - set(repeated_filelist)
         # raise error if they exist
         if len(repeated_filelist) > 0:
-            wx.MessageBox('\n'.join(['The following files are not added since they are already included:'] + repeated_filelist), 'Warning', wx.OK | wx.ICON_WARNING)
+            wx.MessageBox(
+                '\n'.join(
+                    ['The following files are not added since they are already included:'] +
+                    repeated_filelist),
+                'Warning',
+                wx.OK | wx.ICON_WARNING)
         for i, filename in enumerate(non_repeat_filelist):
             self.model.add_file(filename)
             if i == 0:
@@ -283,7 +318,6 @@ class FileController:
     def _LoadChain(self):
         with pd.HDFStore(self.model.emulator_filename, 'r') as store:
             self.add_file(store.get_storer('trace').attrs.chained_files)
-            
 
     def _CheckIfChained(self):
         # really needs to open the file to inspecf
@@ -301,24 +335,25 @@ class FileController:
                 self.file_view.add_chain_btn.Enable()
             else:
                 self.file_view.add_chain_btn.Disable()
-                
 
     def _SyncListContent(self):
         self.file_view.SetList(self.model.list_filenames)
         self.file_view.highlight_only()
 
     def _SyncDisplayData(self):
-        self.display_view.display_file(self.model.trace_filename, self.model.emulator_filename)
+        self.display_view.display_file(
+            self.model.trace_filename,
+            self.model.emulator_filename)
         self.file_view.highlight_only(self.model.trace_filename)
 
 
 if __name__ == "__main__":
     app = wx.App()
     frame = wx.Frame(None, size=(200, 500))
-    #controller = FileController(file_viewer_kwargs={'parent': frame}, display_kwargs={'parent': frame, 'size': (-1, 100)}, \
-    #                            trace_filename='file1', all_filenames=['file1', 'file2', 'file3'])
-    controller = FileController(file_viewer_kwargs={'parent': frame}, display_kwargs={'parent': frame, 'size': (-1, 100)}, \
-                                trace_filename=None, all_filenames=None)
+    # controller = FileController(file_viewer_kwargs={'parent': frame}, display_kwargs={'parent': frame, 'size': (-1, 100)}, \
+    # trace_filename='file1', all_filenames=['file1', 'file2', 'file3'])
+    controller = FileController(file_viewer_kwargs={'parent': frame}, display_kwargs={
+                                'parent': frame, 'size': (-1, 100)}, trace_filename=None, all_filenames=None)
 
     sizer = wx.BoxSizer(wx.VERTICAL)
     sizer.Add(controller.file_view, 1, wx.EXPAND)

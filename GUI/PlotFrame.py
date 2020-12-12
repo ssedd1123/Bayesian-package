@@ -1,4 +1,14 @@
 from __future__ import print_function
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
+from matplotlib.backends.backend_wx import NavigationToolbar2Wx
+import wx.grid as gridlib
+import wx
+import numpy as np
+import matplotlib.cm as cm
+import matplotlib.cbook as cbook
+from copy import deepcopy
+import tempfile
 
 import gc
 import os
@@ -18,24 +28,11 @@ import pandas as pd
 
 
 matplotlib.use("WXAgg")
-import tempfile
-from copy import deepcopy
 
-import matplotlib.cbook as cbook
-import matplotlib.cm as cm
-import numpy as np
-import wx
 # import wx.xrc as xrc
-import wx.grid as gridlib
 # from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
-from matplotlib.backends.backend_wx import NavigationToolbar2Wx
-from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
-from matplotlib.figure import Figure
 
 # from matplotlib.figure import Figure
-
-
-
 
 
 class PlotFrame(wx.Frame):

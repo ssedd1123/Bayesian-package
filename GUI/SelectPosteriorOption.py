@@ -104,21 +104,44 @@ class SelectPosteriorOption(wx.Dialog):
         # color map selection
         hsizer = wx.BoxSizer(wx.HORIZONTAL)
         title_text = wx.StaticText(self, -1, "Color maps")
-        value_combo = PromptingComboBox(self, value="Blues", choices=plt.colormaps())
+        value_combo = PromptingComboBox(
+            self, value="Blues", choices=plt.colormaps())
         sizer.Add(
-            title_text, pos=(len(content), 0), flag=wx.ALIGN_LEFT | wx.ALL, border=5
-        )
-        sizer.Add(value_combo, pos=(len(content), 1), span=(1, 4), flag=wx.ALIGN_LEFT)
+            title_text,
+            pos=(
+                len(content),
+                0),
+            flag=wx.ALIGN_LEFT | wx.ALL,
+            border=5)
+        sizer.Add(
+            value_combo, pos=(
+                len(content), 1), span=(
+                1, 4), flag=wx.ALIGN_LEFT)
         self.values["cmap"] = value_combo
 
-        self.show_ref_pt = wx.CheckBox(self, label='Overlay reference points in "Ask Emulator"')
-        sizer.Add(self.show_ref_pt, pos=(len(content) + 1, 0), span=(1, 5), flag=wx.ALIGN_LEFT)
+        self.show_ref_pt = wx.CheckBox(
+            self, label='Overlay reference points in "Ask Emulator"')
+        sizer.Add(
+            self.show_ref_pt,
+            pos=(
+                len(content) + 1,
+                0),
+            span=(
+                1,
+                5),
+            flag=wx.ALIGN_LEFT)
 
         self.button = wx.Button(self, wx.ID_OK, "Plot")
         sizer.Add(
-            self.button, pos=(len(content) + 2, 0), span=(1, 5), flag=wx.ALIGN_LEFT
-        )
-        
+            self.button,
+            pos=(
+                len(content) + 2,
+                0),
+            span=(
+                1,
+                5),
+            flag=wx.ALIGN_LEFT)
+
         self.SetSizer(sizer)
         self.Fit()
 

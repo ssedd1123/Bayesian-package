@@ -93,14 +93,18 @@ class SelectOption(wx.Dialog):
             args["principalcomp"] = None
             args["fraction"] = float(self.output["PCA Components"].GetValue())
         else:
-            args["principalcomp"] = int(self.output["PCA Components"].GetValue())
+            args["principalcomp"] = int(
+                self.output["PCA Components"].GetValue())
             args["fraction"] = None
         args["initialscale"] = np.fromstring(
             self.output["Initial scale"].GetValue(), dtype=np.float, sep=","
         )
         args["initialnugget"] = float(self.output["Initial nugget"].GetValue())
-        args["scalerate"] = float(self.output["Scale learning rate"].GetValue())
-        args["nuggetrate"] = float(self.output["Nugget learning rate"].GetValue())
+        args["scalerate"] = float(
+            self.output["Scale learning rate"].GetValue())
+        args["nuggetrate"] = float(
+            self.output["Nugget learning rate"].GetValue())
         args["maxsteps"] = int(self.output["Maximum iterations"].GetValue())
-        args["gradthreshold"] = float(self.output["Gradient threshold"].GetValue())
+        args["gradthreshold"] = float(
+            self.output["Gradient threshold"].GetValue())
         return args

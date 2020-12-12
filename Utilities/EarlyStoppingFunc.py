@@ -60,7 +60,8 @@ def EarlyStopping(
         partial_likelihood = []
         for i in range(nsteps):
 
-            scales, nuggets, grad_scales, grad_nuggets = gd.StepDescent(scales, nuggets)
+            scales, nuggets, grad_scales, grad_nuggets = gd.StepDescent(
+                scales, nuggets)
             emu.SetScales(scales)
             emu.SetNuggets(nuggets)
             emu.StartUp()
@@ -70,19 +71,20 @@ def EarlyStopping(
 
             val = 0
             for par, exp in zip(valid_par, valid_obs):
-                val += emu.LogLikelihood(par.reshape(1, -1), exp[index].reshape(1, -1))
+                val += emu.LogLikelihood(par.reshape(1, -1),
+                                         exp[index].reshape(1, -1))
             partial_likelihood.append(val)
 
             sys.stdout.write(
-                "\rProcessing %i iteration, likelihood = %f, nuggets = %f, scales = %s"
-                % (i, val, nuggets, np.array2string(scales))
-            )
+                "\rProcessing %i iteration, likelihood = %f, nuggets = %f, scales = %s" %
+                (i, val, nuggets, np.array2string(scales)))
             sys.stdout.flush()
 
         # plt.plot(partial_likelihood)
         # plt.show()
         # get index corresponds to maximum validation log likelihood
-        i, value = max(enumerate(partial_likelihood), key=operator.itemgetter(1))
+        i, value = max(enumerate(partial_likelihood),
+                       key=operator.itemgetter(1))
         print("max", i)
         scales_list.append(hist_scales[i])
         nuggets_list.append(hist_nuggets[i])

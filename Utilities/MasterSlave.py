@@ -1,3 +1,8 @@
+import tempfile
+import shutil
+import random
+import pickle
+import os
 import math
 import re
 import sys
@@ -12,27 +17,21 @@ from mpi4py import MPI
 
 MPI.pickle.__init__(dill.dumps, dill.loads)
 
-import os
-import pickle
-import random
-import shutil
-import tempfile
 
 class ThreadsException(Exception):
-    """ 
+    """
     Save exceptions from each thread
     throw them in a bundle when all threds complete/exit out
     """
- 
+
     def __init__(self, threads, exceptions):
-      self.threads = threads
-      self.exceptions = exceptions
-      self.message = 'Exceptions are thrown from some threads.\n'
-      for i, exception in zip(threads, exceptions):
-        self.message += 'Thread %d:\n' % i
-        self.message += '%s\n' % str(exception)
-      super().__init__(self.message)
-   
+        self.threads = threads
+        self.exceptions = exceptions
+        self.message = 'Exceptions are thrown from some threads.\n'
+        for i, exception in zip(threads, exceptions):
+            self.message += 'Thread %d:\n' % i
+            self.message += '%s\n' % str(exception)
+        super().__init__(self.message)
 
 
 def enum(*sequential, **named):
@@ -59,7 +58,9 @@ class OutputPipe(object):
         self.comm = comm
         self.root = root
         self.refresh_interval = refresh_interval
-        self.smeared_refresh_interval = refresh_interval  # smear the refresh interval so the update from all workers won't come all at once which skew the speedometer
+        # smear the refresh interval so the update from all workers won't come
+        # all at once which skew the speedometer
+        self.smeared_refresh_interval = refresh_interval
         self.last_refresh = time.time()
         self.last_sentence = None
         self.refresh_delay = 0
@@ -108,7 +109,10 @@ class MasterSlave(object):
 
     def RefreshRate(self, refresh_interval):
         for worker in range(1, self.size):
-            self.comm.send(refresh_interval, tag=tags.REFRESH_RATE, dest=worker)
+            self.comm.send(
+                refresh_interval,
+                tag=tags.REFRESH_RATE,
+                dest=worker)
 
     def RefreshSmear(self, refresh_smear):
         for worker in range(1, self.size):
@@ -135,7 +139,8 @@ class MasterSlave(object):
                     """
                     Throw exceptions from each threads when calculation is done
                     """
-                    ex = ThreadsException(self.exception_threads, self.exception_list)
+                    ex = ThreadsException(
+                        self.exception_threads, self.exception_list)
                     self.exception_list = []
                     self.exception_threads = []
                     raise ex

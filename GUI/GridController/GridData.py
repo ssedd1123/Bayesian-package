@@ -43,9 +43,12 @@ class GridData(gridlib.GridTableBase):
         self.parent = parent
         if df is None:
             self.header = [
-                name for i, name in zip(range(num_col), _column_name_generator())
-            ]
-            self.data = pd.DataFrame(None, index=range(num_row), columns=self.header)
+                name for i,
+                name in zip(
+                    range(num_col),
+                    _column_name_generator())]
+            self.data = pd.DataFrame(
+                None, index=range(num_row), columns=self.header)
         else:
             self.data = df
 
@@ -108,8 +111,13 @@ class GridData(gridlib.GridTableBase):
             # pub.sendMessage('Data_Changed', obj=self, evt=[rows, cols])
 
     def ChangeValues(
-        self, rows, cols, values, delete_redo=True, send_changed=True, in_undo=False
-    ):
+            self,
+            rows,
+            cols,
+            values,
+            delete_redo=True,
+            send_changed=True,
+            in_undo=False):
         rows = np.atleast_1d(np.asarray(rows))
         cols = np.atleast_1d(np.asarray(cols))
         values = np.atleast_2d(np.asarray(values))
@@ -157,8 +165,12 @@ class GridData(gridlib.GridTableBase):
             pub.sendMessage("Data_Changed", obj=self, evt=[rows, cols])
 
     def DeleteShift(
-        self, rows, cols, direction=Direction.Up, delete_redo=True, in_undo=False
-    ):
+            self,
+            rows,
+            cols,
+            direction=Direction.Up,
+            delete_redo=True,
+            in_undo=False):
         rows = np.atleast_1d(np.asarray(rows))
         cols = np.atleast_1d(np.asarray(cols))
         if in_undo:
@@ -184,22 +196,22 @@ class GridData(gridlib.GridTableBase):
             pub.sendMessage("Data_CanUndo", obj=self)
 
         if direction == Direction.Up:
-            self.data.iloc[rows[0] :, cols[0] : cols[-1] + 1] = self.data.iloc[
-                rows[0] :, cols[0] : cols[-1] + 1
+            self.data.iloc[rows[0]:, cols[0]: cols[-1] + 1] = self.data.iloc[
+                rows[0]:, cols[0]: cols[-1] + 1
             ].shift(-rows.shape[0])
         elif direction == Direction.Down:
-            self.data.iloc[: rows[-1] + 1, cols[0] : cols[-1] + 1] = self.data.iloc[
-                : rows[-1] + 1, cols[0] : cols[-1] + 1
-            ].shift(rows.shape[0])
+            self.data.iloc[: rows[-1] + 1,
+                           cols[0]: cols[-1] + 1] = self.data.iloc[: rows[-1] + 1,
+                                                                   cols[0]: cols[-1] + 1].shift(rows.shape[0])
         elif direction == Direction.Left:
-            self.data.iloc[rows[0] : rows[-1] + 1, cols[0] :] = (
-                self.data.iloc[rows[0] : rows[-1] + 1, cols[0] :]
+            self.data.iloc[rows[0]: rows[-1] + 1, cols[0]:] = (
+                self.data.iloc[rows[0]: rows[-1] + 1, cols[0]:]
                 .T.shift(-cols.shape[0])
                 .T
             )
         else:
-            self.data.iloc[rows[0] : rows[-1] + 1, : cols[-1] + 1] = (
-                self.data.iloc[rows[0] : rows[-1] + 1, : cols[-1] + 1]
+            self.data.iloc[rows[0]: rows[-1] + 1, : cols[-1] + 1] = (
+                self.data.iloc[rows[0]: rows[-1] + 1, : cols[-1] + 1]
                 .T.shift(cols.shape[0])
                 .T
             )
@@ -230,30 +242,31 @@ class GridData(gridlib.GridTableBase):
                 (self.DeleteShift, rows, cols, OppositeDir(direction))
             )
         else:
-            self.history.append((self.DeleteShift, rows, cols, OppositeDir(direction)))
+            self.history.append(
+                (self.DeleteShift, rows, cols, OppositeDir(direction)))
             pub.sendMessage("Data_CanUndo", obj=self)
 
         if direction == Direction.Up:
-            self.data.iloc[: rows[-1] + 1, cols[0] : cols[-1] + 1] = self.data.iloc[
-                : rows[-1] + 1, cols[0] : cols[-1] + 1
-            ].shift(-rows.shape[0])
+            self.data.iloc[: rows[-1] + 1,
+                           cols[0]: cols[-1] + 1] = self.data.iloc[: rows[-1] + 1,
+                                                                   cols[0]: cols[-1] + 1].shift(-rows.shape[0])
         elif direction == Direction.Down:
-            self.data.iloc[rows[0] :, cols[0] : cols[-1] + 1] = self.data.iloc[
-                rows[0] :, cols[0] : cols[-1] + 1
+            self.data.iloc[rows[0]:, cols[0]: cols[-1] + 1] = self.data.iloc[
+                rows[0]:, cols[0]: cols[-1] + 1
             ].shift(rows.shape[0])
         elif direction == Direction.Left:
-            self.data.iloc[rows[0] : rows[-1] + 1, : cols[-1] + 1] = (
-                self.data.iloc[rows[0] : rows[-1] + 1, : cols[-1] + 1]
+            self.data.iloc[rows[0]: rows[-1] + 1, : cols[-1] + 1] = (
+                self.data.iloc[rows[0]: rows[-1] + 1, : cols[-1] + 1]
                 .T.shift(-cols.shape[0])
                 .T
             )
         else:
-            self.data.iloc[rows[0] : rows[-1] + 1, cols[0] :] = (
-                self.data.iloc[rows[0] : rows[-1] + 1, cols[0] :]
+            self.data.iloc[rows[0]: rows[-1] + 1, cols[0]:] = (
+                self.data.iloc[rows[0]: rows[-1] + 1, cols[0]:]
                 .T.shift(cols.shape[0])
                 .T
             )
-        self.data.iloc[rows[0] : rows[-1] + 1, cols[0] : cols[-1] + 1] = values
+        self.data.iloc[rows[0]: rows[-1] + 1, cols[0]: cols[-1] + 1] = values
 
         if delete_redo:
             pub.sendMessage("Data_CannotRedo", obj=self)

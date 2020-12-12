@@ -24,7 +24,8 @@ class EmulatorViewer(wx.Frame):
         panel.SetBackgroundColour(wx.Colour("White"))
 
         self.fig = Figure((5, 4), 75)
-        # Adjust the subplots region to leave some space for the sliders and buttons
+        # Adjust the subplots region to leave some space for the sliders and
+        # buttons
         self.fig.subplots_adjust(left=0.25, bottom=0.25)
         self.ax = self.fig.add_axes([0.1, 0.2, 0.85, 0.75])
         self.canvas = FigureCanvasWxAgg(panel, -1, self.fig)
@@ -35,7 +36,8 @@ class EmulatorViewer(wx.Frame):
         mins = np.atleast_1d(mins).flatten()
         maxs = np.atleast_1d(maxs).flatten()
         values = np.array(values).flatten()
-        for idx, (min_, max_, val, tit) in enumerate(zip(mins, maxs, values, title)):
+        for idx, (min_, max_, val, tit) in enumerate(
+                zip(mins, maxs, values, title)):
             slider = CustomSlider(
                 panel,
                 val,
@@ -58,7 +60,8 @@ class EmulatorViewer(wx.Frame):
         # This way of adding to sizer allows resizing
         rsizer.Add(self.canvas, 1, wx.EXPAND)
         for slider in self.sliders:
-            rsizer.Add(slider, 0, wx.EXPAND | wx.RIGHT)  # | wx.LEFT | wx.RIGHT, 20)
+            # | wx.LEFT | wx.RIGHT, 20)
+            rsizer.Add(slider, 0, wx.EXPAND | wx.RIGHT)
         rsizer.Add(self.toolbar, 0, wx.GROW | wx.RIGHT)
 
         lsizer = wx.BoxSizer(wx.VERTICAL)
@@ -110,7 +113,8 @@ class EmulatorController:
         )
         self.model = emulator
 
-        self.current_values = 0.5 * (prior["Min"] + prior["Max"]).values.flatten()
+        self.current_values = 0.5 * \
+            (prior["Min"] + prior["Max"]).values.flatten()
         init_value, init_cov = self.model.Predict(self.current_values)
 
         self.X = np.arange(init_value.shape[1])
@@ -123,24 +127,29 @@ class EmulatorController:
             color="red",
         )
         self.bg_line, _, (self.bg_bars,) = self.viewer.ax.errorbar(
-            self.X, self.exp_Y, yerr=self.exp_Yerr, marker="o", linewidth=2, color="b"
-        )
-        par_name = [
-            name[0:15] if len(name) > 14 else name for name in list(self.model_Y)
-        ]
+            self.X, self.exp_Y, yerr=self.exp_Yerr, marker="o", linewidth=2, color="b")
+        par_name = [name[0:15] if len(
+            name) > 14 else name for name in list(self.model_Y)]
         self.viewer.ax.set_xticks(self.X)
         self.viewer.ax.set_xticklabels(par_name, rotation=45)
         self.viewer.RefreshFig()
 
-        self.items = ["Check All", "Exp"] + self.model_Y.index.astype(str).tolist()
+        self.items = ["Check All", "Exp"] + \
+            self.model_Y.index.astype(str).tolist()
         self.viewer.clb.SetItems(self.items)
         self.viewer.clb.SetCheckedItems(
             [0, 1] + [item + 2 for item in init_training_idx]
         )
 
         pub.subscribe(self.CheckObj, "Slider_Value", func=self.OnSlider)
-        pub.subscribe(self.CheckObj, "Emulator_ListSelect", func=self.OnListSelect)
-        pub.subscribe(self.CheckObj, "Emulator_CheckSelect", func=self.OnCheckboxSelect)
+        pub.subscribe(
+            self.CheckObj,
+            "Emulator_ListSelect",
+            func=self.OnListSelect)
+        pub.subscribe(
+            self.CheckObj,
+            "Emulator_CheckSelect",
+            func=self.OnCheckboxSelect)
         pub.subscribe(self.CheckObj, "Emulator_Retrain", func=self.OnRetrain)
 
     def CheckObj(self, func, obj, evt):
@@ -163,10 +172,18 @@ class EmulatorController:
     def OnListSelect(self, obj, evt):
         selected = evt.GetString()
         if selected == "Exp":
-            self.SetErrorBar(self.bg_line, self.bg_bars, self.exp_Y, self.exp_Yerr)
+            self.SetErrorBar(
+                self.bg_line,
+                self.bg_bars,
+                self.exp_Y,
+                self.exp_Yerr)
         elif selected.isdigit():
             idx = int(selected)
-            self.SetErrorBar(self.bg_line, self.bg_bars, self.model_Y.loc[idx], 0)
+            self.SetErrorBar(
+                self.bg_line,
+                self.bg_bars,
+                self.model_Y.loc[idx],
+                0)
             self.viewer.RefreshFig()
 
             selected_x = self.model_X.loc[idx].values

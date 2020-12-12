@@ -1,3 +1,10 @@
+from MCMCTrace import MCMCParallel, Merging
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
+import tempfile
+import shutil
+import pickle
+import os
 import math
 import re
 import sys
@@ -13,15 +20,6 @@ from mpi4py import MPI
 from Utilities.MasterSlave import MasterSlave, tags
 
 matplotlib.use("WXAgg")
-import os
-import pickle
-import shutil
-import tempfile
-
-from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
-from matplotlib.figure import Figure
-
-from MCMCTrace import MCMCParallel, Merging
 
 
 class RunningAve(object):
@@ -67,7 +65,8 @@ class EvtSpeedMeter(SM.SpeedMeter):
         colours = [wx.WHITE] * 10
         self.SetIntervalColours(colours)
 
-        # Assign The Ticks: Here They Are Simply The String Equivalent Of The Intervals
+        # Assign The Ticks: Here They Are Simply The String Equivalent Of The
+        # Intervals
         ticks = [str(interval) for interval in intervals]
         self.SetTicks(ticks)
         # Set The Ticks/Tick Markers Colour
@@ -96,7 +95,8 @@ class EvtSpeedMeter(SM.SpeedMeter):
         self.prev_speed = 0
 
     def UpdateSpeed(self, int_speed):
-        speed = self.SpeedCalculator.GetAve(int_speed)  # np.sum(self.speed_list))
+        speed = self.SpeedCalculator.GetAve(
+            int_speed)  # np.sum(self.speed_list))
         if speed > self.max_speed:
             speed = self.max_speed
         self.SetSpeedValue(speed)
@@ -154,13 +154,22 @@ class ProgressBar(FigureCanvasWxAgg):
         theta = -tot_completed * 360 / self.tot_num - 90
         self.wedges[0].set_theta1(theta)
         self.wedges[1].set_theta2(theta)
-        self.text.set_text("Finished %d out of %d evts" % (tot_completed, self.tot_num))
+        self.text.set_text(
+            "Finished %d out of %d evts" %
+            (tot_completed, self.tot_num))
         self.title.set_text("%.1f%%" % (100.0 * tot_completed / self.tot_num))
         self.fig.canvas.draw_idle()
 
 
 class CalculationFrame(wx.Frame):
-    def __init__(self, parent, id, title, enviro, tot_per_rank=50000, burnin=1000):
+    def __init__(
+            self,
+            parent,
+            id,
+            title,
+            enviro,
+            tot_per_rank=50000,
+            burnin=1000):
         self.enviro = enviro
         self.orig_stdout = sys.stdout
 
@@ -221,7 +230,8 @@ class CalculationFrame(wx.Frame):
         """
     Draw Progress bar
     """
-        width = 0.5 * (self.pixel_width - 3 * self.hspacer) / wx.ScreenDC().GetPPI()[0]
+        width = 0.5 * (self.pixel_width - 3 * self.hspacer) / \
+            wx.ScreenDC().GetPPI()[0]
         height = 0.9 * self.pixel_height / wx.ScreenDC().GetPPI()[0]
         self.progress_bar = ProgressBar(self.tot, width, height, self)
 
@@ -229,7 +239,7 @@ class CalculationFrame(wx.Frame):
         MatPlotSizer.Add(self.progress_bar, 1, wx.EXPAND)
 
         """
-    Arrange the 2 meters side by side 
+    Arrange the 2 meters side by side
     ini the same sizer
     """
         top_sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -276,7 +286,9 @@ class CalculationFrame(wx.Frame):
                 nevents=args["nsteps"],
                 burnin=args["burnin"],
             )
-            self.info_bar.PrintInfo("%d workers are working" % self.enviro.nworking)
+            self.info_bar.PrintInfo(
+                "%d workers are working" %
+                self.enviro.nworking)
 
             # check for jobs completions and collect results
             # avarage speed for each rank
@@ -287,7 +299,8 @@ class CalculationFrame(wx.Frame):
             last_update = start_time
 
             try:
-                while self.enviro.IsRunning(self.refresh_rate / 10):  # self.refresh_rate):
+                while self.enviro.IsRunning(
+                        self.refresh_rate / 10):  # self.refresh_rate):
                     source, result, tag = self.enviro.stdout
                     idx = source - 1
                     new_time = time.time()
@@ -297,12 +310,12 @@ class CalculationFrame(wx.Frame):
                         if tag == tags.END:
                             speed = 0
                             self.info_bar.PrintInfo(
-                                "%d workers are still working. Worker %d completed"
-                                % (self.enviro.nworking, idx)
-                            )
+                                "%d workers are still working. Worker %d completed" %
+                                (self.enviro.nworking, idx))
                         elif tag == tags.ERROR:
                             speed = 0
-                            self.info_bar.PrintInfo('Error from worker %d' % idx)
+                            self.info_bar.PrintInfo(
+                                'Error from worker %d' % idx)
                         else:
                             num = re.findall(r"\d+\.?\d*", result)
                             last_num = int(num[1])
@@ -319,11 +332,13 @@ class CalculationFrame(wx.Frame):
                                 speed = dn / dt
 
                                 self.speedmeter.UpdateSpeed(speed)
-                                self.progress_bar.UpdateProgress(np.sum(num_prev))
+                                self.progress_bar.UpdateProgress(
+                                    np.sum(num_prev))
                                 last_update = new_time
                                 wx.YieldIfNeeded()
 
-                self.info_bar.PrintInfo("All calculations completed. Merging...")
+                self.info_bar.PrintInfo(
+                    "All calculations completed. Merging...")
                 self.progress_bar.UpdateProgress(np.sum(num_prev))
                 self.speedmeter.ReturnZero()
                 wx.YieldIfNeeded()
@@ -332,13 +347,14 @@ class CalculationFrame(wx.Frame):
             else:
                 try:
                     result = Merging(
-                        args["config_file"], self.enviro.results, args["clear_trace"]
-                    )
+                        args["config_file"],
+                        self.enviro.results,
+                        args["clear_trace"])
                 except Exception as e:
                     raise e
-                    #traceback.print_exc()
+                    # traceback.print_exc()
                     #print("Error merging files.")
-                    #sys.stdout.flush()
+                    # sys.stdout.flush()
                 else:
                     self.info_bar.PrintInfo("Merging completed.")
                     wx.YieldIfNeeded()

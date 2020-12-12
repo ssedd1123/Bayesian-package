@@ -93,13 +93,14 @@ class CustomSlider(wx.Control):
         dc.SetBrush(wx.Brush("#777"))
         dc.SetPen(wx.Pen("#777"))
         dc.DrawPolygon(
-            ((center - width / 2, 0), (center, height), (center + width / 2, 0))
-        )
+            ((center - width / 2, 0), (center, height), (center + width / 2, 0)))
 
         # draw slider line
         dc.DrawLine(
-            self.pads, self.height / 2, dc.GetSize()[0] - self.pads, self.height / 2
-        )
+            self.pads,
+            self.height / 2,
+            dc.GetSize()[0] - self.pads,
+            self.height / 2)
 
         # draw slider thumb
         dc.SetPen(wx.Pen(wx.Colour("orange")))
@@ -114,13 +115,17 @@ class CustomSlider(wx.Control):
     def OnPressed(self, evt):
         if evt.Dragging() or evt.LeftIsDown():
             dc = wx.BufferedDC(wx.ClientDC(self), self.buffer)
-            current_value = self.CoordToValue(evt.GetPosition()[0], dc.GetSize()[0])
+            current_value = self.CoordToValue(
+                evt.GetPosition()[0], dc.GetSize()[0])
             if self.minValue <= current_value <= self.maxValue:
                 self.current_value = current_value
                 dc.Clear()
                 self.DrawLine(dc)
                 self.Refresh()
-                pub.sendMessage("Slider_Value", obj=self, evt=self.current_value)
+                pub.sendMessage(
+                    "Slider_Value",
+                    obj=self,
+                    evt=self.current_value)
 
     def SetValue(self, val):
         dc = wx.BufferdDC(wx.ClientDC(self), self.buffer)

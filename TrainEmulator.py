@@ -36,8 +36,13 @@ def TrainingCurve(fig, config_file):
     axes = fig.subplots(1, 2)
     NumberOfPts(axes[0], clf, model_X, model_Y, training_idx, validation_idx)
     NumberOfSteps(
-        axes[1], clf, model_X, model_Y, training_idx, validation_idx, history_para
-    )
+        axes[1],
+        clf,
+        model_X,
+        model_Y,
+        training_idx,
+        validation_idx,
+        history_para)
 
 
 def NumberOfPts(ax, clf, model_X, model_Y, training_idx, validation_idx):
@@ -60,7 +65,8 @@ def NumberOfPts(ax, clf, model_X, model_Y, training_idx, validation_idx):
                 np.sqrt(np.mean((training_Y[0:ntrain] - pred_Y) ** 2))
             )
             pred_Y, _ = clf.Predict(validation_X)
-            validation_scores.append(np.sqrt(np.mean((validation_Y - pred_Y) ** 2)))
+            validation_scores.append(
+                np.sqrt(np.mean((validation_Y - pred_Y) ** 2)))
             valid_ntrain.append(ntrain)
         except Exception:
             pass
@@ -83,7 +89,10 @@ def NumberOfSteps(
     validation_X = model_X[validation_idx]
     validation_Y = model_Y[validation_idx]
     for idx, para in history_para.iterrows():
-        pub.sendMessage("NumberOfStepsProgress", progress=idx / history_para.shape[0])
+        pub.sendMessage(
+            "NumberOfStepsProgress",
+            progress=idx /
+            history_para.shape[0])
         nuggets = []
         scales = []
         for idemu, emulator in enumerate(clf["Emulator"].emulators):
@@ -137,13 +146,13 @@ def Training(
     gradthreshold=1e-5,
 ):
 
-    if type(prior) is str:
+    if isinstance(prior, str):
         prior = pd.read_csv(prior, index_col=0)
-    if type(exp) is str:
+    if isinstance(exp, str):
         exp = pd.read_csv(exp, index_col=0)
-    if type(model_X) is str:
+    if isinstance(model_X, str):
         model_X = pd.read_csv(model_X)
-    if type(model_Y) is str:
+    if isinstance(model_Y, str):
         model_Y = pd.read_csv(model_Y)
 
     parameter_names = list(prior)
@@ -229,8 +238,7 @@ def Training(
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
-        description="This script will choose an optimal set of hyperparameters by minizing loss function"
-    )
+        description="This script will choose an optimal set of hyperparameters by minizing loss function")
     parser.add_argument("prior", help="Locatioin of parameter priors")
     parser.add_argument("model", help="Location of the model simulation files")
     parser.add_argument("exp", help="Location of the experimental result")

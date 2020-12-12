@@ -1,15 +1,21 @@
 import wx
 from wx.lib import sized_controls
 
-class FlexMessageBox(wx.Dialog):#sized_controls.SizedDialog):
+
+class FlexMessageBox(wx.Dialog):  # sized_controls.SizedDialog):
 
     def __init__(self, message, *args, **kwargs):
         super(FlexMessageBox, self).__init__(*args, **kwargs)
         sizer = wx.BoxSizer(wx.VERTICAL)
         panel = wx.Panel(self)
-       
-        lbl = wx.StaticText(panel, -1, style = wx.ALIGN_LEFT) 
-        font = wx.Font(12, wx.FONTFAMILY_TELETYPE, wx.NORMAL, wx.NORMAL, faceName="Monospace")
+
+        lbl = wx.StaticText(panel, -1, style=wx.ALIGN_LEFT)
+        font = wx.Font(
+            12,
+            wx.FONTFAMILY_TELETYPE,
+            wx.NORMAL,
+            wx.NORMAL,
+            faceName="Monospace")
         lbl.SetFont(font)
         lbl.SetLabel(message)
         sizer.Add(lbl, 0, wx.EXPAND | wx.ALL, 25)
@@ -31,7 +37,10 @@ class FlexMessageBox(wx.Dialog):#sized_controls.SizedDialog):
 
 if __name__ == '__main__':
     app = wx.App(False)
-    dlg = FlexMessageBox('asdfasdfasdf\nasdfasdfasdf', None, title='Custom Dialog')
+    dlg = FlexMessageBox(
+        'asdfasdfasdf\nasdfasdfasdf',
+        None,
+        title='Custom Dialog')
     result = dlg.ShowModal()
     dlg.Destroy()
     app.MainLoop()

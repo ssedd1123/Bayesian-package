@@ -7,7 +7,7 @@ from GUI.GridController.GridData import Direction, HistoryType
 
 class MyGrid(gridlib.Grid):
     def __init__(self, parent, initial_df=None, **kwargs):
-        #if initial_df is not None:
+        # if initial_df is not None:
         #    size = initial_df.shape
         super().__init__(parent, -1, **kwargs)
         self.SetDefaultColSize(wx.ScreenDC().GetPPI()[1] * 1.2, True)
@@ -18,7 +18,10 @@ class MyGrid(gridlib.Grid):
         self.Bind(gridlib.EVT_GRID_CELL_RIGHT_CLICK, self.RightClick)
         self.Bind(
             gridlib.EVT_GRID_RANGE_SELECT,
-            lambda evt: pub.sendMessage("Viewer_RangeSelected", obj=self, evt=evt),
+            lambda evt: pub.sendMessage(
+                "Viewer_RangeSelected",
+                obj=self,
+                evt=evt),
         )
 
         # self.Bind(gridlib.EVT_GRID_CELL_CHANGED, lambda evt: pub.sendMessage('Data_Changed', obj=self.table))
@@ -29,7 +32,7 @@ class MyGrid(gridlib.Grid):
         pub.sendMessage("viewer_right", obj=self, evt=evt)
 
     def OnKey(self, evt):
-        # if Ctrl+C is pressed       
+        # if Ctrl+C is pressed
         if evt.ControlDown() and evt.GetKeyCode() == 67:
             pub.sendMessage('viewer_CtrlC', obj=self, evt=evt)
         # if Ctrl+V is pressed
@@ -50,7 +53,8 @@ class DataDirectionDialog(wx.Dialog):
         self.rb_left = wx.RadioButton(
             panel, label="Move left", pos=(10, 10), style=wx.RB_GROUP
         )
-        self.rb_right = wx.RadioButton(panel, label="Moeve right", pos=(10, 20))
+        self.rb_right = wx.RadioButton(
+            panel, label="Moeve right", pos=(10, 20))
         self.rb_top = wx.RadioButton(panel, label="Move Up", pos=(10, 30))
         self.rb_bottom = wx.RadioButton(panel, label="Move Down", pos=(10, 40))
         self.confirm_button = wx.Button(

@@ -8,6 +8,7 @@ else:
     import cPickle as pickle
 
 import math
+from scipy.optimize import bisect
 
 import matplotlib.colors as colors
 import matplotlib.gridspec as gridspec
@@ -26,7 +27,7 @@ from Preprocessor.PipeLine import *
 
 
 def GetTrainedEmulator(store):
-    if type(store) is str:
+    if isinstance(store, str):
         newstore = pd.HDFStore(store, "r")
     else:
         newstore = store
@@ -37,7 +38,8 @@ def GetTrainedEmulator(store):
     model_X = newstore["Model_X"]
     history_para = newstore["ParaHistory"]
 
-    emulator = eval(newstore.get_storer("PriorAndConfig").attrs.my_attribute["repr"])
+    emulator = eval(newstore.get_storer(
+        "PriorAndConfig").attrs.my_attribute["repr"])
 
     if "Training_idx" in newstore:
         training_idx = newstore["Training_idx"].astype("int").values.flatten()
@@ -45,7 +47,7 @@ def GetTrainedEmulator(store):
         training_idx = np.arange(model_X.shape[0])
     emulator.Fit(model_X.values[training_idx], model_Y.values[training_idx])
 
-    if type(store) is str:
+    if isinstance(store, str):
         newstore.close()
 
     return (
@@ -60,11 +62,18 @@ def GetTrainedEmulator(store):
     )
 
 
-def smoothed_histogram2D(x, y, ax, bins=20, sigma=0, nlevels=10, extent=None, **kwargs):
+def smoothed_histogram2D(
+        x,
+        y,
+        ax,
+        bins=20,
+        sigma=0,
+        nlevels=10,
+        extent=None,
+        **kwargs):
     if extent is not None:
-        h, x, y = np.histogram2d(
-            x, y, bins=bins, range=[[extent[0], extent[1]], [extent[2], extent[3]]]
-        )
+        h, x, y = np.histogram2d(x, y, bins=bins, range=[
+            [extent[0], extent[1]], [extent[2], extent[3]]])
     else:
         h, x, y = np.histogram2d(x, y, bins=bins)
     if extent is None:
@@ -73,7 +82,12 @@ def smoothed_histogram2D(x, y, ax, bins=20, sigma=0, nlevels=10, extent=None, **
         h = gaussian_filter(h, sigma=sigma)
         im = ax.contourf(h.T, nlevels, origin="lower", extent=extent, **kwargs)
     else:
-        im = ax.imshow(h.T, origin="lower", extent=extent, aspect="auto", **kwargs)
+        im = ax.imshow(
+            h.T,
+            origin="lower",
+            extent=extent,
+            aspect="auto",
+            **kwargs)
     # im = ax.contour(h.T, 10, origin='lower', extent=extent, aspect='auto', **kwargs)
     return ax, im
 
@@ -89,8 +103,29 @@ def smoothed_histogram1D(x, ax, bins=20, sigma=0, range=None, **kwargs):
     return ax, g
 
 
+def HeightAtFraction(h, frac):
+    def FractionAboveZ(h, z):
+        total = h.sum()
+        value_above = h[h > z].sum()
+        return value_above / total
+    return bisect(
+        lambda x: FractionAboveZ(
+            h,
+            x) - frac,
+        0,
+        np.max(h),
+        xtol=1e-3)
+
+
 # input is the pymc3 trace and list of parameters
-def PlotTrace(config_file, fig=None, sigma=0, bins=100, cmap="Blues", nlevels=10, mark_point=None):
+def PlotTrace(
+        config_file,
+        fig=None,
+        sigma=0,
+        bins=100,
+        cmap="Blues",
+        nlevels=10,
+        mark_point=None):
     """
     Arrange trace in a n*n matrix of plots
     where n is the number of variables
@@ -118,7 +153,8 @@ def PlotTrace(config_file, fig=None, sigma=0, bins=100, cmap="Blues", nlevels=10
             namex = par_name[j]
             namey = par_name[i]
             if namex == namey:
-                # use a dummy twinx plot to 'fake' y-axis for diagonal plots at upper left coner
+                # use a dummy twinx plot to 'fake' y-axis for diagonal plots at
+                # upper left coner
                 cell.set_ylim([prior["Min"][namey], prior["Max"][namey]])
                 dummy = cell.twinx()
                 # dummy.hist(trace[namex], bins=100, range=[prior['Min'][namex], prior['Max'][namex]])
@@ -132,8 +168,10 @@ def PlotTrace(config_file, fig=None, sigma=0, bins=100, cmap="Blues", nlevels=10
                 dummy.yaxis.set_ticks([])
                 dummy.set_xlim([prior["Min"][namex], prior["Max"][namex]])
                 if mark_point is not None:
-                  for point in np.atleast_1d(mark_point[namex]).astype(np.float):
-                      dummy.axvline(point, color='r')
+                    for point in np.atleast_1d(
+                            mark_point[namex]).astype(
+                            np.float):
+                        dummy.axvline(point, color='r')
             else:
                 smoothed_histogram2D(
                     trace[namex].to_numpy(),
@@ -155,12 +193,20 @@ def PlotTrace(config_file, fig=None, sigma=0, bins=100, cmap="Blues", nlevels=10
                 cell.set_ylim([prior["Min"][namey], prior["Max"][namey]])
 
                 if mark_point is not None:
-                  cell.scatter(np.atleast_1d(mark_point[namex]).astype(np.float), np.atleast_1d(mark_point[namey]).astype(np.float), color='r')
+                    cell.scatter(
+                        np.atleast_1d(
+                            mark_point[namex]).astype(
+                            np.float),
+                        np.atleast_1d(
+                            mark_point[namey]).astype(
+                            np.float),
+                        color='r')
 
     # handle axis labes for coner graphs
     for i, row in enumerate(axes2d):
         for j, cell in enumerate(row):
-            # Modify axis labels such that the top and bottom label never show up
+            # Modify axis labels such that the top and bottom label never show
+            # up
             cell.tick_params(axis="both", which="major", labelsize=20)
             namex = par_name[j]
             namey = par_name[i]

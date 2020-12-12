@@ -5,11 +5,11 @@ import pandas as pd
 
 
 def ChangeFileContent(store, prior, exp):
-    if type(store) is str:
+    if isinstance(store, str):
         store = pd.HDFStore(store, "a")
-    if type(prior) is str:
+    if isinstance(prior, str):
         prior = pd.read_csv(prior, index_col=0)
-    if type(exp) is str:
+    if isinstance(exp, str):
         exp = pd.read_csv(exp, index_col=0)
 
     config = store.get_storer("PriorAndConfig").attrs.my_attribute
@@ -27,9 +27,10 @@ def ChangeFileContent(store, prior, exp):
 if __name__ == "__main__":
 
     parser = argparser.ArgumentParser(
-        description="This script changes the prior and experimental values of an already trained config file"
-    )
-    parser.add_argument("store", help="Location of the already existing config file")
+        description="This script changes the prior and experimental values of an already trained config file")
+    parser.add_argument(
+        "store",
+        help="Location of the already existing config file")
     parser.add_argument("prior", help="Location of parameter priors")
     parser.add_argument("exp", help="Location of the experimental result")
 

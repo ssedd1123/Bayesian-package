@@ -14,7 +14,9 @@ from Preprocessor.PipeLine import *
 from Utilities.Utilities import *
 
 if len(sys.argv) != 2:
-    print("Use this script by entering: python %s Training_file" % (sys.argv[0]))
+    print(
+        "Use this script by entering: python %s Training_file" %
+        (sys.argv[0]))
     sys.exit()
 
 
@@ -46,8 +48,8 @@ for validation_run in xrange(0, num_run, num_excluded):
         sim_para, slice(validation_run, validation_run + num_excluded), 0
     )
 
-    exp_result = training_data.sim_data[validation_run : validation_run + num_excluded]
-    exp_para = training_data.sim_para[validation_run : validation_run + num_excluded]
+    exp_result = training_data.sim_data[validation_run: validation_run + num_excluded]
+    exp_para = training_data.sim_para[validation_run: validation_run + num_excluded]
 
     emulator.ResetData(sim_para, sim_data)
     # emulator.SetCovariance(squared_exponential)

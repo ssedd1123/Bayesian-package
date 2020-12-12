@@ -2,7 +2,13 @@ import wx
 
 
 class TrainingProgressFrame(wx.Frame):
-    def __init__(self, npca, *args, col_labels=None, text_label=None, **kwargs):
+    def __init__(
+            self,
+            npca,
+            *args,
+            col_labels=None,
+            text_label=None,
+            **kwargs):
         super().__init__(*args, **kwargs)
         self.gauges = [wx.Gauge(self) for i in range(npca)]
         if col_labels is not None:
@@ -33,8 +39,8 @@ class TrainingProgressFrame(wx.Frame):
         else:
             titleSizer.Add(
                 wx.StaticText(
-                    self, label="Training progress of emulators on each PCA component"
-                ),
+                    self,
+                    label="Training progress of emulators on each PCA component"),
                 0,
                 wx.ALIGN_CENTER | wx.EXPAND | wx.ALL,
                 10,
@@ -73,7 +79,8 @@ class TrainingProgressFrame(wx.Frame):
         wx.Yield()
 
     def OnClose(self, evt):
-        # Turn closes into hides unless this is a quit application message / or OS shutting down
+        # Turn closes into hides unless this is a quit application message / or
+        # OS shutting down
         if evt.CanVeto():
             evt.Veto()
         else:
@@ -85,7 +92,8 @@ class TrainingProgressFrame(wx.Frame):
 # Run the program
 if __name__ == "__main__":
     app = wx.App(False)
-    dlg = TrainingProgressFrame(3, None, -1, "Training progress", size=(300, -1))
+    dlg = TrainingProgressFrame(
+        3, None, -1, "Training progress", size=(300, -1))
     dlg.Show()
 
     import time

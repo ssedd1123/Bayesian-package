@@ -17,7 +17,8 @@ class GUIMenuBar(wx.MenuBar):
         emulatorMenu = wx.Menu()
         EmulatorCheckItem = emulatorMenu.Append(-1, "Check emulator", "")
         EmulatorItem = emulatorMenu.Append(-1, "Start Analysis", "")
-        EmulatorChainedItem = emulatorMenu.Append(-1, "Start Chained Analysis", "")
+        EmulatorChainedItem = emulatorMenu.Append(
+            -1, "Start Chained Analysis", "")
         EvalEmuItem = emulatorMenu.Append(-1, "Eval emulator", "")
 
         plotMenu = wx.Menu()
@@ -25,7 +26,6 @@ class GUIMenuBar(wx.MenuBar):
         PlotCorrelationItem = plotMenu.Append(-1, "Plot correlation", "")
         TrainReportItem = plotMenu.Append(-1, "Training report", "")
         TraceSummaryItem = plotMenu.Append(-1, "Trace summary", "")
-
 
         self.Append(fileMenu, "&File")
         self.Append(emulatorMenu, "&Emulator")
@@ -52,7 +52,10 @@ class GUIMenuBar(wx.MenuBar):
         )
         self.Bind(
             wx.EVT_MENU,
-            lambda evt: pub.sendMessage("MenuBar_GenHyperCube", obj=self, evt=evt),
+            lambda evt: pub.sendMessage(
+                "MenuBar_GenHyperCube",
+                obj=self,
+                evt=evt),
             GenHyperCube,
         )
         self.Bind(
@@ -67,7 +70,10 @@ class GUIMenuBar(wx.MenuBar):
         )
         self.Bind(
             wx.EVT_MENU,
-            lambda evt: pub.sendMessage("MenuBar_ChainedEmulate", obj=self, evt=evt),
+            lambda evt: pub.sendMessage(
+                "MenuBar_ChainedEmulate",
+                obj=self,
+                evt=evt),
             EmulatorChainedItem,
         )
         self.Bind(
@@ -77,12 +83,18 @@ class GUIMenuBar(wx.MenuBar):
         )
         self.Bind(
             wx.EVT_MENU,
-            lambda evt: pub.sendMessage("MenuBar_Posterior", obj=self, evt=evt),
+            lambda evt: pub.sendMessage(
+                "MenuBar_Posterior",
+                obj=self,
+                evt=evt),
             PlotPosteriorItem,
         )
         self.Bind(
             wx.EVT_MENU,
-            lambda evt: pub.sendMessage("MenuBar_Correlation", obj=self, evt=evt),
+            lambda evt: pub.sendMessage(
+                "MenuBar_Correlation",
+                obj=self,
+                evt=evt),
             PlotCorrelationItem,
         )
         self.Bind(
@@ -92,10 +104,12 @@ class GUIMenuBar(wx.MenuBar):
         )
         self.Bind(
             wx.EVT_MENU,
-            lambda evt: pub.sendMessage("MenuBar_TraceSummary", obj=self, evt=evt),
+            lambda evt: pub.sendMessage(
+                "MenuBar_TraceSummary",
+                obj=self,
+                evt=evt),
             TraceSummaryItem,
         )
-
 
     def GetParent(self):
         return self.parent

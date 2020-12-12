@@ -23,15 +23,13 @@ two_sigma_confidence = 0.9545
 
 
 def PlotOutput(filename, fig, n_samples=20000, trace_filename=None):
-
     """
     Function to plot both the posterior and prior point
     if prior is chosen, it will chose points at random
     otherwise it will load configuration from trace
     """
     clf, prior, exp_Y, exp_Yerr, model_X, model_Y, training_idx, _ = GetTrainedEmulator(
-        filename
-    )
+        filename)
     # trace filename can be different from emulator
     if trace_filename is None:
         store = pd.HDFStore(filename, "r")
@@ -53,8 +51,8 @@ def PlotOutput(filename, fig, n_samples=20000, trace_filename=None):
     start = time.time()
     for index, df in enumerate(dfs[:n_progress_divisions]):
         par = np.random.uniform(
-            low=prior["Min"], high=prior["Max"], size=(df.shape[0], prior.shape[0])
-        )
+            low=prior["Min"], high=prior["Max"], size=(
+                df.shape[0], prior.shape[0]))
         # transform input by input_pipe and put it in our emulator
         result, _ = clf.Predict(par)
         prior_predictions.append(result)
@@ -64,8 +62,8 @@ def PlotOutput(filename, fig, n_samples=20000, trace_filename=None):
         posterior_predictions.append(result)
 
         pub.sendMessage(
-            "PosteriorOutputProgress", progress=(index + 1) / n_progress_divisions
-        )
+            "PosteriorOutputProgress", progress=(
+                index + 1) / n_progress_divisions)
 
     # plot the result
     ax = fig.subplots(1, 1)
@@ -84,7 +82,7 @@ def PlotOutput(filename, fig, n_samples=20000, trace_filename=None):
     )
 
     X = np.arange(num_obs)
-    if num_obs == 1: # expand the x-range so that the band is visible
+    if num_obs == 1:  # expand the x-range so that the band is visible
         X_fill = np.array([-0.5, 0.5])
         prior_interval = np.repeat(prior_interval, 2, axis=1)
         posterior_interval = np.repeat(posterior_interval, 2, axis=1)
@@ -112,12 +110,18 @@ def PlotOutput(filename, fig, n_samples=20000, trace_filename=None):
         np.mean(posterior_predictions, axis=0),
         label=r"Posterior mean value",
         linestyle="--"
-        #marker="o",
+        # marker="o",
     )
     ax.errorbar(
-        X, exp_Y, yerr=exp_Yerr, label="Experimental results", ecolor="g", color="g", marker="o"
-    )
-    par_name = [name[0:15] if len(name) > 14 else name for name in list(model_Y)]
+        X,
+        exp_Y,
+        yerr=exp_Yerr,
+        label="Experimental results",
+        ecolor="g",
+        color="g",
+        marker="o")
+    par_name = [name[0:15] if len(
+        name) > 14 else name for name in list(model_Y)]
     ax.set_xticks(X)
     ax.set_xticklabels(par_name, rotation=45, ha="right")
     ax.margins(0.2)

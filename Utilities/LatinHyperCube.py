@@ -17,9 +17,16 @@ def GenerateLatinHyperCube(num, var_range):
         lower_limit, step_size = np.linspace(
             range_[0], range_[1], num=num, retstep=True
         )
-        upper_limit = np.linspace(range_[0] + step_size, range_[1] + step_size, num=num)
+        upper_limit = np.linspace(
+            range_[0] + step_size,
+            range_[1] + step_size,
+            num=num)
 
-        coord.append(np.random.uniform(low=lower_limit, high=upper_limit, size=num))
+        coord.append(
+            np.random.uniform(
+                low=lower_limit,
+                high=upper_limit,
+                size=num))
 
     coord = np.array(coord)
     # shuffle all dimensions for good measure
@@ -32,7 +39,8 @@ def GenerateLatinHyperCube(num, var_range):
 def GenerateRandomLattice(num, var_range):
     coord = []
     for index in range(0, num):
-        coord.append([random.uniform(range_[0], range_[1]) for range_ in var_range])
+        coord.append([random.uniform(range_[0], range_[1])
+                      for range_ in var_range])
 
     return np.array(coord)
 

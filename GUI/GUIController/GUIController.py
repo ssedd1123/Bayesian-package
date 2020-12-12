@@ -55,14 +55,26 @@ class GUIController:
         pub.subscribe(self.CheckObj, "MenuBar_SaveNew", func=self.SaveNew)
         pub.subscribe(self.CheckObj, "MenuBar_Save", func=self.Save)
         pub.subscribe(self.CheckObj, "MenuBar_ReTrain", func=self.ReTrain)
-        pub.subscribe(self.CheckObj, "MenuBar_GenHyperCube", func=self.GenHyperCube)
+        pub.subscribe(
+            self.CheckObj,
+            "MenuBar_GenHyperCube",
+            func=self.GenHyperCube)
         pub.subscribe(self.CheckObj, "MenuBar_Emulate", func=self.Emulate)
-        pub.subscribe(self.CheckObj, "MenuBar_ChainedEmulate", func=self.ChainedEmulate)
+        pub.subscribe(
+            self.CheckObj,
+            "MenuBar_ChainedEmulate",
+            func=self.ChainedEmulate)
         pub.subscribe(self.CheckObj, "MenuBar_EvalEmu", func=self.EvalEmu)
         pub.subscribe(self.CheckObj, "MenuBar_Report", func=self.TrainReport)
-        pub.subscribe(self.CheckObj, "MenuBar_Correlation", func=self.Correlation)
+        pub.subscribe(
+            self.CheckObj,
+            "MenuBar_Correlation",
+            func=self.Correlation)
         pub.subscribe(self.CheckObj, "MenuBar_Posterior", func=self.Posterior)
-        pub.subscribe(self.CheckObj, "MenuBar_TraceSummary", func=self.ShowSummary)
+        pub.subscribe(
+            self.CheckObj,
+            "MenuBar_TraceSummary",
+            func=self.ShowSummary)
 
         # communication between model_par_model and prior_model
         pub.subscribe(self.FillPriorRange, 'PriorToolBar_Refresh')
@@ -70,7 +82,9 @@ class GUIController:
         # sync file according the file_controller
         pub.subscribe(self.LoadFile, 'emulatorFileChanged')
         pub.subscribe(self.LoadFile, 'listFileChanged')
-        self.block_load_chain_prompt = False # block repeated load chain prompt when some of the chained files has their own list of chained files
+        # block repeated load chain prompt when some of the chained files has
+        # their own list of chained files
+        self.block_load_chain_prompt = False
 
     def CheckObj(self, func, obj, evt):
         orig_obj = obj
@@ -87,14 +101,19 @@ class GUIController:
         mins = np.min(par_data)
         maxs = np.max(par_data)
         self.view.prior_controller.FillPriorRange(mins.values, maxs.values)
- 
+
     def ShowSummary(self, obj, evt):
         if self.file_model.trace_filename is None:
-            wx.MessageBox('No trace file is selected. Cannot show trace summary.', 'Error', wx.OK | wx.ICON_ERROR)
+            wx.MessageBox(
+                'No trace file is selected. Cannot show trace summary.',
+                'Error',
+                wx.OK | wx.ICON_ERROR)
             return
         if self.file_model.trace_filename != self.file_model.emulator_filename:
-            wx.MessageBox('To display trace summary, please make sure trace file and emulator file are the same.', 
-                          'Error', wx.OK | wx.ICON_ERROR)
+            wx.MessageBox(
+                'To display trace summary, please make sure trace file and emulator file are the same.',
+                'Error',
+                wx.OK | wx.ICON_ERROR)
             return
         with pd.HDFStore(self.file_model.trace_filename, 'r') as store:
             if 'trace' in store:
@@ -105,28 +124,30 @@ class GUIController:
 
                 # show list of files if the trace is chainged
                 if 'chained_files' in store.get_storer('trace').attrs:
-                    chained_files = store.get_storer('trace').attrs.chained_files
+                    chained_files = store.get_storer(
+                        'trace').attrs.chained_files
                     description += '\n\nChained files:\n'
                     description += '\n'.join(chained_files)
 
                 FlexMessageBox(description, None, title='Summary').ShowModal()
             else:
-                wx.MessageBox('There are no trace in the file. Please start your analysis first.',
-                              'Error', wx.OK | wx.ICON_ERROR)
+                wx.MessageBox(
+                    'There are no trace in the file. Please start your analysis first.',
+                    'Error',
+                    wx.OK | wx.ICON_ERROR)
                 return
-        
 
     def GenHyperCube(self, obj, evt):
         prior = self.prior_model.GetData(drop_index=False)
         if prior.empty:
             raise RuntimeError('You need to fill up your parameter range')
-            #wx.MessageDialog(
+            # wx.MessageDialog(
             #    self.view,
             #    "You need to fill up your parameter range",
             #    "Warning",
             #    wx.OK | wx.ICON_WARNING,
-            #).ShowModal()
-            #return None
+            # ).ShowModal()
+            # return None
         ranges = prior.loc[["Min", "Max"], :].astype(float).values.T
         dlg = wx.TextEntryDialog(self.view, "Number of points needed")
         dlg.ShowModal()
@@ -134,12 +155,12 @@ class GUIController:
         dlg.Destroy()
         try:
             result = int(result)
-        except:
+        except BaseException:
             raise RuntimeError('Integers needed')
-            #wx.MessageDialog(
+            # wx.MessageDialog(
             #    self.view, "Integers needed", "Warning", wx.OK | wx.ICON_WARNING
-            #).ShowModal()
-            #return None
+            # ).ShowModal()
+            # return None
         from Utilities.LatinHyperCube import GenerateLatinHyperCube
 
         content = GenerateLatinHyperCube(result, ranges)
@@ -164,10 +185,12 @@ class GUIController:
                 col_labels=[""],
             )
             PtsFraction = 0.1
-            gaugeUpdatePts = lambda progress: gauge.updateProgress(
+
+            def gaugeUpdatePts(progress): return gauge.updateProgress(
                 progress * PtsFraction * 100
             )  # first half of calculation contributes ~ 10 percent
-            gaugeUpdateSteps = lambda progress: gauge.updateProgress(
+
+            def gaugeUpdateSteps(progress): return gauge.updateProgress(
                 progress * (1 - PtsFraction) * 100 + PtsFraction * 100
             )  # second half of the calculation
             pub.subscribe(gaugeUpdatePts, "NumberOfPtsProgress")
@@ -187,11 +210,16 @@ class GUIController:
 
     def Emulate(self, obj, evt, single_file=True):
         if self.file_model.trace_filename is None:
-            wx.MessageBox('No trace file is selected. Cannot start analysis', 'Error', wx.OK | wx.ICON_ERROR)
+            wx.MessageBox(
+                'No trace file is selected. Cannot start analysis',
+                'Error',
+                wx.OK | wx.ICON_ERROR)
             return
         if self.file_model.trace_filename != self.file_model.emulator_filename:
-            wx.MessageBox('For single file analysis, please make sure trace file and emulator file is the same', 
-                          'Error', wx.OK | wx.ICON_ERROR)
+            wx.MessageBox(
+                'For single file analysis, please make sure trace file and emulator file is the same',
+                'Error',
+                wx.OK | wx.ICON_ERROR)
             return
         if single_file:
             filenames = self.file_model.trace_filename
@@ -208,9 +236,10 @@ class GUIController:
                 nevent = options["nevent"]
                 from GUI.Model import CalculationFrame
 
-                frame = CalculationFrame(None, -1, "Progress", self.workenv, nevent)
+                frame = CalculationFrame(
+                    None, -1, "Progress", self.workenv, nevent)
                 frame.Show()
-                
+
                 try:
                     frame.OnCalculate(
                         {
@@ -246,8 +275,11 @@ class GUIController:
                         )  # y-index add one to not overwrite header
                         self.emulator_output_model.ChangeValues(
                             idx + 1,
-                            np.arange(prediction.shape[0], 2 * prediction.shape[0]),
-                            np.sqrt(np.diag(cov)),
+                            np.arange(
+                                prediction.shape[0],
+                                2 * prediction.shape[0]),
+                            np.sqrt(
+                                np.diag(cov)),
                             send_changed=False,
                         )
                         self.view.Refresh()
@@ -263,7 +295,8 @@ class GUIController:
                 if res == wx.ID_OK:
                     kwargs = options.GetValue()
                 else:
-                    # don't show correlation if the user close the option dialog
+                    # don't show correlation if the user close the option
+                    # dialog
                     return
             if not self.correlation_frame:
                 fig = Figure((15, 12), 75)
@@ -275,7 +308,10 @@ class GUIController:
                 kwargs["mark_point"] = self.emulator_input_model.GetData()
             del kwargs["overlay_pt"]
 
-            PlotTrace(self.file_model.trace_filename, self.correlation_frame.fig, **kwargs)
+            PlotTrace(
+                self.file_model.trace_filename,
+                self.correlation_frame.fig,
+                **kwargs)
             self.correlation_frame.SetData()
             self.correlation_frame.Show()
 
@@ -297,10 +333,14 @@ class GUIController:
                 text_label="Output posterior generation in progress",
                 col_labels=[""],
             )
-            gaugeProgress = lambda progress: gauge.updateProgress(progress * 100)
+            def gaugeProgress(progress): return gauge.updateProgress(
+                progress * 100)
             pub.subscribe(gaugeProgress, "PosteriorOutputProgress")
             gauge.Show()
-            PlotOutput(self.file_model.emulator_filename, self.correlation_frame.fig, trace_filename=self.file_model.trace_filename)
+            PlotOutput(
+                self.file_model.emulator_filename,
+                self.correlation_frame.fig,
+                trace_filename=self.file_model.trace_filename)
             pub.unsubscribe(gaugeProgress, "PosteriorOutputProgress")
             gauge.Destroy()
             self.correlation_frame.SetData()
@@ -313,7 +353,9 @@ class GUIController:
         exp = self.exp_model.GetData(drop_index=False).astype("float")
 
         store = pd.HDFStore(self.file_model.emulator_filename, "a")
-        if model_X.equals(store["Model_X"]) and model_Y.equals(store["Model_Y"]):
+        if model_X.equals(
+                store["Model_X"]) and model_Y.equals(
+                store["Model_Y"]):
             from ChangeFileContent import ChangeFileContent
 
             ChangeFileContent(store, prior, exp)
@@ -327,12 +369,14 @@ class GUIController:
 
     def ReTrain(self, obj, evt):
         if self.file_model.emulator_filename is None:
-            wx.MessageBox('No emulator file is loaded. The emulator will be saved as new file.',
-                          'Warning',
-                          wx.OK | wx.ICON_WARNING)
+            wx.MessageBox(
+                'No emulator file is loaded. The emulator will be saved as new file.',
+                'Warning',
+                wx.OK | wx.ICON_WARNING)
             self.SaveNew(obj, evt, None)
         else:
-            self.SaveNew(obj, evt, [self.file_model.emulator_filename]) #? Why does outFile have to be a list....
+            # ? Why does outFile have to be a list....
+            self.SaveNew(obj, evt, [self.file_model.emulator_filename])
 
     def SaveNew(self, obj, evt, outFile=None):
         if outFile is None:
@@ -383,14 +427,22 @@ class GUIController:
 
         try:
             gauge.Show()
-            gaugeUpdate = lambda step, progress, mag, nuggets, scales: [
+
+            def gaugeUpdate(step, progress, mag, nuggets, scales): return [
                 gd.DefaultOutput(step, progress, mag, nuggets, scales),
                 gauge.updateProgress(progress),
             ]
             pub.subscribe(gaugeUpdate, "GradientProgress")
             from TrainEmulator import Training
 
-            Training(prior, model_X, model_Y, exp, outFile[0], abs_output=True, **args)
+            Training(
+                prior,
+                model_X,
+                model_Y,
+                exp,
+                outFile[0],
+                abs_output=True,
+                **args)
             # pub.unsubscribe(gaugeUpdate, 'GradientProgress')
             pub.unsubscribe(gaugeUpdate, "GradientProgress")
         except Exception as e:
@@ -399,26 +451,27 @@ class GUIController:
             gauge.Destroy()
 
         if self.file_model.emulator_filename is not None:
-            self.view.file_controller.remove_file_highlight_inplace(self.file_model.emulator_filename)
+            self.view.file_controller.remove_file_highlight_inplace(
+                self.file_model.emulator_filename)
         self.view.file_controller.add_file(outFile[0])
         self.LoadFile()
 
     def OpenFile(self, obj, evt):
-        #dlg = wx.FileDialog(
+        # dlg = wx.FileDialog(
         #    obj,
         #    message="Choose a file",
         #    defaultFile="",
         #    style=wx.FD_OPEN | wx.FD_MULTIPLE,
-        #)
+        # )
         #result = dlg.ShowModal()
         #path = dlg.GetPaths()
-        #dlg.Destroy()
+        # dlg.Destroy()
 
-        #if result != wx.ID_OK:
+        # if result != wx.ID_OK:
         #    return False
-        #self.view.file_controller.add_file()
+        # self.view.file_controller.add_file()
         self.view.file_controller.add_file()
-        #self.SyncFileControllerAndViewer()#path[0])
+        # self.SyncFileControllerAndViewer()#path[0])
 
     def LoadFile(self, filename=None):
         # if filename is given, it will update the gui display
@@ -430,20 +483,20 @@ class GUIController:
         self.view.model_input_controller.controller_left.ClearAll()
         self.view.model_input_controller.controller_right.ClearAll()
         self.view.exp_controller.ClearAll()
-        
+
         if self.file_model.emulator_filename is not None:
             store = pd.HDFStore(self.file_model.emulator_filename, "r")
             self.prior_model.SetData(store["PriorAndConfig"].T)
             self.model_par_model.SetData(store["Model_X"])
             self.model_obs_model.SetData(store["Model_Y"])
-            self.exp_model.SetData(pd.concat([store["Exp_Y"], store["Exp_YErr"]], axis=1).T)
+            self.exp_model.SetData(
+                pd.concat([store["Exp_Y"], store["Exp_YErr"]], axis=1).T)
             store.close()
 
         self.prior_model.ResetUndo()
         self.model_par_model.ResetUndo()
         self.model_obs_model.ResetUndo()
         self.exp_model.ResetUndo()
-
 
     def EmulatorCheck(self, obj, evt):
         if self.file_model.emulator_filename is not None:
@@ -482,16 +535,31 @@ class GUIController:
         # value = obj.data.iloc[0].replace(r'^\s*$', np.nan, regex=True).dropna(how='all')
         value = obj.data.iloc[0].replace(r"^\s*$", np.nan, regex=True)
         if obj is model1:
-            model2.ChangeValues(0, np.arange(value.shape[0]), value, send_changed=False)
+            model2.ChangeValues(
+                0,
+                np.arange(
+                    value.shape[0]),
+                value,
+                send_changed=False)
         elif obj is model2:
-            model1.ChangeValues(0, np.arange(value.shape[0]), value, send_changed=False)
+            model1.ChangeValues(
+                0,
+                np.arange(
+                    value.shape[0]),
+                value,
+                send_changed=False)
 
 
 class GUIViewer(wx.Frame):
     def __init__(self, parent, app):
         wx.Frame.__init__(
-            self, parent, wx.NewId(), "Bayesian analysis GUI", size=wx.ScreenDC().GetPPI().Scale(13, 8)
-        )  # 1000,400))
+            self,
+            parent,
+            wx.NewId(),
+            "Bayesian analysis GUI",
+            size=wx.ScreenDC().GetPPI().Scale(
+                13,
+                8))  # 1000,400))
         self.app = app
         sys.excepthook = MyExceptionHook
 
@@ -515,18 +583,19 @@ class GUIViewer(wx.Frame):
         self.model_input_controller = SplitViewController(grid_panel)
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.model_input_controller.view, 1, wx.EXPAND)
-        #grid_panel.SetSizer(sizer)
+        # grid_panel.SetSizer(sizer)
         notebook.AddPage(grid_panel, "Model calculations")
 
         #exp_panel = wx.Panel(notebook)
-        self.exp_controller = GridController(grid_panel, 3, 100, size=(-1, 120))
+        self.exp_controller = GridController(
+            grid_panel, 3, 100, size=(-1, 120))
         self.exp_controller.model.data.index = ["Name", "Values", "Errors"]
         #exp_sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.exp_controller.toolbar, 0.1, wx.EXPAND)
         sizer.Add(self.exp_controller.view, 0, wx.EXPAND)
         grid_panel.SetSizer(sizer)
 
-        #exp_panel.SetSizer(exp_sizer)
+        # exp_panel.SetSizer(exp_sizer)
         #notebook.AddPage(exp_panel, "Experimental data")
 
         manual_emulation_panel = wx.Panel(notebook)
@@ -534,8 +603,7 @@ class GUIViewer(wx.Frame):
             manual_emulation_panel, 300, 100
         )
         self.manual_emulation_controller.right_view.SetDefaultCellBackgroundColour(
-            "Grey"
-        )
+            "Grey")
         # disable edition in all cells in this panel
         # this panel is only meant to output data, not for editing
         self.manual_emulation_controller.right_view.EnableEditing(False)
@@ -545,7 +613,8 @@ class GUIViewer(wx.Frame):
         attr.SetBackgroundColour("Grey")
         self.manual_emulation_controller.left_view.SetRowAttr(0, attr)
 
-        EvalEmuButton = wx.Button(manual_emulation_panel, -1, "Evaluate emulator")
+        EvalEmuButton = wx.Button(
+            manual_emulation_panel, -1, "Evaluate emulator")
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(EvalEmuButton)
         EvalEmuButton.Bind(
@@ -556,10 +625,15 @@ class GUIViewer(wx.Frame):
         manual_emulation_panel.SetSizer(sizer)
         notebook.AddPage(manual_emulation_panel, "Ask emulator")
 
-
         sizer = wx.BoxSizer(wx.VERTICAL)
-        self.file_controller = FileController(file_viewer_kwargs={'parent': split_panel}, display_kwargs={'parent': panel})#, 'size': (-1,  wx.ScreenDC().GetPPI()[0]/3)})
-        split_panel.SplitVertically(self.file_controller.file_view, notebook, wx.ScreenDC().GetPPI()[0] * 2)
+        self.file_controller = FileController(
+            file_viewer_kwargs={
+                'parent': split_panel}, display_kwargs={
+                'parent': panel})  # , 'size': (-1,  wx.ScreenDC().GetPPI()[0]/3)})
+        split_panel.SplitVertically(
+            self.file_controller.file_view,
+            notebook,
+            wx.ScreenDC().GetPPI()[0] * 2)
         #hsizer = wx.BoxSizer(wx.HORIZONTAL)
         #hsizer.Add(notebook, 1, wx.EXPAND | wx.EXPAND, 5)
         #hsizer.Add(self.file_controller.file_view, 0.2, wx.EXPAND, 0)
@@ -591,9 +665,14 @@ def MyExceptionHook(etype, value, trace):
     #
     sys.stdout.write(exception)
     sys.stdout.flush()
-    dlg = wx.MessageDialog(None, str(value), 'Warning', wx.OK | wx.ICON_WARNING,)
+    dlg = wx.MessageDialog(
+        None,
+        str(value),
+        'Warning',
+        wx.OK | wx.ICON_WARNING,
+    )
     dlg.ShowModal()
-    dlg.Destroy()    
+    dlg.Destroy()
 
 
 def main():

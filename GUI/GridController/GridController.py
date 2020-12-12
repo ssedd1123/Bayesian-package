@@ -15,7 +15,13 @@ from GUI.GridController.GridViewer import DataDirectionDialog, MyGrid
 
 
 class GridController:
-    def __init__(self, parent, nrows, ncols, toolbar_type=GridToolBar, **kwargs):
+    def __init__(
+            self,
+            parent,
+            nrows,
+            ncols,
+            toolbar_type=GridToolBar,
+            **kwargs):
         self.model = GridData(nrows, ncols)
         self.view = MyGrid(parent, **kwargs)
         self.view.CreateGrid(nrows, ncols)
@@ -29,7 +35,10 @@ class GridController:
         pub.subscribe(self.CheckObj, "viewer_right", func=self.ShowMenu)
         pub.subscribe(self.CheckObj, "Menu_Clear", func=self.Clear)
         pub.subscribe(self.CheckObj, "Menu_Delete", func=self.Delete)
-        pub.subscribe(self.SelectCellOnKeyEvt, "viewer_delete", func=self.Clear)
+        pub.subscribe(
+            self.SelectCellOnKeyEvt,
+            "viewer_delete",
+            func=self.Clear)
         pub.subscribe(self.CheckObj, "Menu_Copy", func=self.Copy)
         pub.subscribe(self.SelectCellOnKeyEvt, "viewer_CtrlC", func=self.Copy)
         pub.subscribe(self.CheckObj, "Menu_Paste", func=self.Paste)
@@ -40,12 +49,31 @@ class GridController:
         pub.subscribe(self.CheckObj, "ToolBar_Undo", func=self.Undo)
         pub.subscribe(self.CheckObj, "ToolBar_Redo", func=self.Redo)
         pub.subscribe(self.CheckObj, "ToolBar_Open", func=self.Open)
-        pub.subscribe(self.CheckObj, "ToolBar_ClearContent", func=self.ClearAllButHeader)
+        pub.subscribe(
+            self.CheckObj,
+            "ToolBar_ClearContent",
+            func=self.ClearAllButHeader)
         pub.subscribe(self.CheckObj, "ToolBar_ClearAll", func=self.ClearAll)
-        pub.subscribe(self.CheckObj, "Data_CanUndo", func=self.EnableUndo, evt=None)
-        pub.subscribe(self.CheckObj, "Data_CannotUndo", func=self.DisableUndo, evt=None)
-        pub.subscribe(self.CheckObj, "Data_CanRedo", func=self.EnableRedo, evt=None)
-        pub.subscribe(self.CheckObj, "Data_CannotRedo", func=self.DisableRedo, evt=None)
+        pub.subscribe(
+            self.CheckObj,
+            "Data_CanUndo",
+            func=self.EnableUndo,
+            evt=None)
+        pub.subscribe(
+            self.CheckObj,
+            "Data_CannotUndo",
+            func=self.DisableUndo,
+            evt=None)
+        pub.subscribe(
+            self.CheckObj,
+            "Data_CanRedo",
+            func=self.EnableRedo,
+            evt=None)
+        pub.subscribe(
+            self.CheckObj,
+            "Data_CannotRedo",
+            func=self.DisableRedo,
+            evt=None)
         # pub.subscribe(self.GetSelectedRange, 'Viewer.RangeSelected')
         # pub.subscribe(self.Clear, 'Menu.Clear')
 
@@ -109,8 +137,14 @@ class GridController:
         self.view.ForceRefresh()
 
     def CanBePasted(self, new_data_nrows=0, new_data_ncols=0):
-        for row in range(self.view.GetGridCursorRow(), self.view.GetGridCursorRow() + new_data_nrows):
-            for col in range(self.view.GetGridCursorCol(), self.view.GetGridCursorCol() + new_data_ncols):#self.selected_cols:
+        for row in range(
+                self.view.GetGridCursorRow(),
+                self.view.GetGridCursorRow() +
+                new_data_nrows):
+            for col in range(
+                    self.view.GetGridCursorCol(),
+                    self.view.GetGridCursorCol() +
+                    new_data_ncols):  # self.selected_cols:
                 if (
                     self.view.IsReadOnly(row, col)
                     or not self.view.CanEnableCellControl()
@@ -119,10 +153,9 @@ class GridController:
                     return False
         return True
 
-
     def Paste(self, obj, evt):
-        #self.GetSelectedCells(obj)
-        #if self.CanBeModified():
+        # self.GetSelectedCells(obj)
+        # if self.CanBeModified():
         dataObj = wx.TextDataObject()
         if wx.TheClipboard.Open():
             wx.TheClipboard.GetData(dataObj)
@@ -130,11 +163,12 @@ class GridController:
         else:
             wx.MessageBox("Can't open the clipboard", "Error")
         string = dataObj.GetText()
-        data = pd.DataFrame([line.split("\t") for line in string.rstrip().split("\n")])
+        data = pd.DataFrame([line.split("\t")
+                             for line in string.rstrip().split("\n")])
         # data = pd.read_csv(StringIO(string), sep='\t', header=None)
         row = self.view.GetGridCursorRow()
         col = self.view.GetGridCursorCol()
- 
+
         if self.CanBePasted(data.shape[0], data.shape[1]):
             rows = np.arange(row, row + data.shape[0])
             cols = np.arange(col, col + data.shape[1])
@@ -144,7 +178,7 @@ class GridController:
     def Copy(self, obj, evt):
         #row = self.view.GetGridCursorRow()
         #col = self.view.GetGridCursorCol()
-        #self.GetSelectedCells(obj)
+        # self.GetSelectedCells(obj)
 
         data = self.model.GetValue(self.selected_rows, self.selected_cols)
         if isinstance(data, pd.DataFrame):
@@ -179,7 +213,6 @@ class GridController:
         else:
             self.selected_rows = [self.view.GetGridCursorRow()]
             self.selected_cols = [self.view.GetGridCursorCol()]
-        
 
     def ShowMenu(self, obj, evt):
         self.GetSelectedCells(obj)
@@ -200,27 +233,29 @@ class GridController:
                 continue
             break
 
-        # check if selected range contains read only cell, if so paste, clear and delete will be disabled
+        # check if selected range contains read only cell, if so paste, clear
+        # and delete will be disabled
         obj.PopupMenu(menu, evt.GetPosition())
 
     def Clear(self, obj, evt):
         self.model.SetValue(self.selected_rows, self.selected_cols, None)
 
     def ClearAll(self, obj=None, evt=None):
-        self.model.SetValue(list(range(self.model.data.shape[0])), 
+        self.model.SetValue(list(range(self.model.data.shape[0])),
                             list(range(self.model.data.shape[1])), None)
 
     def ClearAllButHeader(self, obj=None, evt=None):
-        self.model.SetValue(list(range(1, self.model.data.shape[0])), 
+        self.model.SetValue(list(range(1, self.model.data.shape[0])),
                             list(range(self.model.data.shape[1])), None)
         self.view.Refresh()
-
-
 
     def Delete(self, obj, evt):
         dlg = DataDirectionDialog(None, "Data direction")
         direction = dlg.ShowModal()
-        self.model.DeleteShift(self.selected_rows, self.selected_cols, direction)
+        self.model.DeleteShift(
+            self.selected_rows,
+            self.selected_cols,
+            direction)
         dlg.Destroy()
         self.view.ForceRefresh()
 
@@ -276,7 +311,8 @@ class PriorController(GridController):
         existing_var = self.model.GetData(False)
         # append empty rows if the existing_var has less than 4 rows
         for i in range(existing_var.shape[0], 4):
-            existing_var = existing_var = existing_var.append(pd.Series(), ignore_index=True)
+            existing_var = existing_var = existing_var.append(
+                pd.Series(), ignore_index=True)
 
         # any undefined variable types will be defaulted to uniform
         existing_var.iloc[1].fillna(value='Uniform', inplace=True)
@@ -350,7 +386,8 @@ class SplitViewController:
 
         # link-up the behavior of the two panels
         # new sync function based on timer instead of event is used to handle mouse wheel events
-        # old version won't sync when it is scrolled with mouse wheel or page up/down
+        # old version won't sync when it is scrolled with mouse wheel or page
+        # up/down
         ScrollSync(self.left_view, self.right_view)
         # self._SyncScrollPos()
 
