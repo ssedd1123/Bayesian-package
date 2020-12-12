@@ -1,5 +1,6 @@
 import os
 import sys
+import traceback
 
 import numpy as np
 import pandas as pd
@@ -118,13 +119,14 @@ class GUIController:
     def GenHyperCube(self, obj, evt):
         prior = self.prior_model.GetData(drop_index=False)
         if prior.empty:
-            wx.MessageDialog(
-                self.view,
-                "You need to fill up your parameter range",
-                "Warning",
-                wx.OK | wx.ICON_WARNING,
-            ).ShowModal()
-            return None
+            raise RuntimeError('You need to fill up your parameter range')
+            #wx.MessageDialog(
+            #    self.view,
+            #    "You need to fill up your parameter range",
+            #    "Warning",
+            #    wx.OK | wx.ICON_WARNING,
+            #).ShowModal()
+            #return None
         ranges = prior.loc[["Min", "Max"], :].astype(float).values.T
         dlg = wx.TextEntryDialog(self.view, "Number of points needed")
         dlg.ShowModal()
@@ -133,10 +135,11 @@ class GUIController:
         try:
             result = int(result)
         except:
-            wx.MessageDialog(
-                self.view, "Integers needed", "Warning", wx.OK | wx.ICON_WARNING
-            ).ShowModal()
-            return None
+            raise RuntimeError('Integers needed')
+            #wx.MessageDialog(
+            #    self.view, "Integers needed", "Warning", wx.OK | wx.ICON_WARNING
+            #).ShowModal()
+            #return None
         from Utilities.LatinHyperCube import GenerateLatinHyperCube
 
         content = GenerateLatinHyperCube(result, ranges)
@@ -176,7 +179,6 @@ class GUIController:
             TrainingCurve(fig, config_file=self.file_model.emulator_filename)
             pub.unsubscribe(gaugeUpdatePts, "NumberOfPtsProgress")
             pub.unsubscribe(gaugeUpdateSteps, "NumberOfStepsProgress")
-            gauge.Destroy()
             frame.SetData()
             frame.Show()
 
@@ -379,18 +381,22 @@ class GUIController:
                 1, None, -1, "Training progress", size=(300, -1)
             )
 
-        gauge.Show()
-        gaugeUpdate = lambda step, progress, mag, nuggets, scales: [
-            gd.DefaultOutput(step, progress, mag, nuggets, scales),
-            gauge.updateProgress(progress),
-        ]
-        pub.subscribe(gaugeUpdate, "GradientProgress")
-        from TrainEmulator import Training
+        try:
+            gauge.Show()
+            gaugeUpdate = lambda step, progress, mag, nuggets, scales: [
+                gd.DefaultOutput(step, progress, mag, nuggets, scales),
+                gauge.updateProgress(progress),
+            ]
+            pub.subscribe(gaugeUpdate, "GradientProgress")
+            from TrainEmulator import Training
 
-        Training(prior, model_X, model_Y, exp, outFile[0], abs_output=True, **args)
-        # pub.unsubscribe(gaugeUpdate, 'GradientProgress')
-        pub.unsubscribe(gaugeUpdate, "GradientProgress")
-        gauge.Destroy()
+            Training(prior, model_X, model_Y, exp, outFile[0], abs_output=True, **args)
+            # pub.unsubscribe(gaugeUpdate, 'GradientProgress')
+            pub.unsubscribe(gaugeUpdate, "GradientProgress")
+        except Exception as e:
+            raise e
+        finally:
+            gauge.Destroy()
 
         if self.file_model.emulator_filename is not None:
             self.view.file_controller.remove_file_highlight_inplace(self.file_model.emulator_filename)
@@ -487,6 +493,7 @@ class GUIViewer(wx.Frame):
             self, parent, wx.NewId(), "Bayesian analysis GUI", size=wx.ScreenDC().GetPPI().Scale(13, 8)
         )  # 1000,400))
         self.app = app
+        sys.excepthook = MyExceptionHook
 
         panel = wx.Panel(self)
         split_panel = wx.SplitterWindow(panel)
@@ -567,6 +574,26 @@ class GUIViewer(wx.Frame):
     def OnClose(self, evt):
         self.Destroy()
         self.app.ExitMainLoop()
+
+
+def MyExceptionHook(etype, value, trace):
+    """
+    Handler for all unhandled exceptions.
+    :param `etype`: the exception type (`SyntaxError`, `ZeroDivisionError`, etc...);
+    :type `etype`: `Exception`
+    :param string `value`: the exception error message;
+    :param string `trace`: the traceback header, if any (otherwise, it prints the
+     standard Python header: ``Traceback (most recent call last)``.
+    """
+    frame = wx.GetApp().GetTopWindow()
+    tmp = traceback.format_exception(etype, value, trace)
+    exception = "".join(tmp)
+    #
+    sys.stdout.write(exception)
+    sys.stdout.flush()
+    dlg = wx.MessageDialog(None, str(value), 'Warning', wx.OK | wx.ICON_WARNING,)
+    dlg.ShowModal()
+    dlg.Destroy()    
 
 
 def main():

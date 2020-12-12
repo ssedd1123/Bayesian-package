@@ -40,6 +40,8 @@ class GridController:
         pub.subscribe(self.CheckObj, "ToolBar_Undo", func=self.Undo)
         pub.subscribe(self.CheckObj, "ToolBar_Redo", func=self.Redo)
         pub.subscribe(self.CheckObj, "ToolBar_Open", func=self.Open)
+        pub.subscribe(self.CheckObj, "ToolBar_ClearContent", func=self.ClearAllButHeader)
+        pub.subscribe(self.CheckObj, "ToolBar_ClearAll", func=self.ClearAll)
         pub.subscribe(self.CheckObj, "Data_CanUndo", func=self.EnableUndo, evt=None)
         pub.subscribe(self.CheckObj, "Data_CannotUndo", func=self.DisableUndo, evt=None)
         pub.subscribe(self.CheckObj, "Data_CanRedo", func=self.EnableRedo, evt=None)
@@ -207,6 +209,13 @@ class GridController:
     def ClearAll(self, obj=None, evt=None):
         self.model.SetValue(list(range(self.model.data.shape[0])), 
                             list(range(self.model.data.shape[1])), None)
+
+    def ClearAllButHeader(self, obj=None, evt=None):
+        self.model.SetValue(list(range(1, self.model.data.shape[0])), 
+                            list(range(self.model.data.shape[1])), None)
+        self.view.Refresh()
+
+
 
     def Delete(self, obj, evt):
         dlg = DataDirectionDialog(None, "Data direction")
