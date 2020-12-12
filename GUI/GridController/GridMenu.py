@@ -99,6 +99,7 @@ class PriorToolBar(GridToolBar):
         super().__init__(parent, **kwargs)
         update_ico = wx.ArtProvider.GetBitmap(wx.ART_TICK_MARK, wx.ART_TOOLBAR, (16, 16))
         self.AddTool(wx.ID_REFRESH, "Auto fill", update_ico, "")
+        self.Realize()
 
         self.Bind(
             wx.EVT_TOOL,
