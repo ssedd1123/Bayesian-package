@@ -82,7 +82,7 @@ class GUIController:
                 break
 
     def FillPriorRange(self, obj, evt):
-        par_data = self.model_par_model.GetData()
+        par_data = self.model_par_model.GetData().astype(np.float)
         mins = np.min(par_data)
         maxs = np.max(par_data)
         self.view.prior_controller.FillPriorRange(mins.values, maxs.values)
