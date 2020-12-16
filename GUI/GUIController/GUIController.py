@@ -199,11 +199,17 @@ class GUIController:
             from TrainEmulator import TrainingCurve
 
             gauge.Show()
-            TrainingCurve(fig, config_file=self.file_model.emulator_filename)
-            pub.unsubscribe(gaugeUpdatePts, "NumberOfPtsProgress")
-            pub.unsubscribe(gaugeUpdateSteps, "NumberOfStepsProgress")
-            frame.SetData()
-            frame.Show()
+            try:
+                TrainingCurve(fig, config_file=self.file_model.emulator_filename)
+                pub.unsubscribe(gaugeUpdatePts, "NumberOfPtsProgress")
+                pub.unsubscribe(gaugeUpdateSteps, "NumberOfStepsProgress")
+            except Exception as e:
+                raise e
+            else:
+                frame.SetData()
+                frame.Show()
+            finally:
+                gauge.Destroy()
 
     def ChainedEmulate(self, obj, evt):
         self.Emulate(obj, evt, False)
@@ -337,14 +343,19 @@ class GUIController:
                 progress * 100)
             pub.subscribe(gaugeProgress, "PosteriorOutputProgress")
             gauge.Show()
-            PlotOutput(
-                self.file_model.emulator_filename,
-                self.correlation_frame.fig,
-                trace_filename=self.file_model.trace_filename)
-            pub.unsubscribe(gaugeProgress, "PosteriorOutputProgress")
-            gauge.Destroy()
-            self.correlation_frame.SetData()
-            self.correlation_frame.Show()
+            try:
+                PlotOutput(
+                    self.file_model.emulator_filename,
+                    self.correlation_frame.fig,
+                    trace_filename=self.file_model.trace_filename)
+                pub.unsubscribe(gaugeProgress, "PosteriorOutputProgress")
+            except Exception as e:
+                raise e
+            else:
+                self.correlation_frame.SetData()
+                self.correlation_frame.Show()
+            finally:
+                gauge.Destroy()
 
     def Save(self, obj, evt):
         prior = self.prior_model.GetData(drop_index=False)
@@ -383,11 +394,15 @@ class GUIController:
             """
             Create and show the Open FileDialog if no outFile is specified
             """
+            default_dir = ''
+            if self.file_model.emulator_filename is not None:
+                default_dir = os.path.dirname(self.file_model.emulator_filename)
             wildcard = "Python source (*.h5)|*.h5|" "All files (*.*)|*.*"
             dlg = wx.FileDialog(
                 obj,
                 message="Save project as ...",
                 defaultFile="",
+                defaultDir=default_dir,
                 style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
             )
             result = dlg.ShowModal()
@@ -450,9 +465,9 @@ class GUIController:
         finally:
             gauge.Destroy()
 
-        if self.file_model.emulator_filename is not None:
-            self.view.file_controller.remove_file_highlight_inplace(
-                self.file_model.emulator_filename)
+        #if self.file_model.emulator_filename is not None:
+        #    self.view.file_controller.remove_file_highlight_inplace(
+        #        self.file_model.emulator_filename)
         self.view.file_controller.add_file(outFile[0])
         self.LoadFile()
 

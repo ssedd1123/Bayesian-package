@@ -278,7 +278,11 @@ class FileController:
 
     def add_file(self, filelist=None):
         if filelist is None:
-            with wx.FileDialog(self.file_view, "Open file", style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE) as fileDialog:
+            # if there are emulator file, get the directory to it as default directory
+            default_dir = ''
+            if self.model.emulator_filename is not None:
+                default_dir = os.path.dirname(self.model.emulator_filename)
+            with wx.FileDialog(self.file_view, "Open file", defaultDir=default_dir, style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE) as fileDialog:
                 if fileDialog.ShowModal() == wx.ID_CANCEL:
                     return
                 filelist = fileDialog.GetPaths()
