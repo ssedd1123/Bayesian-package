@@ -42,13 +42,14 @@ class SelectOption(wx.Dialog):
         box.Add(box2)
 
         list_textctrl = [
-            ("PCA Components", "3"),
-            ("Initial scale", "1"),
-            ("Initial nugget", "0.1"),
+            ("PCA Components", "1"),
+            ("Initial scale", "10"),
+            ("Initial nugget", "1"),
             ("Scale learning rate", "0.01"),
             ("Nugget learning rate", "0.01"),
-            ("Maximum iterations", "1000"),
+            ("Maximum iterations", "10000"),
             ("Gradient threshold", "0.001"),
+            ("N.O. test data", "0"),
         ]
         self.output = {}
         self.title = {}
@@ -107,4 +108,5 @@ class SelectOption(wx.Dialog):
         args["maxsteps"] = int(self.output["Maximum iterations"].GetValue())
         args["gradthreshold"] = float(
             self.output["Gradient threshold"].GetValue())
+        args["TestData"] = int(self.output["N.O. test data"].GetValue())
         return args

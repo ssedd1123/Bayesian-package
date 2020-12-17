@@ -144,6 +144,7 @@ def Training(
     maxsteps=1000,
     abs_output=False,
     gradthreshold=1e-5,
+    **kwargs
 ):
 
     if isinstance(prior, str):

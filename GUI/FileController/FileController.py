@@ -276,7 +276,7 @@ class FileController:
             self.model.emulator_file = self.model.list_filenames[idx]
             self.file_view.Select(self.model.emulator_file)
 
-    def add_file(self, filelist=None):
+    def add_file(self, filelist=None, exist_ok=False):
         if filelist is None:
             # if there are emulator file, get the directory to it as default directory
             default_dir = ''
@@ -307,7 +307,7 @@ class FileController:
                     repeated_filelist.append(new_file)
         non_repeat_filelist = set(filelist) - set(repeated_filelist)
         # raise error if they exist
-        if len(repeated_filelist) > 0:
+        if len(repeated_filelist) > 0 and not exist_ok:
             wx.MessageBox(
                 '\n'.join(
                     ['The following files are not added since they are already included:'] +
@@ -315,7 +315,7 @@ class FileController:
                 'Warning',
                 wx.OK | wx.ICON_WARNING)
         for i, filename in enumerate(non_repeat_filelist):
-            self.model.add_file(filename)
+            self.model.add_file(filename, exist_ok)
             if i == 0:
                 self.file_view.Select(filename)
 

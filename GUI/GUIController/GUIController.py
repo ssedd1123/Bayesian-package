@@ -466,10 +466,16 @@ class GUIController:
             gauge.Destroy()
 
         #if self.file_model.emulator_filename is not None:
+        #     if self.file_model.emulator_filename != outFile[0]:
         #    self.view.file_controller.remove_file_highlight_inplace(
         #        self.file_model.emulator_filename)
-        self.view.file_controller.add_file(outFile[0])
+        self.view.file_controller.add_file(outFile[0], exist_ok=True)
         self.LoadFile()
+
+        if args['TestData'] > 0:
+            with pd.HDFStore(outFile[0], "a") as store:
+                store["Training_idx"] = pd.DataFrame(list(range(model_X.shape[0])), dtype=int).sample(n=model_X.shape[0] - args['TestData']).sort_index()
+            self.TrainReport(None, None)
 
     def OpenFile(self, obj, evt):
         # dlg = wx.FileDialog(
