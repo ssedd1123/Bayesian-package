@@ -19,6 +19,8 @@ class GUIMenuBar(wx.MenuBar):
         EmulatorItem = emulatorMenu.Append(-1, "Start Analysis", "")
         EmulatorChainedItem = emulatorMenu.Append(
             -1, "Start Chained Analysis", "")
+        EmulatorIndividualItem = emulatorMenu.Append(
+            -1, "Start individual Analysis", "")
         EvalEmuItem = emulatorMenu.Append(-1, "Eval emulator", "")
 
         plotMenu = wx.Menu()
@@ -75,6 +77,14 @@ class GUIMenuBar(wx.MenuBar):
                 obj=self,
                 evt=evt),
             EmulatorChainedItem,
+        )
+        self.Bind(
+            wx.EVT_MENU,
+            lambda evt: pub.sendMessage(
+                "MenuBar_IndividualEmulate",
+                obj=self,
+                evt=evt),
+            EmulatorIndividualItem,
         )
         self.Bind(
             wx.EVT_MENU,

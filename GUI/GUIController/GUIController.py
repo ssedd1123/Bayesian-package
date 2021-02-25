@@ -64,6 +64,10 @@ class GUIController:
             self.CheckObj,
             "MenuBar_ChainedEmulate",
             func=self.ChainedEmulate)
+        pub.subscribe(
+            self.CheckObj,
+            "MenuBar_IndividualEmulate",
+            func=self.IndividualEmulate)
         pub.subscribe(self.CheckObj, "MenuBar_EvalEmu", func=self.EvalEmu)
         pub.subscribe(self.CheckObj, "MenuBar_Report", func=self.TrainReport)
         pub.subscribe(
@@ -213,6 +217,36 @@ class GUIController:
 
     def ChainedEmulate(self, obj, evt):
         self.Emulate(obj, evt, False)
+
+    def IndividualEmulate(self, obj, evt):
+        from GUI.SelectEmulationOption import SelectEmulationOption
+
+        EmuOption = SelectEmulationOption(self.view)
+        res = EmuOption.ShowModal()
+        if res == wx.ID_OK:
+            from GUI.Model import CalculationFrame
+
+            options = EmuOption.GetValue()
+            for file_ in self.file_model.list_filenames:
+                filenames = file_
+                nevent = options["nevent"]
+                frame = CalculationFrame(
+                    None, -1, "Progress", self.workenv, nevent)
+                frame.Show()
+
+                try:
+                    frame.OnCalculate(
+                        {
+                            "config_file": filenames,
+                            "nsteps": nevent,
+                            "clear_trace": options["clear_trace"],
+                            "burnin": options["burnin"],
+                        }
+                    )
+                except ThreadsException as ex:
+                    wx.MessageBox(str(ex), 'Error', wx.OK | wx.ICON_ERROR)
+
+
 
     def Emulate(self, obj, evt, single_file=True):
         if self.file_model.trace_filename is None:

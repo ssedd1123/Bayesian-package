@@ -11,7 +11,7 @@ from pubsub import pub
 
 from GUI.GridController.GridData import GridData
 from GUI.GridController.GridMenu import GridPopupMenu, GridToolBar, PriorToolBar
-from GUI.GridController.GridViewer import DataDirectionDialog, MyGrid
+from GUI.GridController.GridViewer import DataDirectionDialog, MyGrid, PasteSpecialDialog
 
 
 class GridController:
@@ -42,6 +42,7 @@ class GridController:
         pub.subscribe(self.CheckObj, "Menu_Copy", func=self.Copy)
         pub.subscribe(self.SelectCellOnKeyEvt, "viewer_CtrlC", func=self.Copy)
         pub.subscribe(self.CheckObj, "Menu_Paste", func=self.Paste)
+        pub.subscribe(self.CheckObj, "Menu_PasteSpecial", func=self.PasteSpecial)
         pub.subscribe(self.SelectCellOnKeyEvt, "viewer_CtrlV", func=self.Paste)
         pub.subscribe(self.CheckObj, "Menu_Undo", func=self.Undo)
         pub.subscribe(self.CheckObj, "Menu_Redo", func=self.Redo)
@@ -54,6 +55,8 @@ class GridController:
             "ToolBar_ClearContent",
             func=self.ClearAllButHeader)
         pub.subscribe(self.CheckObj, "ToolBar_ClearAll", func=self.ClearAll)
+        pub.subscribe(self.CheckObj, "ToolBar_PasteSpecial", func=self.PasteSpecial)
+
         pub.subscribe(
             self.CheckObj,
             "Data_CanUndo",
@@ -153,7 +156,13 @@ class GridController:
                     return False
         return True
 
-    def Paste(self, obj, evt):
+    def PasteSpecial(self, obj, evt):
+        dlg = PasteSpecialDialog(None)
+        dlg.ShowModal()
+        self.Paste(obj, evt, dlg.delimiter)
+        
+
+    def Paste(self, obj, evt, delimiter='\t'):
         # self.GetSelectedCells(obj)
         # if self.CanBeModified():
         dataObj = wx.TextDataObject()
@@ -163,7 +172,7 @@ class GridController:
         else:
             wx.MessageBox("Can't open the clipboard", "Error")
         string = dataObj.GetText()
-        data = pd.DataFrame([line.split("\t")
+        data = pd.DataFrame([line.split(delimiter)
                              for line in string.rstrip().split("\n")])
         # data = pd.read_csv(StringIO(string), sep='\t', header=None)
         row = self.view.GetGridCursorRow()

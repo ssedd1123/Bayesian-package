@@ -241,7 +241,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="This script will choose an optimal set of hyperparameters by minizing loss function")
     parser.add_argument("prior", help="Locatioin of parameter priors")
-    parser.add_argument("model", help="Location of the model simulation files")
+    parser.add_argument("model_X", help="Location of the model simulation files")
+    parser.add_argument("model_Y", help="Location of the model simulation files")
     parser.add_argument("exp", help="Location of the experimental result")
     parser.add_argument(
         "training_file",
@@ -298,13 +299,14 @@ if __name__ == "__main__":
         help="Fraction of PCA variance used. Once set it will override pc (Default: None)",
     )
     args = vars(parser.parse_args())
-    args["Model_X"] = args["Model"]
-    args["Model_Y"] = args["Model"]
-    del args["Model"]
+    #args["Model_X"] = args["Model"]
+    #args["Model_Y"] = args["Model"]
+    #del args["Model"]
 
+    args['abs_output'] = True
     UseDefaultOutput()
     Training(**args)
 
-    fig = plt.figure(None, (15, 12), 75)
-    TrainingCurve(fig, args["training_file"])
-    plt.show()
+    #fig = plt.figure(None, (15, 12), 75)
+    #TrainingCurve(fig, args["training_file"])
+    #plt.show()

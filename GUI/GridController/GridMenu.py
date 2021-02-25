@@ -9,6 +9,7 @@ class GridPopupMenu(wx.Menu):
         self.clear = self.Append(wx.ID_CLEAR, "clear")
         self.copy = self.Append(wx.ID_COPY, "copy")
         self.paste = self.Append(wx.ID_PASTE, "paste")
+        self.paste_special = self.Append(wx.ID_ANY, "paste special")
         self.delete = self.Append(wx.ID_DELETE, "delete")
         self.undo = self.Append(wx.ID_UNDO, "undo")
         self.redo = self.Append(wx.ID_REDO, "redo")
@@ -37,11 +38,17 @@ class GridPopupMenu(wx.Menu):
         self.Bind(
             wx.EVT_MENU,
             lambda evt: pub.sendMessage(
-                "Menu_Paste",
+                "Menu_PasteSpecial",
                 obj=self.parent,
                 evt=evt),
-            self.paste,
+            self.paste_special,
         )
+        self.Bind(
+            wx.EVT_MENU,
+            lambda evt: pub.sendMessage("Menu_Redo", obj=self.parent, evt=evt),
+            self.redo,
+        )
+
         self.Bind(
             wx.EVT_MENU,
             lambda evt: pub.sendMessage("Menu_Undo", obj=self.parent, evt=evt),
@@ -73,6 +80,10 @@ class GridToolBar(wx.ToolBar):
         delete_ico = wx.ArtProvider.GetBitmap(
             wx.ART_DELETE, wx.ART_TOOLBAR, (16, 16))
         self.AddTool(wx.ID_DELETE, "Clear All", delete_ico, "")
+        paste_ico = wx.ArtProvider.GetBitmap(
+            wx.ART_PASTE, wx.ART_TOOLBAR, (16, 16))
+        self.AddTool(wx.ID_PASTE, "Paste Special", paste_ico, "")
+
         # print_ico = wx.ArtProvider.GetBitmap(wx.ART_PRINT, wx.ART_TOOLBAR, (16,16))
         # self.AddTool(wx.ID_PRINT, 'Plot data', print_ico, '')
 
@@ -103,6 +114,11 @@ class GridToolBar(wx.ToolBar):
             wx.EVT_TOOL,
             lambda evt: pub.sendMessage("ToolBar_ClearAll", obj=self, evt=evt),
             id=wx.ID_DELETE,
+        )
+        self.Bind(
+            wx.EVT_TOOL,
+            lambda evt: pub.sendMessage("ToolBar_PasteSpecial", obj=self, evt=evt),
+            id=wx.ID_PASTE,
         )
 
         # self.Bind(wx.EVT_TOOL, lambda evt: pub.sendMessage('ToolBar_Paint', obj=self, evt=evt), id=wx.ID_PRINT)

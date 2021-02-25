@@ -83,3 +83,35 @@ class DataDirectionDialog(wx.Dialog):
             direction = None
         if direction is not None:
             self.EndModal(direction)
+
+class PasteSpecialDialog(wx.Dialog):
+    def __init__(self, parent):
+        super().__init__(parent, title='Paste special', size=(110,90), style=wx.RESIZE_BORDER)
+        panel = wx.Panel(self)
+        box = wx.BoxSizer(wx.VERTICAL)
+        
+        self.rb_Tab = wx.RadioButton(panel, label='Tab', pos=(10,10), style=wx.RB_GROUP)
+        self.rb_Space = wx.RadioButton(panel, label='Space', pos=(10,20))
+        self.rb_Comma = wx.RadioButton(panel, label='Comma', pos=(10,30))
+        self.confirm_button = wx.Button(
+            panel, label="Confirm", pos=(10, 40), size=(100, 20)
+        )
+        
+        
+        box.Add(self.rb_Tab)
+        box.Add(self.rb_Space)
+        box.Add(self.rb_Comma)
+        box.Add(self.confirm_button)
+        panel.SetSizer(box)
+        
+        self.delimiter = ' '
+        self.confirm_button.Bind(wx.EVT_BUTTON, self.OnConfirm)
+
+    def OnConfirm(self, evt):
+        if self.rb_Tab.GetValue():
+            self.delimiter = '\t'
+        elif self.rb_Comma.GetValue():
+            self.delimiter = ','
+        self.EndModal(0)
+
+
