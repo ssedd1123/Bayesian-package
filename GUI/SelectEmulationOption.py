@@ -4,7 +4,7 @@ import wx
 
 
 class SelectEmulationOption(wx.Dialog):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, model_comp=False, **kwargs):
         super().__init__(*args, **kwargs)
         sizer = wx.BoxSizer(wx.VERTICAL)
 
@@ -25,6 +25,10 @@ class SelectEmulationOption(wx.Dialog):
 
         self.clear_trace = wx.CheckBox(self, label="Clear Previous Trace?")
         sizer.Add(self.clear_trace)
+        self.model_comp = wx.CheckBox(self, label="Model comparison?")
+        if not model_comp:
+            self.model_comp.Disable()
+        sizer.Add(self.model_comp)
         self.button = wx.Button(self, wx.ID_OK, "Submit")
         sizer.Add(self.button)
         self.SetSizer(sizer)
@@ -45,4 +49,5 @@ class SelectEmulationOption(wx.Dialog):
                 print("Cannot cast result to integers")
                 print(e, flush=True)
         result["clear_trace"] = self.clear_trace.GetValue()
+        result["model_comp"] = self.model_comp.GetValue()
         return result

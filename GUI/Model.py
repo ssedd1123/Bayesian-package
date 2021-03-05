@@ -285,6 +285,7 @@ class CalculationFrame(wx.Frame):
                 dirpath=dirpath,
                 nevents=args["nsteps"],
                 burnin=args["burnin"],
+                model_comp=args['model_comp']
             )
             self.info_bar.PrintInfo(
                 "%d workers are working" %

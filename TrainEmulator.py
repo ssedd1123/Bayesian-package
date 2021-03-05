@@ -216,6 +216,8 @@ def Training(
 
     emulator = clf["Emulator"]
     config = {"repr": repr(clf)}
+    if 'modelname' in kwargs and kwargs['modelname'] is not None:
+        config['name'] = kwargs['modelname']
     store.get_storer("PriorAndConfig").attrs.my_attribute = config
 
     df_para = []
@@ -298,6 +300,12 @@ if __name__ == "__main__":
         type=float,
         help="Fraction of PCA variance used. Once set it will override pc (Default: None)",
     )
+    parser.add_argument(
+        "-mn",
+        "--modelname",
+        help="Name of the model. Used for model comparison (Default: None)",
+    )
+
     args = vars(parser.parse_args())
     #args["Model_X"] = args["Model"]
     #args["Model_Y"] = args["Model"]

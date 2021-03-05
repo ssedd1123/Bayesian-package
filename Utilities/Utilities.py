@@ -38,8 +38,12 @@ def GetTrainedEmulator(store):
     model_X = newstore["Model_X"]
     history_para = newstore["ParaHistory"]
 
-    emulator = eval(newstore.get_storer(
-        "PriorAndConfig").attrs.my_attribute["repr"])
+    attrs = newstore.get_storer("PriorAndConfig").attrs.my_attribute
+    emulator = eval(attrs["repr"])
+
+    model_name = None
+    if "name" in attrs:
+        model_name = attrs["name"]
 
     if "Training_idx" in newstore:
         training_idx = newstore["Training_idx"].astype("int").values.flatten()
@@ -59,6 +63,7 @@ def GetTrainedEmulator(store):
         model_Y,
         training_idx,
         history_para,
+        model_name
     )
 
 
@@ -131,9 +136,9 @@ def PlotTrace(
     where n is the number of variables
     """
     # plot the result in a nice matrix of histograms
-    store = pd.HDFStore(config_file, "r")
-    trace = store["trace"]
-    prior = store["PriorAndConfig"]
+    with pd.HDFStore(config_file, "r") as store:
+        trace = store["trace"]
+        prior = store["PriorAndConfig"]
     num_par = prior.shape[0]
     par_name = prior.index
 
@@ -224,5 +229,4 @@ def PlotTrace(
 
     plt.subplots_adjust(wspace=0, hspace=0)
     plt.tight_layout()
-    store.close()
     return fig, axes2d

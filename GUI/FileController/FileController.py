@@ -315,6 +315,7 @@ class FileController:
                 'Warning',
                 wx.OK | wx.ICON_WARNING)
         for i, filename in enumerate(non_repeat_filelist):
+            filename = os.path.relpath(filename)
             self.model.add_file(filename, exist_ok)
             if i == 0:
                 self.file_view.Select(filename)

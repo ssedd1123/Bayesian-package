@@ -290,6 +290,16 @@ class PriorController(GridController):
 
         pub.subscribe(self.CheckObj, "Data_Changed", func=self.EnableRow)
 
+        sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.model_name_text = wx.StaticText(parent, label='Class Name: ')
+        sizer.Add(self.model_name_text, wx.RIGHT, border=7)
+        self.model_name_view = sizer
+
+    def SetModelName(self, name):
+        if name is None:
+            name = ''
+        self.model_name_text.SetLabel('Class Name: ' + name)
+
     def EnableRow(self, obj, evt):
         rows = evt[0]  # .GetRow()
         cols = evt[1]  # .GetCol()

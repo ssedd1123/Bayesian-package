@@ -22,7 +22,13 @@ class FlexMessageBox(wx.Dialog):  # sized_controls.SizedDialog):
 
         button_ok = wx.Button(panel, wx.ID_OK, label='OK')
         button_ok.Bind(wx.EVT_BUTTON, self.on_button)
-        sizer.Add(button_ok, 0, wx.ALIGN_RIGHT, 5)
+        button_cancel = wx.Button(panel, wx.ID_CANCEL, label='Cancel')
+        button_cancel.Bind(wx.EVT_BUTTON, self.on_button)
+
+        hs = wx.BoxSizer(wx.HORIZONTAL)
+        hs.Add(button_cancel, 0, wx.ALIGN_RIGHT, 5)
+        hs.Add(button_ok, 0, wx.ALIGN_RIGHT, 5)
+        sizer.Add(hs)
         self.Bind(wx.EVT_CLOSE, self.on_button)
 
         panel.SetSizerAndFit(sizer)

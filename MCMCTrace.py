@@ -67,7 +67,21 @@ def GenerateTrace(
                 )
             )
 
-    for emulator, exp_Y, exp_Yerr in zip(emulators, exp_Ys, exp_Yerrs):
+    n_models = len(emulators)
+    emulators_list = []
+    id_to_model_names = []
+    for name in sorted(emulators.keys()):
+      id_to_model_names.append(name)
+      emulators_list.append(emulators[name])
+ 
+    # transpose emulator_list
+    emulators_list = list(map(list, zip(*emulators_list)))
+    if n_models == 1:
+      model_choice = 0
+    else:
+      model_choice = pymc.DiscreteUniform('ModelChoice', lower=0, upper=n_models-1)
+ 
+    for emu, exp_Y, exp_Yerr in zip(emulators_list, exp_Ys, exp_Yerrs):
         exp_cov = np.diag(np.square(exp_Yerr))
 
         @pymc.stochastic(observed=True)
@@ -75,8 +89,9 @@ def GenerateTrace(
                 value=exp_Y,
                 x=parameters,
                 exp_cov=exp_cov,
-                emulator=emulator):
-            mean, var = emulator.Predict(np.array(x).reshape(1, -1))
+                emulator=emu,
+                model_choice=model_choice):
+            mean, var = emulator[model_choice].Predict(np.array(x).reshape(1, -1))
             return np.array(
                 mvn.logpdf(
                     value,
@@ -88,7 +103,7 @@ def GenerateTrace(
     # prepare for MCMC
     new_output_filename = "%s_%d.h5" % (output_filename, id_)
     mcmc = pymc.MCMC(
-        parameters,
+        parameters if model_choice == 0 else parameters + [model_choice],
         dbname=new_output_filename,
         db="hdf5",
         dbmode="w")
@@ -98,22 +113,36 @@ def GenerateTrace(
     # sampling from our steady-state posterior distribution
     mcmc.sample(iter, burn=burnin)
     mcmc.db.close()
-    return new_output_filename  # pd.DataFrame.from_dict(trace_dict)
+
+    return new_output_filename, id_to_model_names  # pd.DataFrame.from_dict(trace_dict)
 
 
-def MCMCParallel(config_file, dirpath=None, nevents=10000, burnin=1000):
-    if not isinstance(config_file, list):
+def MCMCParallel(config_file, dirpath=None, nevents=10000, burnin=1000, model_comp=False):
+    if isinstance(config_file, str):
         config_file = [config_file]
-    clf = []
-    prior = []
+
+    prior_filename = config_file[0]
+    if model_comp:
+        config_file = GroupConfigFiles(config_file)
+    else:
+        config_file = {None: config_file}
+
+    clf = {}
+    prior = None
     exp_Y = []
     exp_Yerr = []
-    for file_ in config_file:
-        args = GetTrainedEmulator(file_)
-        clf.append(args[0])
-        prior.append(args[1])
-        exp_Y.append(args[2])
-        exp_Yerr.append(args[3])
+    first_model = True
+    for name, files in config_file.items():
+        clf[name] = []
+        for file_ in files:
+            args = GetTrainedEmulator(file_)
+            clf[name].append(args[0])
+            if first_model:
+                exp_Y.append(args[2])
+                exp_Yerr.append(args[3])
+            if file_ == prior_filename:
+                prior = args[1]
+        first_model = False
 
     """
     If config_file is a list of strings, then it means we want to chain up multiple emulators
@@ -121,7 +150,6 @@ def MCMCParallel(config_file, dirpath=None, nevents=10000, burnin=1000):
     """
     # if not all([all(prior[0].columns == prior1.columns) for prior1 in prior]):
     #    raise RuntimeError("The variables list from all files are not consistent.")
-    prior = prior[0]  # since they all agree, only one prior is needed
 
     if dirpath is None:
         dirpath = tempfile.mkdtemp()
@@ -138,6 +166,47 @@ def MCMCParallel(config_file, dirpath=None, nevents=10000, burnin=1000):
     return result
 
 
+def GroupConfigFiles(config_files):
+    files_by_model = {}
+    for filename in config_files:
+        with pd.HDFStore(filename, 'r') as store:
+            ynames = tuple(store['Exp_Y'].index)
+            attr = store.get_storer("PriorAndConfig").attrs.my_attribute
+            if 'name' not in attr:
+                raise RuntimeError('Model name is not specified in file ' + filename)
+            model_name = attr['name']
+            if model_name in files_by_model:
+                files_by_model[model_name].append((ynames, filename))
+            else:
+                files_by_model[model_name] = [(ynames, filename)]
+
+    obsToId = {}
+    first_filenames = []
+    first_modelname = None
+    first = True
+    for name in files_by_model.keys():
+        res = []
+        if first:
+            for idx, (obs_names, filename) in enumerate(files_by_model[name]):
+                obsToId[obs_names] = idx
+                res.append(filename)
+            first_modelname = name
+            first_filenames = res
+        else:
+            res = ['']*len(obsToId)
+            for obs_names, filename in files_by_model[name]:
+                try:
+                    res[obsToId[obs_names]] = filename
+                except Exception as e:
+                    raise RuntimeError('Files that corresponds to %s of model %s is missing from model %s' % (filename, name, first_modelname))
+            if len(files_by_model[name]) != len(res):
+                missing_file = first_filenames[res.index('')]
+                raise RuntimeError('Files that corresponds to %s of model %s is missing from model %s' % (missing_file, first_modelname, name))
+        files_by_model[name] = res
+        first = False
+    return files_by_model 
+
+
 def Merging(config_file, list_of_traces, clear_trace=False):
     chained_files = None
     if isinstance(config_file, list):
@@ -145,14 +214,21 @@ def Merging(config_file, list_of_traces, clear_trace=False):
         chained_files = config_file[1:]
         config_file = config_file[0]
     with pd.HDFStore(config_file) as store:
+        id_to_model = []
         if clear_trace and "trace" in store:
             store.remove("trace")
         for f in list_of_traces:
+            if isinstance(f, tuple):
+                id_to_model = f[1]
+                f = f[0]
             tab = tables.open_file(f)
             df = pd.DataFrame.from_records(tab.root.chain0.PyMCsamples.read())
             store.append(key="trace", value=df.astype(float))
             tab.close()
         prior = store["PriorAndConfig"]
+ 
+        if len(id_to_model) > 0:
+            store.get_storer('trace').attrs.model_names = id_to_model
 
         if chained_files is not None:
             #store.get_storer('trace').meta = SimpleNamespace()
@@ -180,14 +256,19 @@ if __name__ == "__main__":
         required=True
     )
     parser.add_argument("-n", type=int, help="Number of events", required=True)
+    parser.add_argument("-c", action='store_true', help="Enable model comparison")
+
 
     # parser.add_argument('-p', '--plot', action='store_true', help='Use this if you want to plot posterior immediatly after trace generation')
     args = vars(parser.parse_args())
 
+    #MCMCParallel(config_file=args['inputs'], nevents=args['n'], model_comp=args['c'])
+
     # if rank == root:
+
     work_environment.Submit(
-        MCMCParallel, **{"config_file": args['inputs'], "nevents": args['n']})
-    refresh_rate = 0.3
+        MCMCParallel, **{"config_file": args['inputs'], "nevents": args['n'], "model_comp": args['c']})
+    refresh_rate = 0.2
     refresh_interval = refresh_rate * size
     # some stdio must be discarded for MPI network efficiency
     work_environment.RefreshRate(refresh_interval)
@@ -199,10 +280,10 @@ if __name__ == "__main__":
                 print(out, flush=True)
     except ThreadsException as ex:
         print(ex)
+    else:
+        prior = Merging(args["inputs"], work_environment.results, clear_trace=True)
+        # shutil.rmtree(work_environment.results)
 
-    prior = Merging(args["inputs"], work_environment.results, clear_trace=True)
-    # shutil.rmtree(work_environment.results)
-
-    PlotTrace(args["inputs"][0])
-    plt.show()
-    # work_environment.Close()
+        PlotTrace(args["inputs"][0])
+        plt.show()
+        # work_environment.Close()

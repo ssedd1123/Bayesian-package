@@ -161,11 +161,14 @@ class MasterSlave(object):
                 if tag == tags.END:
                     self.nworking = self.nworking - 1
                     self.results.append(result)
-                elif tag == tags.ERROR:
-                    self.exception_list.append(result)
-                    self.exception_threads.append(source)
-                    self.nworking = self.nworking - 1
-                self.stdout = (source, result, tag)
+                    self.stdout = (source, None, tags.END)
+                else:
+                    if tag == tags.ERROR:
+                        self.exception_list.append(result)
+                        self.exception_threads.append(source)
+                        self.nworking = self.nworking - 1
+                    self.stdout = (source, result, tag)
+
             else:
                 self.stdout = (0, None, tags.NOTHING)
             return True

@@ -21,6 +21,7 @@ from GUI.FlexMessageBox import FlexMessageBox
 from GUI.MatplotlibFrame import MatplotlibFrame
 from Utilities.MasterSlave import MasterSlave, ThreadsException
 from Utilities.Utilities import GetTrainedEmulator
+from GUI.TrainingProgressFrame import TrainingProgressFrame
 
 
 class GUIController:
@@ -54,6 +55,7 @@ class GUIController:
         pub.subscribe(self.CheckObj, "MenuBar_Open", func=self.OpenFile)
         pub.subscribe(self.CheckObj, "MenuBar_SaveNew", func=self.SaveNew)
         pub.subscribe(self.CheckObj, "MenuBar_Save", func=self.Save)
+        pub.subscribe(self.CheckObj, "MenuBar_SaveModelName", func=self.SaveWithModelName)
         pub.subscribe(self.CheckObj, "MenuBar_ReTrain", func=self.ReTrain)
         pub.subscribe(
             self.CheckObj,
@@ -86,6 +88,10 @@ class GUIController:
         # sync file according the file_controller
         pub.subscribe(self.LoadFile, 'emulatorFileChanged')
         pub.subscribe(self.LoadFile, 'listFileChanged')
+
+        pub.subscribe(self.PosteriorGauge, 'Posterior_Drawing')
+        pub.subscribe(self.DestroyPosteriorGauge, 'Posterior_Drawn')
+
         # block repeated load chain prompt when some of the chained files has
         # their own list of chained files
         self.block_load_chain_prompt = False
@@ -127,11 +133,17 @@ class GUIController:
                 description = trace[par_names].describe().to_string()
 
                 # show list of files if the trace is chainged
-                if 'chained_files' in store.get_storer('trace').attrs:
-                    chained_files = store.get_storer(
-                        'trace').attrs.chained_files
+                attrs = store.get_storer('trace').attrs
+                if 'chained_files' in attrs:
+                    chained_files = attrs.chained_files
                     description += '\n\nChained files:\n'
                     description += '\n'.join(chained_files)
+                if 'ModelChoice' in trace:
+                    description += '\n\nModel comparison:'
+                    id_to_model = attrs['model_names']
+                    tot = trace.shape[0]
+                    for idx, name in enumerate(id_to_model):
+                        description += '\n    %s = %f' % (name, np.sum(trace['ModelChoice'] == idx)/float(tot))
 
                 FlexMessageBox(description, None, title='Summary').ShowModal()
             else:
@@ -177,33 +189,32 @@ class GUIController:
         if self.file_model.emulator_filename is not None:
             fig = Figure((15, 12), 75)
             frame = MatplotlibFrame(None, fig)
-            from GUI.TrainingProgressFrame import TrainingProgressFrame
 
-            gauge = TrainingProgressFrame(
-                1,
-                None,
-                -1,
-                "Generating report",
-                size=(300, -1),
-                text_label="Training report generation in progress",
-                col_labels=[""],
-            )
-            PtsFraction = 0.1
-
-            def gaugeUpdatePts(progress): return gauge.updateProgress(
-                progress * PtsFraction * 100
-            )  # first half of calculation contributes ~ 10 percent
-
-            def gaugeUpdateSteps(progress): return gauge.updateProgress(
-                progress * (1 - PtsFraction) * 100 + PtsFraction * 100
-            )  # second half of the calculation
-            pub.subscribe(gaugeUpdatePts, "NumberOfPtsProgress")
-            pub.subscribe(gaugeUpdateSteps, "NumberOfStepsProgress")
-
-            from TrainEmulator import TrainingCurve
-
-            gauge.Show()
             try:
+                gauge = TrainingProgressFrame(
+                    1,
+                    None,
+                    -1,
+                    "Generating report",
+                    size=(300, -1),
+                    text_label="Training report generation in progress",
+                    col_labels=[""],
+                )
+                PtsFraction = 0.1
+
+                def gaugeUpdatePts(progress): return gauge.updateProgress(
+                    progress * PtsFraction * 100
+                )  # first half of calculation contributes ~ 10 percent
+
+                def gaugeUpdateSteps(progress): return gauge.updateProgress(
+                    progress * (1 - PtsFraction) * 100 + PtsFraction * 100
+                )  # second half of the calculation
+                pub.subscribe(gaugeUpdatePts, "NumberOfPtsProgress")
+                pub.subscribe(gaugeUpdateSteps, "NumberOfStepsProgress")
+
+                from TrainEmulator import TrainingCurve
+
+                gauge.Show()
                 TrainingCurve(fig, config_file=self.file_model.emulator_filename)
                 pub.unsubscribe(gaugeUpdatePts, "NumberOfPtsProgress")
                 pub.unsubscribe(gaugeUpdateSteps, "NumberOfStepsProgress")
@@ -241,6 +252,7 @@ class GUIController:
                             "nsteps": nevent,
                             "clear_trace": options["clear_trace"],
                             "burnin": options["burnin"],
+                            "model_comp": options['model_comp']
                         }
                     )
                 except ThreadsException as ex:
@@ -269,11 +281,28 @@ class GUIController:
         if filenames is not None:
             from GUI.SelectEmulationOption import SelectEmulationOption
 
-            EmuOption = SelectEmulationOption(self.view)
+            EmuOption = SelectEmulationOption(self.view, model_comp=not single_file)
             res = EmuOption.ShowModal()
             if res == wx.ID_OK:
                 options = EmuOption.GetValue()
                 nevent = options["nevent"]
+
+                if options['model_comp']:
+                    from MCMCTrace import GroupConfigFiles
+                    try:
+                        nameCheck = GroupConfigFiles(filenames)
+                        description = ''
+                        for name, fileList in nameCheck.items():
+                            description += 'Files for model: ' + name + '\n'
+                            for idx, filename in enumerate(fileList):
+                                description += '   %d: %s\n' % (idx, filename)
+                        if wx.ID_OK != FlexMessageBox(description, None, title='Files check').ShowModal():
+                            return
+                    except RuntimeError as ex:
+                        wx.MessageBox('Cannot group files by models because:\n' +
+                                      str(ex) + '\nModel comparison is disabled', 'Error', wx.OK | wx.ICON_ERROR)
+                        return
+
                 from GUI.Model import CalculationFrame
 
                 frame = CalculationFrame(
@@ -287,6 +316,7 @@ class GUIController:
                             "nsteps": nevent,
                             "clear_trace": options["clear_trace"],
                             "burnin": options["burnin"],
+                            "model_comp": options['model_comp']
                         }
                     )
                     self.Correlation(None, None, False)
@@ -361,56 +391,74 @@ class GUIController:
                 fig = Figure((15, 12), 75)
                 self.correlation_frame = MatplotlibFrame(None, fig)
             self.correlation_frame.fig.clf()
-            from GUI.TrainingProgressFrame import TrainingProgressFrame
             from PlotPosterior import PlotOutput
 
-            gauge = TrainingProgressFrame(
-                1,
-                None,
-                -1,
-                "Generating output posterior",
-                size=(300, -1),
-                text_label="Output posterior generation in progress",
-                col_labels=[""],
-            )
-            def gaugeProgress(progress): return gauge.updateProgress(
-                progress * 100)
-            pub.subscribe(gaugeProgress, "PosteriorOutputProgress")
-            gauge.Show()
             try:
-                PlotOutput(
+                btn = PlotOutput(
                     self.file_model.emulator_filename,
                     self.correlation_frame.fig,
                     trace_filename=self.file_model.trace_filename)
-                pub.unsubscribe(gaugeProgress, "PosteriorOutputProgress")
             except Exception as e:
                 raise e
             else:
                 self.correlation_frame.SetData()
                 self.correlation_frame.Show()
-            finally:
-                gauge.Destroy()
 
-    def Save(self, obj, evt):
+    def PosteriorGauge(self):
+        self.gauge = TrainingProgressFrame(
+            1,
+            None,
+            -1,
+            "Generating output posterior",
+            size=(300, -1),
+            text_label="Output posterior generation in progress",
+            col_labels=[""],
+        )
+        pub.subscribe(self.gaugeProgress, "PosteriorOutputProgress")
+        self.gauge.Show()
+
+    def gaugeProgress(self, progress): 
+        return self.gauge.updateProgress(progress * 100)
+
+    def DestroyPosteriorGauge(self):
+        pub.unsubscribe(self.gaugeProgress, "PosteriorOutputProgress")
+        self.gauge.Destroy()
+       
+
+    def SaveWithModelName(self, obj, evt, changeName=True):
+        model_name = None
+        if changeName:
+            dlg = wx.TextEntryDialog(obj, 'Enter model name', 'Model name')
+            if dlg.ShowModal() == wx.ID_OK:
+                model_name = dlg.GetValue()
+            dlg.Destroy()
+
         prior = self.prior_model.GetData(drop_index=False)
         model_X = self.model_par_model.GetData().astype("float")
         model_Y = self.model_obs_model.GetData().astype("float")
         exp = self.exp_model.GetData(drop_index=False).astype("float")
 
-        store = pd.HDFStore(self.file_model.emulator_filename, "a")
-        if model_X.equals(
-                store["Model_X"]) and model_Y.equals(
-                store["Model_Y"]):
-            from ChangeFileContent import ChangeFileContent
+        with pd.HDFStore(self.file_model.emulator_filename, "a") as store:
+            if model_X.equals(
+                    store["Model_X"]) and model_Y.equals(
+                    store["Model_Y"]):
+                from ChangeFileContent import ChangeFileContent
 
-            ChangeFileContent(store, prior, exp)
-        else:
-            wx.MessageBox(
-                "Model values has changed. You must train the emulator again",
-                "Error",
-                wx.OK | wx.ICON_ERROR,
-            )
-        store.close()
+                ChangeFileContent(store, prior, exp, model_name)
+                config = store.get_storer("PriorAndConfig").attrs.my_attribute
+                model_name = None
+                if 'name' in config:
+                    model_name = config['name']
+                self.view.prior_controller.SetModelName(model_name)
+            else:
+                wx.MessageBox(
+                    "Model values has changed. You must train the emulator again",
+                    "Error",
+                    wx.OK | wx.ICON_ERROR,
+                )
+
+    def Save(self, obj, evt):
+        self.SaveWithModelName(obj, evt, changeName=False)
 
     def ReTrain(self, obj, evt):
         if self.file_model.emulator_filename is None:
@@ -424,6 +472,8 @@ class GUIController:
             self.SaveNew(obj, evt, [self.file_model.emulator_filename])
 
     def SaveNew(self, obj, evt, outFile=None):
+        model_name = None
+
         if outFile is None:
             """
             Create and show the Open FileDialog if no outFile is specified
@@ -447,6 +497,13 @@ class GUIController:
                 result == wx.ID_CANCEL
             ):  # Either the cancel button was pressed or the window was closed
                 return False
+        else:
+            # keep model name if we are saving files in-place
+            with pd.HDFStore(outFile[0], "r") as store:
+                config = store.get_storer("PriorAndConfig").attrs.my_attribute
+                if 'name' in config:
+                    model_name = config['name']
+
 
         from GUI.SelectTrainingOption import SelectOption
 
@@ -462,8 +519,6 @@ class GUIController:
         model_X = self.model_par_model.GetData()
         model_Y = self.model_obs_model.GetData()
         exp = self.exp_model.GetData(drop_index=False)
-
-        from GUI.TrainingProgressFrame import TrainingProgressFrame
 
         if args["principalcomp"] is not None:
             gauge = TrainingProgressFrame(
@@ -491,6 +546,7 @@ class GUIController:
                 exp,
                 outFile[0],
                 abs_output=True,
+                modelname=model_name,
                 **args)
             # pub.unsubscribe(gaugeUpdate, 'GradientProgress')
             pub.unsubscribe(gaugeUpdate, "GradientProgress")
@@ -540,13 +596,17 @@ class GUIController:
         self.view.exp_controller.ClearAll()
 
         if self.file_model.emulator_filename is not None:
-            store = pd.HDFStore(self.file_model.emulator_filename, "r")
-            self.prior_model.SetData(store["PriorAndConfig"].T)
-            self.model_par_model.SetData(store["Model_X"])
-            self.model_obs_model.SetData(store["Model_Y"])
-            self.exp_model.SetData(
-                pd.concat([store["Exp_Y"], store["Exp_YErr"]], axis=1).T)
-            store.close()
+            with pd.HDFStore(self.file_model.emulator_filename, "r") as store:
+                self.prior_model.SetData(store["PriorAndConfig"].T)
+                self.model_par_model.SetData(store["Model_X"])
+                self.model_obs_model.SetData(store["Model_Y"])
+                self.exp_model.SetData(
+                    pd.concat([store["Exp_Y"], store["Exp_YErr"]], axis=1).T)
+                config = store.get_storer("PriorAndConfig").attrs.my_attribute
+                model_name = None
+                if 'name' in config:
+                    model_name = config['name']
+                self.view.prior_controller.SetModelName(model_name)
 
         self.prior_model.ResetUndo()
         self.model_par_model.ResetUndo()
@@ -631,6 +691,7 @@ class GUIViewer(wx.Frame):
         prior_sizer = wx.BoxSizer(wx.VERTICAL)
         prior_sizer.Add(self.prior_controller.toolbar, 0, wx.EXPAND)
         prior_sizer.Add(self.prior_controller.view, 1, wx.EXPAND)
+        prior_sizer.Add(self.prior_controller.model_name_view, 0.1, wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP, border=10)
         prior_panel.SetSizer(prior_sizer)
         notebook.AddPage(prior_panel, "Parameters prior")
 

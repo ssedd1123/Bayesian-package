@@ -4,7 +4,7 @@ import os
 import pandas as pd
 
 
-def ChangeFileContent(store, prior, exp):
+def ChangeFileContent(store, prior, exp, model_name=None):
     if isinstance(store, str):
         store = pd.HDFStore(store, "a")
     if isinstance(prior, str):
@@ -13,6 +13,9 @@ def ChangeFileContent(store, prior, exp):
         exp = pd.read_csv(exp, index_col=0)
 
     config = store.get_storer("PriorAndConfig").attrs.my_attribute
+    if model_name is not None:
+        config['name'] = model_name
+
     prior = prior.T
     prior[prior.columns.difference(["Type"])] = prior[
         prior.columns.difference(["Type"])
