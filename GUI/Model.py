@@ -279,17 +279,21 @@ class CalculationFrame(wx.Frame):
 
         # create temporary file for which each rank must write to
         with tempfile.TemporaryDirectory(dir=os.path.dirname(os.path.realpath(__file__))) as dirpath:
+            config_file = args["config_file"]
             self.enviro.Submit(
                 MCMCParallel,
-                config_file=args["config_file"],
+                config_file=config_file,
                 dirpath=dirpath,
                 nevents=args["nsteps"],
                 burnin=args["burnin"],
                 model_comp=args['model_comp']
             )
+            config_txt = config_file if isinstance(config_file, list) else [config_file]
+            config_txt = [os.path.basename(config) for config in config_txt]
             self.info_bar.PrintInfo(
-                "%d workers are working" %
-                self.enviro.nworking)
+                "Working on file(s) %s\n%d workers are working" %
+                (' '.join(config_txt), self.enviro.nworking)
+            )
 
             # check for jobs completions and collect results
             # avarage speed for each rank
@@ -348,7 +352,7 @@ class CalculationFrame(wx.Frame):
             else:
                 try:
                     result = Merging(
-                        args["config_file"],
+                        config_file,
                         self.enviro.results,
                         args["clear_trace"])
                 except Exception as e:

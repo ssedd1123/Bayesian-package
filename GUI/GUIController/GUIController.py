@@ -16,7 +16,7 @@ from contextlib import contextmanager
 import Utilities.GradientDescent as gd
 from GUI.GridController.GridController import (GridController, PriorController,
                                                SplitViewController)
-from GUI.FileController.FileController import FileController
+from GUI.FileController.FileController_new import FileController
 from GUI.FlexMessageBox import FlexMessageBox
 from GUI.MatplotlibFrame import MatplotlibFrame
 from Utilities.MasterSlave import MasterSlave, ThreadsException
@@ -255,6 +255,7 @@ class GUIController:
                             "model_comp": options['model_comp']
                         }
                     )
+                    self.view.file_controller.update_metadata(file_)
                 except ThreadsException as ex:
                     wx.MessageBox(str(ex), 'Error', wx.OK | wx.ICON_ERROR)
 
@@ -319,6 +320,7 @@ class GUIController:
                             "model_comp": options['model_comp']
                         }
                     )
+                    self.view.file_controller.update_metadata(self.file_model.trace_filename)
                     self.Correlation(None, None, False)
                 except ThreadsException as ex:
                     wx.MessageBox(str(ex), 'Error', wx.OK | wx.ICON_ERROR)
