@@ -108,6 +108,8 @@ class TreePanel(wx.Panel):
     def emulator_filename(self):
         if not self.__emulator_item.IsOk() or self._OnCompareItems(self.__emulator_item, self.root) == 0:
             return None
+        if not self.tree.GetItemText(self.__emulator_item): # needed it for windows. Sometimes when nodes are removed, it returns a valid item with empty content and no children or parents
+            return None
         else:
             return self._GetFilename(self.__emulator_item)
 
@@ -124,6 +126,8 @@ class TreePanel(wx.Panel):
     @property
     def trace_filename(self):
         if not self.__trace_item.IsOk() or self._OnCompareItems(self.__trace_item, self.root) == 0:
+            return None
+        elif not self.tree.GetItemText(self.__trace_item):
             return None
         else:
             return self._GetFilename(self.__trace_item)
