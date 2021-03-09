@@ -1,5 +1,4 @@
 from Utilities.Utilities import GetTrainedEmulator, PlotTrace
-from Utilities.MasterSlave import MasterSlave, ThreadsException
 from Preprocessor.PipeLine import *
 from scipy.stats import multivariate_normal as mvn
 from numpy import array
@@ -13,13 +12,12 @@ import shutil
 import math
 import argparse
 from types import SimpleNamespace
-from multiprocessing import Pool, Process, Queue
+import multiprocessing as mp
 import os
 import random
 import sys
 
 import tables
-from mpi4py import MPI
 
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
 os.environ["MKL_NUM_THREADS"] = "1"
@@ -158,7 +156,7 @@ def MCMCParallel(config_file, dirpath=None, nevents=10000, burnin=1000, model_co
         exp_Y,
         exp_Yerr,
         prior,
-        MPI.COMM_WORLD.Get_rank(),
+        mp.current_process().pid,   
         nevents,
         os.path.join(dirpath, "temp"),
         burnin,
@@ -237,13 +235,12 @@ def Merging(config_file, list_of_traces, clear_trace=False):
     return prior
 
 
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
-size = comm.Get_size()
-status = MPI.Status()
-root = 0
-
 if __name__ == "__main__":
+    from mpi4py import MPI
+    from Utilities.MasterSlave import MasterSlave, ThreadsException
+
+    comm = MPI.COMM_WORLD
+    size = comm.Get_size()
 
     work_environment = MasterSlave(comm)
     parser = argparse.ArgumentParser(
@@ -257,14 +254,9 @@ if __name__ == "__main__":
     )
     parser.add_argument("-n", type=int, help="Number of events", required=True)
     parser.add_argument("-c", action='store_true', help="Enable model comparison")
+    parser.add_argument('-p', '--plot', action='store_true', help='Use this if you want to plot posterior immediatly after trace generation')
 
-
-    # parser.add_argument('-p', '--plot', action='store_true', help='Use this if you want to plot posterior immediatly after trace generation')
     args = vars(parser.parse_args())
-
-    #MCMCParallel(config_file=args['inputs'], nevents=args['n'], model_comp=args['c'])
-
-    # if rank == root:
 
     work_environment.Submit(
         MCMCParallel, **{"config_file": args['inputs'], "nevents": args['n'], "model_comp": args['c']})

@@ -14,6 +14,7 @@ import numpy as np
 import wx
 import wx.lib.agw.speedmeter as SM
 from mpi4py import MPI
+from Utilities.MasterSlaveMP import tags
 
 MPI.pickle.__init__(dill.dumps, dill.loads)
 
@@ -34,23 +35,23 @@ class ThreadsException(Exception):
         super().__init__(self.message)
 
 
-def enum(*sequential, **named):
-    enums = dict(zip(sequential, range(len(sequential))), **named)
-    return type("Enum", (), enums)
-
-
-tags = enum(
-    "FUNC",
-    "START",
-    "END",
-    "ERROR",
-    "READY",
-    "IO",
-    "EXIT",
-    "NOTHING",
-    "REFRESH_RATE",
-    "REFRESH_SMEAR",
-)
+#def enum(*sequential, **named):
+#    enums = dict(zip(sequential, range(len(sequential))), **named)
+#    return type("Enum", (), enums)
+#
+#
+#tags = enum(
+#    "FUNC",
+#    "START",
+#    "END",
+#    "ERROR",
+#    "READY",
+#    "IO",
+#    "EXIT",
+#    "NOTHING",
+#    "REFRESH_RATE",
+#    "REFRESH_SMEAR",
+#)
 
 
 class OutputPipe(object):

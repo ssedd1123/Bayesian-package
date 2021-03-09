@@ -15,9 +15,9 @@ import matplotlib
 import numpy as np
 import wx
 import wx.lib.agw.speedmeter as SM
-from mpi4py import MPI
+#from mpi4py import MPI
 
-from Utilities.MasterSlave import MasterSlave, tags
+from Utilities.MasterSlaveMP import tags
 
 matplotlib.use("WXAgg")
 
@@ -389,19 +389,19 @@ class MyApp(wx.App):  # , wx.lib.mixins.inspection.InspectionMixin):
         return True
 
 
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
-size = comm.Get_size()
-status = MPI.Status()
-root = 0
-
-if __name__ == "__main__":
-    kargs = {
-        "config_file": "/projects/hira/tsangc/GaussianEmulator/result/test.h5",
-        "nsteps": 10000,
-    }
-
-    work_environment = MasterSlave(comm)
-
-    app = MyApp(size=size, enviro=work_environment, args=kargs)
-    app.MainLoop()
+#comm = MPI.COMM_WORLD
+#rank = comm.Get_rank()
+#size = comm.Get_size()
+#status = MPI.Status()
+#root = 0
+#
+#if __name__ == "__main__":
+#    kargs = {
+#        "config_file": "/projects/hira/tsangc/GaussianEmulator/result/test.h5",
+#        "nsteps": 10000,
+#    }
+#
+#    work_environment = MasterSlave(comm)
+#
+#    app = MyApp(size=size, enviro=work_environment, args=kargs)
+#    app.MainLoop()

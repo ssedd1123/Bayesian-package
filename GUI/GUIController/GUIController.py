@@ -8,7 +8,6 @@ import wx
 import wx.grid as gridlib
 import wx.lib.inspection
 from matplotlib.figure import Figure
-from mpi4py import MPI
 from pubsub import pub
 from tables import exceptions
 from contextlib import contextmanager
@@ -22,7 +21,6 @@ from GUI.MatplotlibFrame import MatplotlibFrame
 from Utilities.MasterSlave import MasterSlave, ThreadsException
 from Utilities.Utilities import GetTrainedEmulator
 from GUI.TrainingProgressFrame import TrainingProgressFrame
-
 
 class GUIController:
     def __init__(self, parent, workenv, app):
@@ -794,11 +792,9 @@ def MyExceptionHook(etype, value, trace):
 
 
 def main():
+    from mpi4py import MPI
     comm = MPI.COMM_WORLD
-    rank = comm.Get_rank()
     size = comm.Get_size()
-    status = MPI.Status()
-    root = 0
 
     work_environment = MasterSlave(comm)
 
