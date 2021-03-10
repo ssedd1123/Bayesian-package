@@ -18,9 +18,10 @@ from GUI.GridController.GridController import (GridController, PriorController,
 from GUI.FileController.FileController_new import FileController
 from GUI.FlexMessageBox import FlexMessageBox
 from GUI.MatplotlibFrame import MatplotlibFrame
-from Utilities.MasterSlave import MasterSlave, ThreadsException
 from Utilities.Utilities import GetTrainedEmulator
 from GUI.TrainingProgressFrame import TrainingProgressFrame
+from Utilities.MasterSlaveMP import ThreadsException
+
 
 class GUIController:
     def __init__(self, parent, workenv, app):
@@ -793,6 +794,8 @@ def MyExceptionHook(etype, value, trace):
 
 def main():
     from mpi4py import MPI
+    from Utilities.MasterSlave import MasterSlave
+
     comm = MPI.COMM_WORLD
     size = comm.Get_size()
 

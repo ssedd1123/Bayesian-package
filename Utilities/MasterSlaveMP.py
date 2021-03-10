@@ -14,6 +14,7 @@ import traceback
 import numpy as np
 import wx
 import wx.lib.agw.speedmeter as SM
+
 class ThreadsException(Exception):
     """
     Save exceptions from each thread
@@ -83,19 +84,20 @@ class OutputPipe(object):
         if self.last_sentence:
             self._cconn.send((self.last_sentence, tags.IO))
 
+def wrapper(cconn, refresh_interval, refresh_delay, target, **kwargs):
+    orig_stdout = sys.stdout
+    sys.stdout = OutputPipe(cconn, refresh_interval, refresh_delay)
+    result = target(**kwargs)
+    sys.stdout.CustomFlush()
+    cconn.send((result, tags.END))
+    sys.stdout = orig_stdout
+
+
 class Process(mp.Process):
-    def __init__(self, refresh_invertal, refresh_delay, target, **kwargs):
+    def __init__(self, refresh_interval, refresh_delay, target, **kwargs):
         self.__pconn, self.__cconn = mp.Pipe()
         self.calculation_ended = False
-        def wrapper(**kwargs):
-            orig_stdout = sys.stdout
-            sys.stdout = OutputPipe(self.__cconn, refresh_invertal, refresh_delay)
-            result = target(**kwargs)
-            sys.stdout.CustomFlush()
-            self.__cconn.send((result, tags.END))
-            sys.stdout = orig_stdout
-
-        super().__init__(target=wrapper, kwargs=kwargs)
+        super().__init__(target=wrapper, args=(self.__cconn, refresh_interval, refresh_delay, target, ), kwargs=kwargs)
 
     def run(self):
         try:
@@ -196,16 +198,17 @@ class MasterSlave:
         while self.IsRunning(0):
             pass
 
+def func(a, b):
+     t = time.time()
+     while time.time() - t < 10:
+         print('calculating')
+     return a + b
+
 
 if __name__ == '__main__':
-    def func(a, b):
-        t = time.time()
-        while time.time() - t < 10:
-            print('calculating')
-        return a + b
 
-    mslave = MasterSlave(None,1,2)
-    mslave.RefreshSmear(0.5)
+    mslave = MasterSlave(None,0.5,2)
+    #mslave.RefreshSmear(0.5)
     mslave.Submit(func=func, a=2, b=3)     
     while mslave.IsRunning():
         if mslave.stdout[2] == tags.IO:
