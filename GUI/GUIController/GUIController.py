@@ -288,20 +288,28 @@ class GUIController:
                 nevent = options["nevent"]
 
                 if options['model_comp']:
-                    from MCMCTrace import GroupConfigFiles
                     try:
+                        from MCMCTrace import GroupConfigFiles
                         nameCheck = GroupConfigFiles(filenames)
                         description = ''
                         for name, fileList in nameCheck.items():
-                            description += 'Files for model: ' + name + '\n'
-                            for idx, filename in enumerate(fileList):
-                                description += '   %d: %s\n' % (idx, filename)
+                           description += 'Files for model: ' + name + '\n'
+                           for idx, filename in enumerate(fileList):
+                               description += '   %d: %s\n' % (idx, filename)
+
                         if wx.ID_OK != FlexMessageBox(description, None, title='Files check').ShowModal():
                             return
                     except RuntimeError as ex:
                         wx.MessageBox('Cannot group files by models because:\n' +
                                       str(ex) + '\nModel comparison is disabled', 'Error', wx.OK | wx.ICON_ERROR)
                         return
+                else:
+                    if not single_file:
+                        description = filenames if isinstance(filenames, list) else [filenames]
+                        description = 'Files chosend:\n' + '\n'.join(description)
+                        if wx.ID_OK != FlexMessageBox(description, None, title='Files check').ShowModal():
+                            return
+
 
                 from GUI.Model import CalculationFrame
 
@@ -529,15 +537,15 @@ class GUIController:
             gauge = TrainingProgressFrame(
                 1, None, -1, "Training progress", size=(300, -1)
             )
+        def gaugeUpdate(step, progress, mag, nuggets, scales): return [
+            gd.DefaultOutput(step, progress, mag, nuggets, scales),
+            gauge.updateProgress(progress),
+        ]
+        pub.subscribe(gaugeUpdate, "GradientProgress")
 
         try:
             gauge.Show()
 
-            def gaugeUpdate(step, progress, mag, nuggets, scales): return [
-                gd.DefaultOutput(step, progress, mag, nuggets, scales),
-                gauge.updateProgress(progress),
-            ]
-            pub.subscribe(gaugeUpdate, "GradientProgress")
             from TrainEmulator import Training
 
             Training(
@@ -550,10 +558,10 @@ class GUIController:
                 modelname=model_name,
                 **args)
             # pub.unsubscribe(gaugeUpdate, 'GradientProgress')
-            pub.unsubscribe(gaugeUpdate, "GradientProgress")
         except Exception as e:
-            raise e
+            raise type(e)(str(e) + '\nError occure in training. Try changing training settings to prevent this.').with_traceback(sys.exc_info()[2])
         finally:
+            pub.unsubscribe(gaugeUpdate, "GradientProgress")
             gauge.Destroy()
 
         #if self.file_model.emulator_filename is not None:

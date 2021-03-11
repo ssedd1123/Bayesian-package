@@ -52,6 +52,11 @@ class TreePanel(wx.Panel):
     def on_load_chain(self, evt):
         pub.sendMessage('LoadChain')
 
+    def select(self, filename):
+        item = self.find_file(filename)
+        evt = wx.TreeEvent(wx.wxEVT_TREE_ITEM_ACTIVATED, self.tree, item)
+        self.select_trace(evt)
+
     def select_trace(self, evt):
         item = evt.GetItem()
         while self.tree.GetItemData(item) == 'chain':
@@ -448,6 +453,7 @@ class FileController:
                     list(repeated_filelist)),
                 'Warning',
                 wx.OK | wx.ICON_WARNING)
+        last_filename = None
         for filename in non_repeat_filelist:
             filename = os.path.abspath(filename)
             chained_filenames = None
@@ -457,8 +463,12 @@ class FileController:
             except Exception:
                 pass
             self.model.add_file(filename)
+            last_filename = filename
             if chained_filenames is not None:
                 self.model.add_meta_data(filename, chained_filenames)
+        if last_filename is not None:
+            self.model.select(last_filename)
+
 
     def update_metadata(self, filename):
         chained_filenames = None
