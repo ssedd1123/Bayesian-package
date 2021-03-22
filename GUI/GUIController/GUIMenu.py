@@ -10,6 +10,7 @@ class GUIMenuBar(wx.MenuBar):
         fileMenu = wx.Menu()
         SaveMenuItem = fileMenu.Append(wx.ID_SAVE, "Save", "")
         SaveModelNameMenuItem = fileMenu.Append(-1, "Save model name", "")
+        AddCommentMenuItem = fileMenu.Append(-1, "Add comment", "")
         SaveAsMenuItem = fileMenu.Append(wx.ID_SAVEAS, "Save As", "")
         ReTrainMenuItem = fileMenu.Append(-1, "Re-train", "")
         OpenMenuItem = fileMenu.Append(wx.ID_OPEN, "Open", "")
@@ -52,6 +53,11 @@ class GUIMenuBar(wx.MenuBar):
             wx.EVT_MENU,
             lambda evt: pub.sendMessage("MenuBar_SaveNew", obj=self, evt=evt),
             SaveAsMenuItem,
+        )
+        self.Bind(
+            wx.EVT_MENU,
+            lambda evt: pub.sendMessage("MenuBar_AddComment", obj=self, evt=evt),
+            AddCommentMenuItem,
         )
         self.Bind(
             wx.EVT_MENU,

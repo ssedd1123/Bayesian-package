@@ -55,6 +55,8 @@ class GUIController:
         pub.subscribe(self.CheckObj, "MenuBar_SaveNew", func=self.SaveNew)
         pub.subscribe(self.CheckObj, "MenuBar_Save", func=self.Save)
         pub.subscribe(self.CheckObj, "MenuBar_SaveModelName", func=self.SaveWithModelName)
+        pub.subscribe(self.CheckObj, "MenuBar_AddComment", func=self.AddComment)
+
         pub.subscribe(self.CheckObj, "MenuBar_ReTrain", func=self.ReTrain)
         pub.subscribe(
             self.CheckObj,
@@ -125,6 +127,7 @@ class GUIController:
                 wx.OK | wx.ICON_ERROR)
             return
         with pd.HDFStore(self.file_model.trace_filename, 'r') as store:
+            description = 'There are no trace.'
             if 'trace' in store:
                 trace = store['trace']
                 # only select columns in prior
@@ -143,14 +146,11 @@ class GUIController:
                     tot = trace.shape[0]
                     for idx, name in enumerate(id_to_model):
                         description += '\n    %s = %f' % (name, np.sum(trace['ModelChoice'] == idx)/float(tot))
-
-                FlexMessageBox(description, None, title='Summary').ShowModal()
-            else:
-                wx.MessageBox(
-                    'There are no trace in the file. Please start your analysis first.',
-                    'Error',
-                    wx.OK | wx.ICON_ERROR)
-                return
+            attrs = store.get_storer('PriorAndConfig').attrs
+            if 'comment' in attrs:
+                description += '\n   Comment: ' + attrs['comment']
+ 
+            FlexMessageBox(description, None, title='Summary').ShowModal()
 
     def GenHyperCube(self, obj, evt):
         prior = self.prior_model.GetData(drop_index=False)
@@ -468,6 +468,14 @@ class GUIController:
 
     def Save(self, obj, evt):
         self.SaveWithModelName(obj, evt, changeName=False)
+
+    def AddComment(self, obj, evt):
+        dlg = wx.TextEntryDialog(self.view, "Comments to add")
+        dlg.ShowModal()
+        comment = dlg.GetValue()
+        dlg.Destroy()
+        with pd.HDFStore(self.file_model.trace_filename, "a") as store:
+            store.get_storer('PriorAndConfig').attrs['comment'] = comment
 
     def ReTrain(self, obj, evt):
         if self.file_model.emulator_filename is None:
