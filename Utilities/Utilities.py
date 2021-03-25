@@ -116,12 +116,8 @@ def smoothed_histogram1D(x, ax, bins=20, sigma=0, range=None, show_confidence=Fa
     xax = 0.5 * (xax[1:] + xax[:-1])
 
     if sigma > 0:
-        #h = gaussian_filter1d(h, sigma=sigma)
-        from KDEpy import FFTKDE
-        kde = FFTKDE(bw='silverman').fit(x.to_numpy())
-        x2, y = kde.evaluate(bins)
-        g = ax.plot(x2, y, **kwargs)
-        #g = ax.plot(xax, h, **kwargs)
+        h = gaussian_filter1d(h, sigma=sigma)
+        g = ax.plot(xax, h, **kwargs)
     else:
         g = ax.step(xax, h, **kwargs)
     ax.set_ylim(bottom=0)
@@ -157,7 +153,8 @@ def PlotTrace(
         nlevels=10,
         mark_point=None,
         show_confidence=False,
-        only_lower=True):
+        only_lower=True,
+        auto_range=True):
     """
     Arrange trace in a n*n matrix of plots
     where n is the number of variables
@@ -179,6 +176,11 @@ def PlotTrace(
         axes2d = [[axes2d]]
     prior["Min"] = prior["Min"].astype("float")
     prior["Max"] = prior["Max"].astype("float")
+
+    if auto_range:
+        for name in par_name:
+            prior.loc[name, 'Min'] = trace[name].min()
+            prior.loc[name, 'Max'] = trace[name].max()
 
     for i, row in enumerate(axes2d):
         for j, cell in enumerate(row):

@@ -52,11 +52,13 @@ if __name__ == "__main__":
         filename,
         fig,
         mark_point={
-            'S0': 31,
-            'L': 60,
-            'ms': 0.8,
-            'mv': 0.85,
-            'etac': 0.1},
+            'S0': 30,
+            'L': 100,
+            'ms': 0.9,
+            'mv': 0.7,
+            'etac': -0.1},
         sigma=2,
-        bins=50)
+        bins=50,
+        nlevels=10,
+        show_confidence=True)
     plt.show()
