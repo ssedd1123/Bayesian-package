@@ -224,7 +224,7 @@ class PCA(Transformer):
             assert (
                 self.component <= Y.shape[1]
             ), "number of components cannot exceed number of variables"
-            self.reconstruction_error = np.mean(self.eigval[self.component :])
+            self.reconstruction_error = np.sum(self.eigval[self.component :])/self.cov.shape[0]
             if self.reconstruction_error is None or np.isnan(self.reconstruction_error):
                 self.reconstruction_error = 0
             self.eigval = self.eigval[0 : self.component]

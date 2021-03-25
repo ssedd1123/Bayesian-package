@@ -8,7 +8,9 @@ else:
     import cPickle as pickle
 
 import math
+import scipy
 from scipy.optimize import bisect
+from scipy.stats.mstats import mquantiles
 
 import matplotlib.colors as colors
 import matplotlib.gridspec as gridspec
@@ -75,17 +77,29 @@ def smoothed_histogram2D(
         sigma=0,
         nlevels=10,
         extent=None,
+        show_confidence=False,
         **kwargs):
     if extent is not None:
         h, x, y = np.histogram2d(x, y, bins=bins, range=[
-            [extent[0], extent[1]], [extent[2], extent[3]]])
+            [extent[0], extent[1]], [extent[2], extent[3]]], density=True)
     else:
-        h, x, y = np.histogram2d(x, y, bins=bins)
+        h, x, y = np.histogram2d(x, y, bins=bins, density=True)
     if extent is None:
         extent = [x[0], x[-1], y[0], y[-1]]
-    if sigma > 0:
+    if sigma > 0 or show_confidence:
         h = gaussian_filter(h, sigma=sigma)
-        im = ax.contourf(h.T, nlevels, origin="lower", extent=extent, **kwargs)
+        if show_confidence:
+            confidence_interval = [0.99, 0.95, 0.68]
+            levels = [HeightAtFraction(h, val) for val in confidence_interval] + [np.amax(h)]#, HeightAtFraction(h, 0.99)] 
+            im = ax.contourf(h.T, levels=levels, origin="lower", extent=extent, **kwargs)
+            cset = ax.contour(h.T, levels=levels, origin='lower', extent=extent, colors='k')
+            # Label plot
+            fmt = {}
+            for lvl, height in zip(levels[:-1], confidence_interval):
+                fmt[lvl] = '%g %%' % (100*height)
+            ax.clabel(cset, inline=1, fontsize=10, fmt=fmt)
+        else:
+            im = ax.contourf(h.T, nlevels, origin='lower', extent=extent, **kwargs)
     else:
         im = ax.imshow(
             h.T,
@@ -97,14 +111,25 @@ def smoothed_histogram2D(
     return ax, im
 
 
-def smoothed_histogram1D(x, ax, bins=20, sigma=0, range=None, **kwargs):
-    h, x = np.histogram(x, bins=bins, range=range)
+def smoothed_histogram1D(x, ax, bins=20, sigma=0, range=None, show_confidence=False, **kwargs):
+    h, xax = np.histogram(x, bins=bins, range=range)
+    xax = 0.5 * (xax[1:] + xax[:-1])
+
     if sigma > 0:
-        h = gaussian_filter1d(h, sigma=sigma)
-        g = ax.plot(0.5 * (x[1:] + x[:-1]), h, **kwargs)
+        #h = gaussian_filter1d(h, sigma=sigma)
+        from KDEpy import FFTKDE
+        kde = FFTKDE(bw='silverman').fit(x.to_numpy())
+        x2, y = kde.evaluate(bins)
+        g = ax.plot(x2, y, **kwargs)
+        #g = ax.plot(xax, h, **kwargs)
     else:
-        g = ax.step(0.5 * (x[1:] + x[:-1]), h, **kwargs)
+        g = ax.step(xax, h, **kwargs)
     ax.set_ylim(bottom=0)
+
+    if show_confidence:
+        quant = mquantiles(x, [0.025, 0.5, 0.975])
+        for i, val in enumerate(quant):
+            ax.axvline(val, linestyle='-' if i == 1 else '--', color='black')
     return ax, g
 
 
@@ -119,7 +144,7 @@ def HeightAtFraction(h, frac):
             x) - frac,
         0,
         np.max(h),
-        xtol=1e-3)
+        xtol=1e-5)
 
 
 # input is the pymc3 trace and list of parameters
@@ -130,7 +155,9 @@ def PlotTrace(
         bins=100,
         cmap="Blues",
         nlevels=10,
-        mark_point=None):
+        mark_point=None,
+        show_confidence=False,
+        only_lower=True):
     """
     Arrange trace in a n*n matrix of plots
     where n is the number of variables
@@ -155,6 +182,9 @@ def PlotTrace(
 
     for i, row in enumerate(axes2d):
         for j, cell in enumerate(row):
+            if only_lower and j > i:
+                cell.remove()
+                continue
             namex = par_name[j]
             namey = par_name[i]
             if namex == namey:
@@ -169,6 +199,7 @@ def PlotTrace(
                     sigma=sigma,
                     range=[prior["Min"][namex], prior["Max"][namex]],
                     ax=dummy,
+                    show_confidence=show_confidence
                 )
                 dummy.yaxis.set_ticks([])
                 dummy.set_xlim([prior["Min"][namex], prior["Max"][namex]])
@@ -186,12 +217,14 @@ def PlotTrace(
                     ax=cell,
                     cmap=cmap,
                     vmin=0,
+                    nlevels=nlevels,
                     extent=[
                         prior["Min"][namex],
                         prior["Max"][namex],
                         prior["Min"][namey],
                         prior["Max"][namey],
                     ],
+                    show_confidence=show_confidence
                 )
 
                 cell.set_xlim([prior["Min"][namex], prior["Max"][namex]])
@@ -206,12 +239,17 @@ def PlotTrace(
                             mark_point[namey]).astype(
                             np.float),
                         color='r')
+                    cell.axvline(np.atleast_1d(mark_point[namex]).astype(np.float), color='r')
+                    cell.axhline(np.atleast_1d(mark_point[namey]).astype(np.float), color='r')
 
     # handle axis labes for coner graphs
     for i, row in enumerate(axes2d):
         for j, cell in enumerate(row):
             # Modify axis labels such that the top and bottom label never show
             # up
+            if only_lower and j > i:
+                continue
+
             cell.tick_params(axis="both", which="major", labelsize=20)
             namex = par_name[j]
             namey = par_name[i]

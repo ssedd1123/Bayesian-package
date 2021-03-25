@@ -148,7 +148,7 @@ class GUIController:
                         description += '\n    %s = %f' % (name, np.sum(trace['ModelChoice'] == idx)/float(tot))
             attrs = store.get_storer('PriorAndConfig').attrs
             if 'comment' in attrs:
-                description += '\n   Comment: ' + attrs['comment']
+                description += '\n\nComment: ' + attrs['comment']
  
             FlexMessageBox(description, None, title='Summary').ShowModal()
 
