@@ -81,7 +81,7 @@ class SelectPosteriorOption(wx.Dialog):
         }
         self.values = {}
         sizer = wx.GridBagSizer(
-            len(content) + 2, 5
+            len(content) + 4, 5
         )  # add two for color maps combobox and plot button
 
         for i, (key, (title, default)) in enumerate(content.items()):
@@ -119,10 +119,10 @@ class SelectPosteriorOption(wx.Dialog):
                 1, 4), flag=wx.ALIGN_LEFT)
         self.values["cmap"] = value_combo
 
-        self.show_ref_pt = wx.CheckBox(
-            self, label='Overlay reference points in "Ask Emulator"')
+        self.show_confidence = wx.CheckBox(
+            self, label='Show confidence interval')
         sizer.Add(
-            self.show_ref_pt,
+            self.show_confidence,
             pos=(
                 len(content) + 1,
                 0),
@@ -131,11 +131,36 @@ class SelectPosteriorOption(wx.Dialog):
                 5),
             flag=wx.ALIGN_LEFT)
 
+        self.show_ref_pt = wx.CheckBox(
+            self, label='Overlay reference points in "Ask Emulator"')
+        sizer.Add(
+            self.show_ref_pt,
+            pos=(
+                len(content) + 2,
+                0),
+            span=(
+                1,
+                5),
+            flag=wx.ALIGN_LEFT)
+
+        self.fix_range = wx.CheckBox(
+            self, label='Fix parameters ranges')
+        sizer.Add(
+            self.fix_range,
+            pos=(
+                len(content) + 3,
+                0),
+            span=(
+                1,
+                5),
+            flag=wx.ALIGN_LEFT)
+
+
         self.button = wx.Button(self, wx.ID_OK, "Plot")
         sizer.Add(
             self.button,
             pos=(
-                len(content) + 2,
+                len(content) + 4,
                 0),
             span=(
                 1,
@@ -156,9 +181,11 @@ class SelectPosteriorOption(wx.Dialog):
             result = {
                 "bins": int(self.values["nbins"].GetValue()),
                 "sigma": float(self.values["sigma"].GetValue()),
-                "nlevels": float(self.values["nlevels"].GetValue()),
+                "nlevels": int(self.values["nlevels"].GetValue()),
                 "cmap": self.values["cmap"].GetValue(),
-                "overlay_pt": self.show_ref_pt.GetValue()
+                "overlay_pt": self.show_ref_pt.GetValue(),
+                "show_confidence": self.show_confidence.GetValue(),
+                "auto_range": not self.fix_range.GetValue()
             }
         except Exception as e:
             print("Cannot cast result to desired type")
