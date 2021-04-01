@@ -132,7 +132,7 @@ class GUIController:
                 trace = store['trace']
                 # only select columns in prior
                 par_names = store['PriorAndConfig'].index
-                description = trace[par_names].describe().to_string()
+                description = trace[par_names].describe(percentiles=[.05,.5,.95]).to_string()
 
                 # show list of files if the trace is chainged
                 attrs = store.get_storer('trace').attrs
@@ -150,7 +150,7 @@ class GUIController:
             if 'comment' in attrs:
                 description += '\n\nComment: ' + attrs['comment']
  
-            FlexMessageBox(description, None, title='Summary').ShowModal()
+            FlexMessageBox(description, self.view, title='Summary').Show()
 
     def GenHyperCube(self, obj, evt):
         prior = self.prior_model.GetData(drop_index=False)
@@ -486,7 +486,18 @@ class GUIController:
             self.SaveNew(obj, evt, None)
         else:
             # ? Why does outFile have to be a list....
-            self.SaveNew(obj, evt, [self.file_model.emulator_filename])
+            # re-save comment
+            comments = None
+            with pd.HDFStore(self.file_model.emulator_filename, 'r') as store:
+                attrs = store.get_storer('PriorAndConfig').attrs
+                if 'comment' in attrs:
+                    comments = attrs['comment']
+
+            if self.SaveNew(obj, evt, [self.file_model.emulator_filename]):
+                if not comments is None:
+                    with pd.HDFStore(self.file_model.emulator_filename, 'a') as store:
+                        store.get_storer('PriorAndConfig').attrs['comment'] = comments
+
 
     def SaveNew(self, obj, evt, outFile=None):
         model_name = None
@@ -583,6 +594,8 @@ class GUIController:
             with pd.HDFStore(outFile[0], "a") as store:
                 store["Training_idx"] = pd.DataFrame(list(range(model_X.shape[0])), dtype=int).sample(n=model_X.shape[0] - args['TestData']).sort_index()
             self.TrainReport(None, None)
+
+        return True
 
     def OpenFile(self, obj, evt):
         # dlg = wx.FileDialog(

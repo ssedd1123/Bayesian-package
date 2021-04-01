@@ -30,6 +30,7 @@ class CustomSlider(wx.Control):
         self.initBuffer()
         self.Bind(wx.EVT_PAINT, self.OnPaint)
         self.Bind(wx.EVT_LEFT_DOWN, self.OnPressed)
+        self.Bind(wx.EVT_LEFT_UP, self.OnRelease)
         self.Bind(wx.EVT_MOTION, self.OnPressed)
         self.Bind(wx.EVT_SIZE, self.OnSize)
         self.Centre()
@@ -114,6 +115,8 @@ class CustomSlider(wx.Control):
 
     def OnPressed(self, evt):
         if evt.Dragging() or evt.LeftIsDown():
+            if not self.HasCapture():
+                self.CaptureMouse()
             dc = wx.BufferedDC(wx.ClientDC(self), self.buffer)
             current_value = self.CoordToValue(
                 evt.GetPosition()[0], dc.GetSize()[0])
@@ -126,6 +129,11 @@ class CustomSlider(wx.Control):
                     "Slider_Value",
                     obj=self,
                     evt=self.current_value)
+        evt.Skip()
+
+    def OnRelease(self, evt):
+        if self.HasCapture():
+            self.ReleaseMouse()
 
     def SetValue(self, val):
         dc = wx.BufferdDC(wx.ClientDC(self), self.buffer)

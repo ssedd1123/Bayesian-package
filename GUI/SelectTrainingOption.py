@@ -84,6 +84,8 @@ class SelectOption(wx.Dialog):
         self.title["PCA Components"].SetLabel(self.rbox_choice)
 
     def OnClose(self, evt):
+        if self.IsModal():
+            self.EndModal(wx.ID_CANCEL)
         self.Destroy()
         return wx.ID_CANCEL
 
