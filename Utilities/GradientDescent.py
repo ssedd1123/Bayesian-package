@@ -51,6 +51,7 @@ class GradientDescentForEmulator:
             self.tolMag = None
             self.magSlope = None
             self.lastProgress = None
+            self.scale_max = 5000  # larger than this number and covariant matrix will not pos define due to numerical errors
 
         def Get(self, nsteps, step, mag, tolerance):
             stepProgress = step / nsteps * 100
@@ -116,6 +117,12 @@ class GradientDescentForEmulator:
         progress = 0
         for i in range(nsteps):
             new_para, grad = self.StepDescent(para)
+
+            # stop updating parameters that reaches max values
+            idCap = new_para > self.scaleMax
+            new_para[idCap] = self.scaleMax
+            grad[idCap] = 0
+
             para = new_para
             history_para.append(new_para)
             (scales, nuggets) = new_para[1:], new_para[0]
