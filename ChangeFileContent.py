@@ -5,7 +5,9 @@ import pandas as pd
 
 
 def ChangeFileContent(store, prior, exp, model_name=None):
+    needToClose = False
     if isinstance(store, str):
+        needToClose = True
         store = pd.HDFStore(store, "a")
     if isinstance(prior, str):
         prior = pd.read_csv(prior, index_col=0)
@@ -13,18 +15,24 @@ def ChangeFileContent(store, prior, exp, model_name=None):
         exp = pd.read_csv(exp, index_col=0)
 
     config = store.get_storer("PriorAndConfig").attrs.my_attribute
+    if prior is not None:
+        prior = prior.T
+        prior[prior.columns.difference(["Type"])] = prior[
+            prior.columns.difference(["Type"])
+        ].astype("float")
+    
+        store["PriorAndConfig"] = prior
+
     if model_name is not None:
         config['name'] = model_name
+        store.get_storer("PriorAndConfig").attrs.my_attribute = config
 
-    prior = prior.T
-    prior[prior.columns.difference(["Type"])] = prior[
-        prior.columns.difference(["Type"])
-    ].astype("float")
+    if exp is not None:
+        store["Exp_Y"] = exp.loc["Values"].astype("float")
+        store["Exp_YErr"] = exp.loc["Errors"].astype("float")
 
-    store["PriorAndConfig"] = prior
-    store.get_storer("PriorAndConfig").attrs.my_attribute = config
-    store["Exp_Y"] = exp.loc["Values"].astype("float")
-    store["Exp_YErr"] = exp.loc["Errors"].astype("float")
+    if needToClose:
+        store.close()
 
 
 if __name__ == "__main__":

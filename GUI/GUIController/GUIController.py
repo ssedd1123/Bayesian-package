@@ -344,19 +344,20 @@ class GUIController:
                             prediction, cov = clf.Predict(row)
                         except Exception:
                             continue
-                        prediction = np.squeeze(prediction)
-                        cov = np.squeeze(cov)
+                        prediction = np.atleast_1d(np.squeeze(prediction))
+                        dim = int(prediction.shape[0])
+                        cov = np.atleast_1d(np.squeeze(cov))
                         self.emulator_output_model.ChangeValues(
                             idx + 1,
-                            np.arange(prediction.shape[0]),
+                            np.arange(dim),
                             prediction,
                             send_changed=False,
                         )  # y-index add one to not overwrite header
                         self.emulator_output_model.ChangeValues(
                             idx + 1,
                             np.arange(
-                                prediction.shape[0],
-                                2 * prediction.shape[0]),
+                                dim,
+                                2 * dim),
                             np.sqrt(
                                 np.diag(cov)),
                             send_changed=False,

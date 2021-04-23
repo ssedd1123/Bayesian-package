@@ -81,9 +81,9 @@ def smoothed_histogram2D(
         **kwargs):
     if extent is not None:
         h, x, y = np.histogram2d(x, y, bins=bins, range=[
-            [extent[0], extent[1]], [extent[2], extent[3]]], density=True)
+            [extent[0], extent[1]], [extent[2], extent[3]]])#, density=True)
     else:
-        h, x, y = np.histogram2d(x, y, bins=bins, density=True)
+        h, x, y = np.histogram2d(x, y, bins=bins)#, density=True)
     if extent is None:
         extent = [x[0], x[-1], y[0], y[-1]]
     if sigma > 0 or show_confidence:

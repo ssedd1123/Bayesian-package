@@ -10,6 +10,7 @@ import re
 import sys
 import time
 import traceback
+import datetime
 
 import matplotlib
 import numpy as np
@@ -24,12 +25,19 @@ matplotlib.use("WXAgg")
 
 class RunningAve(object):
     def __init__(self, num=5):
-        self.prev_speed = [0] * num
+        self.num = num
+        self.prev_t = [0]
+        self.prev_n = [0]
+        self.prev_speed = []
 
-    def GetAve(self, val):
-        if val is not None:
+    def GetAve(self, dn, dt):
+        self.prev_t.append(self.prev_t[-1] + dt)
+        self.prev_n.append(self.prev_n[-1] + dn)
+        self.prev_speed.append((self.prev_n[-1] - self.prev_n[0])/(self.prev_t[-1] - self.prev_t[0]))
+        while len(self.prev_speed) > 1 and self.prev_t[-1] - self.prev_t[0] > self.num:
+            self.prev_t.pop(0)
+            self.prev_n.pop(0)
             self.prev_speed.pop(0)
-            self.prev_speed.append(val)
         return np.mean(self.prev_speed)
 
 
@@ -90,23 +98,25 @@ class EvtSpeedMeter(SM.SpeedMeter):
         self.SetSpeedBackground(wx.WHITE)
 
         # Smooth the speedmeter
-        self.SpeedCalculator = RunningAve(2 * num_ranks)
+        self.SpeedCalculator = RunningAve(5)#2*self.num_ranks)
         # self.speed_list = [0]*num_ranks
         self.prev_speed = 0
 
-    def UpdateSpeed(self, int_speed):
+    def UpdateSpeed(self, dn, dt):#int_speed):
         speed = self.SpeedCalculator.GetAve(
-            int_speed)  # np.sum(self.speed_list))
+            dn, dt)  # np.sum(self.speed_list))
         if speed > self.max_speed:
             speed = self.max_speed
         self.SetSpeedValue(speed)
+        return speed
 
     def ReturnZero(self, refresh_rate=0.03):
         # graduately reduce the speed to 0
         while True:
             time.sleep(refresh_rate)
-            speed = self.SpeedCalculator.GetAve(0)
+            speed = self.SpeedCalculator.GetAve(0, 1)
             if speed <= 0:
+                self.SetSpeedValue(0)
                 break
             elif speed >= self.max_speed:
                 speed = self.max_speed
@@ -148,15 +158,16 @@ class ProgressBar(FigureCanvasWxAgg):
         )
         self.fig.canvas.draw_idle()
 
-    def UpdateProgress(self, tot_completed):
+    def UpdateProgress(self, tot_completed, speed):
         if tot_completed > self.tot_num:
             tot_completed = self.tot_num
         theta = -tot_completed * 360 / self.tot_num - 90
         self.wedges[0].set_theta1(theta)
         self.wedges[1].set_theta2(theta)
+        estimated_time = int((self.tot_num - tot_completed)/speed) if speed > 0 else 0
         self.text.set_text(
-            "Finished %d out of %d evts" %
-            (tot_completed, self.tot_num))
+            "Finished %d out of %d evts\nTime remains %s" %
+            (tot_completed, self.tot_num, datetime.timedelta(seconds=estimated_time)))
         self.title.set_text("%.1f%%" % (100.0 * tot_completed / self.tot_num))
         self.fig.canvas.draw_idle()
 
@@ -176,7 +187,7 @@ class CalculationFrame(wx.Frame):
         """
     All parameters that need adjustment
     """
-        self.max_speed_per_cpu = 400
+        self.max_speed_per_cpu = 800
         self.pixel_width = 700
         self.pixel_height = 400
         self.spacer_prop = 0.05
@@ -329,22 +340,21 @@ class CalculationFrame(wx.Frame):
                             if len(num) > 1:
 
                                 new_tot = np.sum(num_list)
-                                dn = new_tot  # new_tot - num_prev
-                                dt = new_time - start_time  # new_time-time_prev
+                                dn = new_tot - num_prev
+                                dt = new_time - time_prev
 
                                 time_prev = new_time
                                 num_prev = new_tot
-                                speed = dn / dt
 
-                                self.speedmeter.UpdateSpeed(speed)
+                                speed = self.speedmeter.UpdateSpeed(dn, dt)
                                 self.progress_bar.UpdateProgress(
-                                    np.sum(num_prev))
+                                    np.sum(num_prev), speed)
                                 last_update = new_time
                                 wx.YieldIfNeeded()
 
                 self.info_bar.PrintInfo(
                     "All calculations completed. Merging...")
-                self.progress_bar.UpdateProgress(np.sum(num_prev))
+                self.progress_bar.UpdateProgress(np.sum(num_prev), 0)
                 self.speedmeter.ReturnZero()
                 wx.YieldIfNeeded()
             except Exception as e:
