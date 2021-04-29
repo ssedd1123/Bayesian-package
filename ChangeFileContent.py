@@ -22,6 +22,7 @@ def ChangeFileContent(store, prior, exp, model_name=None):
         ].astype("float")
     
         store["PriorAndConfig"] = prior
+        store.get_storer("PriorAndConfig").attrs.my_attribute = config
 
     if model_name is not None:
         config['name'] = model_name

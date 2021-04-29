@@ -80,6 +80,7 @@ class GradientDescentForEmulator:
         self.grad_nuggets_exp = None
         self.nuggets_log = None
         self.scales_log = None
+        self.scaleMax = 1000
 
     def SetFunc(self, func):
         self.func = func
