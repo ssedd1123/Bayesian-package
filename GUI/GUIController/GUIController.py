@@ -129,13 +129,24 @@ class GUIController:
         with pd.HDFStore(self.file_model.trace_filename, 'r') as store:
             description = 'There are no trace.'
             if 'trace' in store:
+                description = ''
                 trace = store['trace']
+                attrs = store.get_storer('trace').attrs
+                id_to_model = ['']
+                if 'model_names' in attrs:
+                    id_to_model = attrs['model_names']
                 # only select columns in prior
-                par_names = store['PriorAndConfig'].index
-                description = trace[par_names].describe(percentiles=[.05,.5,.95]).to_string()
+                for id_, name in enumerate(id_to_model):
+                    par_names = store['PriorAndConfig'].index
+                    description = description + name + '\n'
+                    if id_ != 0:
+                        par_names = ['%s_%d' % (name, id_) for name in par_names]
+                    temp = trace[par_names].describe(percentiles=[.05,.5,.95]).to_string()
+                    if id_ > 0:
+                        temp = temp[temp.find('\n') + 1:]
+                    description = description + temp + '\n\n'
 
                 # show list of files if the trace is chainged
-                attrs = store.get_storer('trace').attrs
                 if 'chained_files' in attrs:
                     chained_files = attrs.chained_files
                     description += '\n\nChained files:\n'
@@ -387,6 +398,7 @@ class GUIController:
             if kwargs["overlay_pt"]:
                 kwargs["mark_point"] = self.emulator_input_model.GetData()
             del kwargs["overlay_pt"]
+            kwargs['model_filename'] = self.file_model.emulator_filename
 
             PlotTrace(
                 self.file_model.trace_filename,

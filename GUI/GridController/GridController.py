@@ -376,7 +376,7 @@ class ScrollSync(wx.EvtHandler):
 
 
 class SplitViewController:
-    def __init__(self, parent, nrows=100, nlayers=100):
+    def __init__(self, parent, nrows=200, nlayers=100):
         self.view = wx.SplitterWindow(parent)
         left_panel = wx.Panel(self.view)
         right_panel = wx.Panel(self.view)

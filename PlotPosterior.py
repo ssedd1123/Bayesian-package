@@ -44,6 +44,9 @@ def PlotOutput(filename, fig, n_samples=20000, trace_filename=None):
         trace = store["trace"]
         if 'ModelChoice' in trace:
             id_to_model = store.get_storer("trace").attrs['model_names']
+    id_ = None
+    if id_to_model is not None:
+        id_ = id_to_model.index(curr_model_name)
             
     n_sample = n_samples if n_samples < trace.shape[0] else trace.shape[0]
     trace = trace.sample(n=n_sample)
@@ -56,15 +59,22 @@ def PlotOutput(filename, fig, n_samples=20000, trace_filename=None):
     steps = 0
     nsteps = 2 # two steps process, one for prior and one for posterior
 
-    def PosteriorCalculate(trace, model_Y, clf):
+    def PosteriorCalculate(trace, model_Y, clf, confidence=two_sigma_confidence, id_=None):
         # subdivide trace to 20 subdivistions for progress report purposes
         nonlocal steps
 
-        dfs = np.array_split(trace, n_progress_divisions, axis=0)
         num_obs = model_Y.shape[1]
         posterior_predictions = []
+        para_name = prior.index.tolist()
+        # load different parameters for model comparison
+        if id_ is not None:
+            if id_ != 0:
+                para_name = ['%s_%d' % (name, id_) for name in para_name]
+            trace = trace[trace['ModelChoice'] == id_]
+
+        dfs = np.array_split(trace, n_progress_divisions, axis=0)
         for index, df in enumerate(dfs):
-            par = df[prior.index.tolist()].values
+            par = df[para_name].values
             result, _ = clf.Predict(par)
             posterior_predictions.append(result)
 
@@ -75,7 +85,7 @@ def PlotOutput(filename, fig, n_samples=20000, trace_filename=None):
         posterior_predictions = np.vstack(posterior_predictions)
         posterior_interval = [[], []]
         for idx in range(posterior_predictions.shape[1]):
-            temp = pc.utils.hpd(posterior_predictions[:, idx], 1-two_sigma_confidence)
+            temp = pc.utils.hpd(posterior_predictions[:, idx], 1-confidence)
             posterior_interval[0].append(temp[0])
             posterior_interval[1].append(temp[1])
         
@@ -92,8 +102,8 @@ def PlotOutput(filename, fig, n_samples=20000, trace_filename=None):
 
     try:
         pub.sendMessage('Posterior_Drawing')
-        X_fill, posterior_interval, posterior_predictions = PosteriorCalculate(trace, model_Y, clf)
-        X_fill, prior_interval, _ = PosteriorCalculate(prior_trace, model_Y, clf)
+        X_fill, posterior_interval, posterior_predictions = PosteriorCalculate(trace, model_Y, clf, id_=id_)
+        X_fill, prior_interval, _ = PosteriorCalculate(prior_trace, model_Y, clf, confidence=0.9999)
     except Exception as e:
         raise e
     finally:
@@ -114,7 +124,7 @@ def PlotOutput(filename, fig, n_samples=20000, trace_filename=None):
         InterpolatedUnivariateSpline(X_fill, prior_interval[1], k=korder, ext=0)(x_interpolate),
         alpha=1,
         color="skyblue",
-        label=r"Prior $2 \sigma$ region",
+        label=r"Prior region",
         zorder=1
     )
     ax.fill_between(
@@ -161,51 +171,50 @@ def PlotOutput(filename, fig, n_samples=20000, trace_filename=None):
     fig.subplots_adjust(left=0.1)
     fig.subplots_adjust(top=0.95)
     fig.subplots_adjust(right=0.95)
-    ax.legend([(p2[0], p1[0]), prior_area, exp_plot], [r"Posterior $2 \sigma$ region", r"Prior $2 \sigma$ region", "Experimental results"], fontsize=20)
+    ax.legend([(p2[0], p1[0]), prior_area, exp_plot], [r"Posterior $2 \sigma$ region", r"Prior region", "Experimental results"], fontsize=20)
 
 
-    if id_to_model is not None:
-        axbutton = fig.add_axes([0.81, 0.05, 0.1, 0.05])#plt.axes([0.81, 0.05, 0.1, 0.05])
-        btn = Button(axbutton, 'Only %s' % curr_model_name)
-        btn.label.set_fontsize(15)
-        id_ = id_to_model.index(curr_model_name)
-        nsteps = 1 # for every update, only posterior needs to be drawn
+    #if id_to_model is not None:
+    #    axbutton = fig.add_axes([0.81, 0.05, 0.1, 0.05])#plt.axes([0.81, 0.05, 0.1, 0.05])
+    #    btn = Button(axbutton, 'Only %s' % curr_model_name)
+    #    btn.label.set_fontsize(15)
+    #    id_ = id_to_model.index(curr_model_name)
+    #    nsteps = 1 # for every update, only posterior needs to be drawn
 
-        def onClick(event):
-            try:
-                pub.sendMessage('Posterior_Drawing')
-                nonlocal steps
-                steps = 0
-                if btn.label.get_text() == 'All models':
-                    btn.label.set_text('Only %s' % curr_model_name)
-                    X_fill, posterior_interval, posterior_predictions = PosteriorCalculate(trace, model_Y, clf)
-                else:
-                    btn.label.set_text('All models')
-                    X_fill, posterior_interval, posterior_predictions = PosteriorCalculate(trace[trace['ModelChoice'] == id_], model_Y, clf)
-                for collection in ax.collections:
-                    if collection.get_gid() == 'post':
-                        collection.remove()
-                p1[0].set_ydata(InterpolatedUnivariateSpline(X_fill, posterior_predictions, k=korder, ext=0)(x_interpolate))
-                ax.fill_between(
-                    x_interpolate,
-                    InterpolatedUnivariateSpline(X_fill, posterior_interval[0], k=korder, ext=0)(x_interpolate),
-                    InterpolatedUnivariateSpline(X_fill, posterior_interval[1], k=korder, ext=0)(x_interpolate),
-                    alpha=0.7,
-                    color="darkviolet",
-                    gid='post',
-                    zorder=2
-                    #label=r"Posterior $2 \sigma$ region",
-                )
-                fig.canvas.draw_idle()
-            except Exception as e:
-                raise e
-            finally:
-                pub.sendMessage('Posterior_Drawn')
+    #    def onClick(event):
+    #        try:
+    #            pub.sendMessage('Posterior_Drawing')
+    #            nonlocal steps
+    #            steps = 0
+    #            if btn.label.get_text() == 'All models':
+    #                btn.label.set_text('Only %s' % curr_model_name)
+    #                X_fill, posterior_interval, posterior_predictions = PosteriorCalculate(trace, model_Y, clf, id_=id_)
+    #            else:
+    #                btn.label.set_text('All models')
+    #                X_fill, posterior_interval, posterior_predictions = PosteriorCalculate(trace[trace['ModelChoice'] == id_], model_Y, clf, id_=id_)
+    #            for collection in ax.collections:
+    #                if collection.get_gid() == 'post':
+    #                    collection.remove()
+    #            p1[0].set_ydata(InterpolatedUnivariateSpline(X_fill, posterior_predictions, k=korder, ext=0)(x_interpolate))
+    #            ax.fill_between(
+    #                x_interpolate,
+    #                InterpolatedUnivariateSpline(X_fill, posterior_interval[0], k=korder, ext=0)(x_interpolate),
+    #                InterpolatedUnivariateSpline(X_fill, posterior_interval[1], k=korder, ext=0)(x_interpolate),
+    #                alpha=0.7,
+    #                color="darkviolet",
+    #                gid='post',
+    #                zorder=2
+    #                #label=r"Posterior $2 \sigma$ region",
+    #            )
+    #            fig.canvas.draw_idle()
+    #        except Exception as e:
+    #            raise e
+    #        finally:
+    #            pub.sendMessage('Posterior_Drawn')
 
-        btn.on_clicked(onClick)
-        return btn
-    return None
-    #fig.tight_layout()
+    #    btn.on_clicked(onClick)
+    #    return btn
+    #return None
     
 
 

@@ -154,17 +154,28 @@ def PlotTrace(
         mark_point=None,
         show_confidence=False,
         only_lower=True,
-        auto_range=True):
+        auto_range=True,
+	model_filename=None): # file with the emulator inside. Could be the same as config_file, but could be different if you enable model comparison, in which case it must be one of the model file used in comparison
     """
     Arrange trace in a n*n matrix of plots
     where n is the number of variables
     """
     # plot the result in a nice matrix of histograms
+    id_to_model = None
     with pd.HDFStore(config_file, "r") as store:
         trace = store["trace"]
         prior = store["PriorAndConfig"]
+        if 'ModelChoice' in trace:
+            id_to_model = store.get_storer("trace").attrs['model_names']
+
     num_par = prior.shape[0]
     par_name = prior.index
+
+    id_ = None
+    if model_filename is not None and id_to_model is not None:
+      with pd.HDFStore(model_filename, 'r') as store:
+        id_ = id_to_model.index(store.get_storer("PriorAndConfig").attrs.my_attribute['name'])
+        trace = trace[trace['ModelChoice'] == id_]
 
     graph_num = 1
     if fig is None:
@@ -196,7 +207,7 @@ def PlotTrace(
                 dummy = cell.twinx()
                 # dummy.hist(trace[namex], bins=100, range=[prior['Min'][namex], prior['Max'][namex]])
                 smoothed_histogram1D(
-                    trace[namex],
+                    trace[namex if id_ is None or id_ == 0 else '%s_%d' % (namex, id_)],
                     bins=bins,
                     sigma=sigma,
                     range=[prior["Min"][namex], prior["Max"][namex]],
@@ -212,8 +223,8 @@ def PlotTrace(
                         dummy.axvline(point, color='r')
             else:
                 smoothed_histogram2D(
-                    trace[namex].to_numpy(),
-                    trace[namey].to_numpy(),
+                    trace[namex if id_ is None or id_ == 0 else '%s_%d' % (namex, id_)].to_numpy(),
+                    trace[namey if id_ is None or id_ == 0 else '%s_%d' % (namey, id_)].to_numpy(),
                     bins=bins,
                     sigma=sigma,
                     ax=cell,

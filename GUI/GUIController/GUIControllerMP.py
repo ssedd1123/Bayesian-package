@@ -5,7 +5,7 @@ from Utilities.MasterSlaveMP import MasterSlave
 from GUI.GUIController.GUIController import GUIController
 
 def main():
-    size = 10
+    size = int(sys.argv[1])
     work_environment = MasterSlave(None, ncores=size)
 
     # gd.UseDefaultOutput()
@@ -13,8 +13,8 @@ def main():
     controller = GUIController(None, app=app, workenv=work_environment)
     controller.view.Show()
 
-    if len(sys.argv) >= 2:
-        controller.LoadFile(sys.argv[1:])
+    if len(sys.argv) >= 3:
+        controller.LoadFile(sys.argv[2:])
 
     app.MainLoop()
     work_environment.Close()

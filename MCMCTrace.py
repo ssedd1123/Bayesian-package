@@ -42,38 +42,40 @@ def GenerateTrace(
     Uses pymc2 as it is found to be faster
     """
     pymc.numpy.random.seed(random.randint(0, 1000) + id_)
-    parameters = []
-    for name, row in prior.iterrows():
-        if row["Type"] == "Uniform":
-            parameters.append(
-                pymc.Uniform(
-                    name,
-                    float(row["Min"]),
-                    float(row["Max"]),
-                    value=0.5 * (float(row["Min"]) + float(row["Max"])),
-                )
-            )
-        else:
-            parameters.append(
-                pymc.TruncatedNormal(
-                    name,
-                    mu=float(row["Mean"]),
-                    tau=1.0 / float(row["SD"]) ** 2,
-                    a=float(row["Min"]),
-                    b=float(row["Max"]),
-                    value=float(row["Mean"]),
-                )
-            )
-
     n_models = len(emulators)
     emulators_list = []
     id_to_model_names = []
-    for name in sorted(emulators.keys()):
-      id_to_model_names.append(name)
-      emulators_list.append(emulators[name])
- 
+    parameters = []
+    for i, ename in enumerate(sorted(emulators.keys())):
+      id_to_model_names.append(ename)
+      emulators_list.append(emulators[ename])
+      ind_parameters = []
+      for name, row in prior.iterrows():
+          if row["Type"] == "Uniform":
+              ind_parameters.append(
+                  pymc.Uniform(
+                      name if i == 0 else '%s_%d' % (name, i),
+                      float(row["Min"]),
+                      float(row["Max"]),
+                      value=0.5 * (float(row["Min"]) + float(row["Max"])),
+                  )
+              )
+          else:
+              ind_parameters.append(
+                  pymc.TruncatedNormal(
+                      name if i == 0 else '%s_%d' % (name, i),
+                      mu=float(row["Mean"]),
+                      tau=1.0 / float(row["SD"]) ** 2,
+                      a=float(row["Min"]),
+                      b=float(row["Max"]),
+                      value=float(row["Mean"]),
+                  )
+              )
+      parameters.append(ind_parameters)
+
     # transpose emulator_list
     emulators_list = list(map(list, zip(*emulators_list)))
+
     if n_models == 1:
       model_choice = 0
     else:
@@ -88,8 +90,8 @@ def GenerateTrace(
                 x=parameters,
                 exp_cov=exp_cov,
                 emulator=emu,
-                model_choice=model_choice):
-            mean, var = emulator[model_choice].Predict(np.array(x).reshape(1, -1))
+                mc=model_choice):
+            mean, var = emulator[mc].Predict(np.array(x[mc]).reshape(1, -1))
             return np.array(
                 mvn.logpdf(
                     value,
@@ -236,13 +238,14 @@ def Merging(config_file, list_of_traces, clear_trace=False):
 
 
 if __name__ == "__main__":
-    from mpi4py import MPI
-    from Utilities.MasterSlave import MasterSlave, ThreadsException
+    #from mpi4py import MPI
+    from Utilities.MasterSlaveMP import MasterSlave, ThreadsException
 
-    comm = MPI.COMM_WORLD
-    size = comm.Get_size()
+    #comm = MPI.COMM_WORLD
+    #size = comm.Get_size()
+    size = 1
 
-    work_environment = MasterSlave(comm)
+    work_environment = MasterSlave(None, ncores=size)#comm)
     parser = argparse.ArgumentParser(
         description="This script will choose an optimal set of hyperparameters by minizing loss function")
     parser.add_argument(
@@ -258,6 +261,7 @@ if __name__ == "__main__":
 
     args = vars(parser.parse_args())
 
+    #MCMCParallel(**{"config_file": args['inputs'], "nevents": args['n'], "model_comp": args['c']})
     work_environment.Submit(
         MCMCParallel, **{"config_file": args['inputs'], "nevents": args['n'], "model_comp": args['c']})
     refresh_rate = 0.2
@@ -276,6 +280,7 @@ if __name__ == "__main__":
         prior = Merging(args["inputs"], work_environment.results, clear_trace=True)
         # shutil.rmtree(work_environment.results)
 
-        PlotTrace(args["inputs"][0])
-        plt.show()
+        if args['plot']:
+            PlotTrace(args["inputs"][0])
+            plt.show()
         # work_environment.Close()

@@ -6,6 +6,12 @@ import wx
 import pandas as pd
 import copy
 
+class NodeData: 
+    def __init__(self, text_is_data=True, data=None, is_file=False):
+        self.text_is_data = text_is_data
+        self.data = data
+        self.is_file = is_file
+
 class TreePanel(wx.Panel):
 
     def __init__(self, parent):
@@ -13,7 +19,7 @@ class TreePanel(wx.Panel):
         
         self.tree = wx.TreeCtrl(self, wx.ID_ANY, style=wx.TR_MULTIPLE | wx.TR_HAS_BUTTONS)    
         
-        self.root = self.tree.AddRoot('Available files')
+        self.root = self.tree.AddRoot('Available files', data=NodeData())
         #self.tree.SetItemData(self.root, ('key', 'value'))
         #os = self.tree.AppendItem(self.root, 'Operating Systems')
         self.tree.Expand(self.root)
@@ -59,7 +65,7 @@ class TreePanel(wx.Panel):
 
     def select_trace(self, evt):
         item = evt.GetItem()
-        while self.tree.GetItemData(item) == 'chain':
+        while not self.tree.GetItemData(item).text_is_data:
             item = self.tree.GetItemParent(item)
         if self._IsNodeAFile(item):
             # change the icon of the previously opened file
@@ -74,7 +80,7 @@ class TreePanel(wx.Panel):
     def select_emulator(self, evt):
         item = evt.GetItem()
         if item.IsOk() and self.__trace_item.IsOk(): 
-            if self.tree.GetItemData(item) == 'chain':
+            if not self.tree.GetItemData(item).text_is_data:
                 # append metadata only if it comes from trace
                 if self._OnCompareItems(self.tree.GetItemParent(item), self.__trace_item) == 0:
                     self.__emulator_item = item
@@ -161,12 +167,12 @@ class TreePanel(wx.Panel):
     def _GetAllChildren(self, root, no_metadata=True, visited=set()):
         if not root.IsOk():
             return []
-        if no_metadata and self.tree.GetItemData(root) == 'chain':
+        if no_metadata and not self.tree.GetItemData(root).text_is_data:
             return []
         visited.add(root)
         if self.tree.GetChildrenCount(root) == 0:
             return [root]
-        if no_metadata and self.tree.GetItemData(self.tree.GetFirstChild(root)[0]) == 'chain':
+        if no_metadata and not self.tree.GetItemData(self.tree.GetFirstChild(root)[0]).text_is_data:
             return [root]
         nodes = []
         node, cookie = self.tree.GetFirstChild(root)
@@ -178,7 +184,7 @@ class TreePanel(wx.Panel):
     def _IsNodeAFile(self, node):
         if node.IsOk():
             data = self.tree.GetItemData(node)
-            if data == 'file':
+            if data.is_file:
                 return True
         return False
 
@@ -188,8 +194,25 @@ class TreePanel(wx.Panel):
     def add_meta_data(self, filename, metadata):
         node = self.find_file(filename)
         assert node is not None, 'Cannot find file ' + filename + ' to attach metadata onto.'
+        def shorten_path(path):
+            orig_path = path
+            path_component = []
+            while path:
+                path, folder = os.path.split(path)
+                if folder != "":
+                    path_component.append(folder)
+                elif path != "":
+                    path_component.append(path)
+                    break
+            path_component.reverse()
+
+            if len(path_component) <= 4:
+                return orig_path
+            else:
+                return os.path.join(path_component[0], path_component[1] + '...' + path_component[-2], path_component[-1])
+    
         for data in metadata:
-            item = self.tree.AppendItem(node, data, data='chain')
+            item = self.tree.AppendItem(node, shorten_path(data), data=NodeData(False, data))
             self.tree.SetItemImage(item, self.fileidx, wx.TreeItemIcon_Normal)
 
     def remove_meta_data(self, filename):
@@ -199,21 +222,23 @@ class TreePanel(wx.Panel):
             metadata = []
             item, cookie = self.tree.GetFirstChild(node)
             while item.IsOk():
-                assert self.tree.GetItemData(item) == 'chain', 'Child of branch ' + filename + ' is not meta data.'
+                assert not self.tree.GetItemData(item).text_is_data, 'Child of branch ' + filename + ' is not meta data.'
                 metadata.append(item)
                 item, cookie = self.tree.GetNextChild(node, cookie)
             for item in metadata:
                 self.remove_file(None, item=item, force=True)
 
     def _GetFilename(self, item, discard_meta=False):
-        if not discard_meta and self.tree.GetItemData(item) == 'chain':
-            return self.tree.GetItemText(item)
+        if not discard_meta and not self.tree.GetItemData(item).text_is_data:
+            return self.tree.GetItemData(item).data
 
         path = None 
         while item.IsOk() and self._OnCompareItems(item, self.root) != 0:
             if path is None:
-                if not (discard_meta and self.tree.GetItemData(item) == 'chain'):
+                if self.tree.GetItemData(item).text_is_data:
                     path = self.tree.GetItemText(item)
+                elif not discard_meta:
+                    path = self.tree.GetItemData(item)
             else:
                 path = os.path.join(self.tree.GetItemText(item), path)
             item = self.tree.GetItemParent(item)
@@ -223,7 +248,7 @@ class TreePanel(wx.Panel):
         item, cookie = self.tree.GetFirstChild(root)
 
         node = None
-        while item.IsOk() and self.tree.GetItemData(item) != 'chain':
+        while item.IsOk() and self.tree.GetItemData(item).text_is_data:
             if self.tree.GetItemText(item) == path:
                 node = item
                 break
@@ -232,7 +257,7 @@ class TreePanel(wx.Panel):
 
     def _RemoveNode(self, dir_, filename, item=None, force=False):
         if item is not None:
-            if not force and self.tree.GetItemData(item) == 'chain':
+            if not force and not self.tree.GetItemData(item).text_is_data:
                 raise RuntimeError('Node to be deleted ' + self._GetFilename(item) + ' is metadata and cannot be removed')
             self.tree.Delete(item)
         else: 
@@ -263,12 +288,12 @@ class TreePanel(wx.Panel):
     def _AddNode(self, dir_, node):
         if len(dir_) == 0:
             self.tree.SetItemImage(node, self.folderCloseIdx, wx.TreeItemIcon_Normal)
-            self.tree.SetItemData(node, data='file')
+            self.tree.SetItemData(node, data=NodeData(True, None, True))
             return node
         curr_dir = dir_[0]
         child = self._FindNode(curr_dir, node)
         if child is None:
-            child = self.tree.AppendItem(node, curr_dir)
+            child = self.tree.AppendItem(node, curr_dir, data=NodeData())
         return self._AddNode(dir_[1:], child)
 
     def _SplitDirPath(self, path):
@@ -347,7 +372,7 @@ class TreePanel(wx.Panel):
                 ans.append(dir_)
                 return
             item, cookie = self.tree.GetFirstChild(node)
-            while item.IsOk() and self.tree.GetItemData(item) != 'chain':
+            while item.IsOk() and self.tree.GetItemData(item).text_is_data:
                 dfs(self, item, os.path.join(dir_, self.tree.GetItemText(item)), ans)
                 item, cookie = self.tree.GetNextChild(node, cookie)
         dfs(self, self.root, '', ans)
@@ -358,8 +383,8 @@ class TreePanel(wx.Panel):
         node = self.__trace_item
         if self._OnCompareItems(node, self.root) != 0 and self.tree.GetChildrenCount(node) > 0:
             item, cookie = self.tree.GetFirstChild(node)
-            while item.IsOk() and self.tree.GetItemData(item) == 'chain':
-                metadata.append(self.tree.GetItemText(item))
+            while item.IsOk() and not self.tree.GetItemData(item).text_is_data:
+                metadata.append(self.tree.GetItemData(item).data)
                 item, cookie = self.tree.GetNextChild(node, cookie)
         return metadata
 
@@ -490,13 +515,13 @@ if __name__ == "__main__":
     # trace_filename='file1', all_filenames=['file1', 'file2', 'file3'])
 
     panel = controller.file_view
-    #panel.add_file('/projects/hira/FileController.py')
-    #panel.add_file('/projects/hira/tsangc/diffusion_tsang7.doc')
-    #panel.add_file('/projects/hira/tsangc/diffusion_tsang3.doc')
-    #panel.add_file('/mnt/hira/FileController.py')
-    #panel.add_file('macros/data/pbuu_sn108.root')
-    #panel.add_file('/test.txt')
-    #panel.add_meta_data('/test.txt', ['file1', 'file2'])
+    panel.add_file('/projects/hira/FileController.py')
+    panel.add_file('/projects/hira/tsangc/diffusion_tsang7.doc')
+    panel.add_file('/projects/hira/tsangc/diffusion_tsang3.doc')
+    panel.add_file('/mnt/hira/FileController.py')
+    panel.add_file('/macros/data/pbuu_sn108.root')
+    panel.add_file('/test.txt')
+    panel.add_meta_data('/test.txt', ['file1', 'file2'])
 
     sizer = wx.BoxSizer(wx.VERTICAL)
     sizer.Add(controller.file_view, 1, wx.EXPAND)
