@@ -206,10 +206,10 @@ class TreePanel(wx.Panel):
                     break
             path_component.reverse()
 
-            if len(path_component) <= 4:
+            if len(path_component) <= 2:
                 return orig_path
             else:
-                return os.path.join(path_component[0], path_component[1] + '...' + path_component[-2], path_component[-1])
+                return os.path.join('...', path_component[-2], path_component[-1])
     
         for data in metadata:
             item = self.tree.AppendItem(node, shorten_path(data), data=NodeData(False, data))
@@ -285,16 +285,20 @@ class TreePanel(wx.Panel):
                 prev_node = node
             self.tree.Delete(prev_node)
 
-    def _AddNode(self, dir_, node):
+    def _AddNode(self, dir_, node, nodeIsCreated=False):
         if len(dir_) == 0:
-            self.tree.SetItemImage(node, self.folderCloseIdx, wx.TreeItemIcon_Normal)
-            self.tree.SetItemData(node, data=NodeData(True, None, True))
-            return node
+            if nodeIsCreated:
+                self.tree.SetItemImage(node, self.folderCloseIdx, wx.TreeItemIcon_Normal)
+                self.tree.SetItemData(node, data=NodeData(True, None, True))
+                return node
+            else:
+                return None
         curr_dir = dir_[0]
         child = self._FindNode(curr_dir, node)
         if child is None:
+            nodeIsCreated = True
             child = self.tree.AppendItem(node, curr_dir, data=NodeData())
-        return self._AddNode(dir_[1:], child)
+        return self._AddNode(dir_[1:], child, nodeIsCreated)
 
     def _SplitDirPath(self, path):
         folders = []
@@ -319,12 +323,19 @@ class TreePanel(wx.Panel):
     def add_file(self, files):
         if isinstance(files, str):
             files = [files]
+        status = []
         for file_ in files:
             dir_, filename = self._SplitDirPath(file_)
             node = self._AddNode(dir_ + [filename], self.root)
-            while node.IsOk():
+            status.append(False if node is None else True)
+            while node is not None and node.IsOk():
                 self.tree.Expand(node)
                 node = self.tree.GetItemParent(node)
+        if len(status) == 1:
+            return status[0]
+        else:
+            return status
+
 
     def remove_file(self, files, item=None, force=False):
         trace = self.trace_filename
@@ -462,24 +473,11 @@ class FileController:
                         filename, 'Error', wx.OK | wx.ICON_ERROR)
                     return
 
-        # turn everything into absolute path
-        for file_ in filelist:
-            file_ = os.path.abspath(file_)
-        # check if files that you want to add already exist. If so we raise the
-        prev_files = set(self.model.get_all_files())
-        filelist = set(filelist)
-        repeated_filelist = prev_files.intersection(filelist)
-        non_repeat_filelist = filelist - prev_files
-        # raise error if they exist
-        if len(repeated_filelist) > 0 and not exist_ok:
-            wx.MessageBox(
-                '\n'.join(
-                    ['The following files are not added since they are already included:'] +
-                    list(repeated_filelist)),
-                'Warning',
-                wx.OK | wx.ICON_WARNING)
         last_filename = None
-        for filename in non_repeat_filelist:
+	# warn people of the repeated files
+        repeated_filelist = []
+        for filename in filelist:
+            # turn everything into absolute path
             filename = os.path.abspath(filename)
             chained_filenames = None
             try:
@@ -487,10 +485,22 @@ class FileController:
                     chained_filenames = store.get_storer('trace').attrs.chained_files
             except Exception:
                 pass
-            self.model.add_file(filename)
-            last_filename = filename
-            if chained_filenames is not None:
-                self.model.add_meta_data(filename, chained_filenames)
+            if self.model.add_file(filename):
+                last_filename = filename
+                if chained_filenames is not None:
+                    self.model.add_meta_data(filename, chained_filenames)
+            else:
+                repeated_filelist.append(filename)
+
+
+        if len(repeated_filelist) > 0 and not exist_ok:
+            wx.MessageBox(
+                '\n'.join(
+                    ['The following files are not added since they are already included:'] +
+                    list(repeated_filelist)),
+                'Warning',
+                wx.OK | wx.ICON_WARNING)
+
         if last_filename is not None:
             self.model.select(last_filename)
 
