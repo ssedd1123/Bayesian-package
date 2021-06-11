@@ -79,7 +79,12 @@ class TreePanel(wx.Panel):
 
     def select_emulator(self, evt):
         item = evt.GetItem()
-        if item.IsOk() and self.__trace_item.IsOk(): 
+        if item.IsOk() and self.__trace_item.IsOk() and self.tree.GetItemParent(item).IsOk(): 
+            # last condition for the above if is set-up for windows user
+            # when tree.Delete(node) is called, it sometimes returns an empty item but passes IsOk
+            # they are not okay and the only way to check is to check if they have a valid parent
+            # the only real valid node without valid parent is the root, but root can't store any file
+            # so no matter what if the parent is invalid the operation is invalid
             if not self.tree.GetItemData(item).text_is_data:
                 # append metadata only if it comes from trace
                 if self._OnCompareItems(self.tree.GetItemParent(item), self.__trace_item) == 0:
@@ -271,7 +276,7 @@ class TreePanel(wx.Panel):
                 if node is None:
                     raise RuntimeError('Cannot find tree node/element: ' + path)
                 if len(dirList) == 0:
-                    if self.tree.GetItemData(node) == 'chain':
+                    if not self.tree.GetItemData(node).text_is_data:
                         raise RuntimeError('Node to be deleted ' + dirList[0] + ' is metadata and cannot be removed')
                     self.tree.Delete(node)
                 else:
