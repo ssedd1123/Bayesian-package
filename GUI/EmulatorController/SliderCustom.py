@@ -136,7 +136,7 @@ class CustomSlider(wx.Control):
             self.ReleaseMouse()
 
     def SetValue(self, val):
-        dc = wx.BufferdDC(wx.ClientDC(self), self.buffer)
+        dc = wx.BufferedDC(wx.ClientDC(self), self.buffer)
         if self.minValue <= val <= self.maxValue:
             self.current_value = val
             dc.Clear()

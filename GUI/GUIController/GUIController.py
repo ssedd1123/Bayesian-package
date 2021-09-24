@@ -137,11 +137,13 @@ class GUIController:
                     id_to_model = attrs['model_names']
                 # only select columns in prior
                 for id_, name in enumerate(id_to_model):
+                    if name is None:	     
+                        name = ''
                     par_names = store['PriorAndConfig'].index
                     description = description + name + '\n'
                     if id_ != 0:
                         par_names = ['%s_%d' % (name, id_) for name in par_names]
-                    temp = trace[par_names].describe(percentiles=[.05,.5,.95]).to_string()
+                    temp = trace[par_names].describe(percentiles=[0.5*(1-0.95), 0.5*(1-0.68),.5,0.5*(1+0.68), 0.5*(1+.95)]).to_string()
                     if id_ > 0:
                         temp = temp[temp.find('\n') + 1:]
                     description = description + temp + '\n\n'
@@ -513,6 +515,13 @@ class GUIController:
 
 
     def SaveNew(self, obj, evt, outFile=None):
+        prior = self.prior_model.GetData(drop_index=False)
+        if prior.empty:
+            raise RuntimeError('Prior is not filled.')
+        model_X = self.model_par_model.GetData()
+        model_Y = self.model_obs_model.GetData()
+        exp = self.exp_model.GetData(drop_index=False)
+
         model_name = None
 
         if outFile is None:
@@ -545,7 +554,6 @@ class GUIController:
                 if 'name' in config:
                     model_name = config['name']
 
-
         from GUI.SelectTrainingOption import SelectOption
 
         frame = SelectOption()
@@ -555,11 +563,6 @@ class GUIController:
         else:
             args = frame.AdditionalData()
             frame.Destroy()
-
-        prior = self.prior_model.GetData(drop_index=False)
-        model_X = self.model_par_model.GetData()
-        model_Y = self.model_obs_model.GetData()
-        exp = self.exp_model.GetData(drop_index=False)
 
         if args["principalcomp"] is not None:
             gauge = TrainingProgressFrame(
@@ -641,10 +644,10 @@ class GUIController:
         if self.file_model.emulator_filename is not None:
             with pd.HDFStore(self.file_model.emulator_filename, "r") as store:
                 self.prior_model.SetData(store["PriorAndConfig"].T)
-                self.model_par_model.SetData(store["Model_X"])
-                self.model_obs_model.SetData(store["Model_Y"])
                 self.exp_model.SetData(
                     pd.concat([store["Exp_Y"], store["Exp_YErr"]], axis=1).T)
+                self.model_par_model.SetData(store["Model_X"])
+                self.model_obs_model.SetData(store["Model_Y"])
                 config = store.get_storer("PriorAndConfig").attrs.my_attribute
                 model_name = None
                 if 'name' in config:

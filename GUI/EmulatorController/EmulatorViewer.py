@@ -128,6 +128,9 @@ class EmulatorController:
         )
         self.bg_line, _, (self.bg_bars,) = self.viewer.ax.errorbar(
             self.X, self.exp_Y, yerr=self.exp_Yerr, marker="o", linewidth=2, color="b")
+
+        # set plot display range
+        self.viewer.ax.set_ylim(np.min(self.model_Y.values), np.max(self.model_Y.values))
         par_name = [name[0:15] if len(
             name) > 14 else name for name in list(self.model_Y)]
         self.viewer.ax.set_xticks(self.X)
@@ -184,11 +187,13 @@ class EmulatorController:
                 self.bg_bars,
                 self.model_Y.loc[idx],
                 0)
-            self.viewer.RefreshFig()
+            #self.viewer.RefreshFig()
 
             selected_x = self.model_X.loc[idx].values
+            self.ChangeValues(selected_x)
             for i, x in enumerate(selected_x):
                 self.viewer.sliders[i].Highlight(x)
+                self.viewer.sliders[i].SetValue(x)
 
     def OnCheckboxSelect(self, obj, evt):
         selected = evt.GetString()
@@ -205,6 +210,17 @@ class EmulatorController:
 
     def ChangeValue(self, idx, value):
         self.current_values[idx] = value
+        val, cov = self.model.Predict(self.current_values)
+        self.SetErrorBar(
+            self.line,
+            self.bars,
+            val.flatten(),
+            np.sqrt(np.diag(np.atleast_1d(np.squeeze(cov)))).flatten(),
+        )
+        self.viewer.RefreshFig()
+
+    def ChangeValues(self, values):
+        self.current_values = values
         val, cov = self.model.Predict(self.current_values)
         self.SetErrorBar(
             self.line,
