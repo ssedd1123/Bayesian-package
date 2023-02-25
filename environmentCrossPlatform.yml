@@ -4,15 +4,15 @@ channels:
 dependencies:
   - numpy
   - pandas
-  - matplotlib
+  - matplotlib==3.2.2
   - scipy
-  - pymc
-  - pytables
-  - wxpython
+  - pymc==2.3.8
+  - hdf5==1.10.6
+  - pytables==3.6.1
+  - wxpython==4.0.4
   - dill
   - pip
   - pip:
     - autograd
     - future
     - pypubsub
-    - mpi4py
