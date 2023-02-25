@@ -12,7 +12,7 @@ This is a gaussian emulator and Baysiean analysis with PyMC <br />
  ```
  2. Go to /path/to/Bayesian-package and create virtual environment by running the following command:
  ```
-     $> conda env --name <env_name> create -f environmentCrossPlatform.yml
+     $> conda env create --name <env_name> --file=environmentCrossPlatform.yml
  ```
  3. Activate the environment:
  ```
