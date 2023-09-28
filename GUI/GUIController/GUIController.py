@@ -82,6 +82,12 @@ class GUIController:
             self.CheckObj,
             "MenuBar_TraceSummary",
             func=self.ShowSummary)
+        pub.subscribe(
+            self.CheckObj,
+            "MenuBar_TraceDiagnosis",
+            func=self.ShowDiagnosis)
+
+
 
         # communication between model_par_model and prior_model
         pub.subscribe(self.FillPriorRange, 'PriorToolBar_Refresh')
@@ -137,7 +143,7 @@ class GUIController:
                     id_to_model = attrs['model_names']
                 # only select columns in prior
                 for id_, name in enumerate(id_to_model):
-                    if name is None:	     
+                    if name is None:         
                         name = ''
                     par_names = store['PriorAndConfig'].index
                     description = description + name + '\n'
@@ -164,6 +170,7 @@ class GUIController:
                 description += '\n\nComment: ' + attrs['comment']
  
             FlexMessageBox(description, self.view, title='Summary').Show()
+
 
     def GenHyperCube(self, obj, evt):
         prior = self.prior_model.GetData(drop_index=False)
@@ -427,6 +434,24 @@ class GUIController:
             else:
                 self.correlation_frame.SetData()
                 self.correlation_frame.Show()
+
+    def ShowDiagnosis(self, obj, evt):
+        if self.file_model.trace_filename is not None:
+            if not self.correlation_frame:
+                fig = Figure((15, 12), 75)
+                self.correlation_frame = MatplotlibFrame(None, fig)
+            self.correlation_frame.fig.clf()
+            from PlotTrace import PlotTrace
+            try:
+                PlotTrace(self.file_model.trace_filename, self.correlation_frame.fig)
+            except Exception as e:
+                raise e
+            else:
+                self.correlation_frame.SetData()
+                self.correlation_frame.Show()
+        else:
+            raise RuntimeError('No trace loaded.')
+
 
     def PosteriorGauge(self):
         self.gauge = TrainingProgressFrame(

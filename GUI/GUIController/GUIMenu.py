@@ -30,6 +30,7 @@ class GUIMenuBar(wx.MenuBar):
         PlotCorrelationItem = plotMenu.Append(-1, "Plot correlation", "")
         TrainReportItem = plotMenu.Append(-1, "Training report", "")
         TraceSummaryItem = plotMenu.Append(-1, "Trace summary", "")
+        TraceDiagnosisItem = plotMenu.Append(-1, "Trace Diagnosis", "")
 
         self.Append(fileMenu, "&File")
         self.Append(emulatorMenu, "&Emulator")
@@ -132,6 +133,16 @@ class GUIMenuBar(wx.MenuBar):
                 evt=evt),
             TraceSummaryItem,
         )
+        self.Bind(
+            wx.EVT_MENU,
+            lambda evt: pub.sendMessage(
+                "MenuBar_TraceDiagnosis",
+                obj=self,
+                evt=evt),
+            TraceDiagnosisItem,
+        )
+
+
 
     def GetParent(self):
         return self.parent
