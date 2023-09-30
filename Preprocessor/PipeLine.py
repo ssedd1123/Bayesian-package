@@ -227,6 +227,8 @@ class PCA(Transformer):
             self.reconstruction_error = np.sum(self.eigval[self.component :])/self.cov.shape[0]
             if self.reconstruction_error is None or np.isnan(self.reconstruction_error):
                 self.reconstruction_error = 0
+            self.eigvalFull = self.eigval
+            self.eigvecFull = self.eigvec
             self.eigval = self.eigval[0 : self.component]
             self.eigvec = self.eigvec[:, 0 : self.component]
 
@@ -240,9 +242,15 @@ class PCA(Transformer):
         return np.matmul(Y, self.eigvec.T)
 
     def TransformCovInv(self, data_cov):
+        # create multiple diagonal matrices from all samples
+        cov = np.zeros((data_cov.shape[0], self.eigvalFull.shape[0], self.eigvalFull.shape[0]))
+        diag = np.arange(self.eigvalFull.shape[0])
+        cov[:, diag, diag] = self.eigvalFull
+        cov[:, 0:data_cov.shape[1], 0:data_cov.shape[1]] = data_cov
+
         return np.matmul(
-            np.matmul(self.eigvec, data_cov), self.eigvec.T
-        ) + self.reconstruction_error * np.eye(self.cov.shape[0])
+            np.matmul(self.eigvecFull, cov), self.eigvecFull.T
+        )
 
 
 class Emulator(Transformer):
