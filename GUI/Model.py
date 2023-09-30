@@ -170,6 +170,7 @@ class ProgressBar(FigureCanvasWxAgg):
             (tot_completed, self.tot_num, datetime.timedelta(seconds=estimated_time)))
         self.title.set_text("%.1f%%" % (100.0 * tot_completed / self.tot_num))
         self.fig.canvas.draw_idle()
+        return estimated_time
 
 
 class CalculationFrame(wx.Frame):
@@ -264,9 +265,14 @@ class CalculationFrame(wx.Frame):
     Infobar and its sizer
     """
         info_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.time_info_bar = InfoBar(self.panel, label="Time report")
         self.info_bar = InfoBar(self.panel, label="Progress report")
+        info_sizer_inner = wx.BoxSizer(wx.VERTICAL)
+        info_sizer_inner.Add(self.time_info_bar)
+        info_sizer_inner.Add(self.info_bar)
+
         info_sizer.AddSpacer(self.hspacer)
-        info_sizer.Add(self.info_bar)
+        info_sizer.Add(info_sizer_inner)
         info_sizer.AddSpacer(self.hspacer)
 
         """
@@ -301,9 +307,10 @@ class CalculationFrame(wx.Frame):
             )
             config_txt = config_file if isinstance(config_file, list) else [config_file]
             config_txt = [os.path.basename(config) for config in config_txt]
+            self.time_info_bar.PrintInfo('Time running = %s, estimated total = %s' % (datetime.timedelta(0), 'TBD'))
             self.info_bar.PrintInfo(
-                "Working on file(s) %s\n%d workers are working" %
-                (' '.join(config_txt), self.enviro.nworking)
+                "%d workers are working" %
+                self.enviro.nworking
             )
 
             # check for jobs completions and collect results
@@ -347,8 +354,10 @@ class CalculationFrame(wx.Frame):
                                 num_prev = new_tot
 
                                 speed = self.speedmeter.UpdateSpeed(dn, dt)
-                                self.progress_bar.UpdateProgress(
-                                    np.sum(num_prev), speed)
+                                estimated_time = self.progress_bar.UpdateProgress(
+                                                   np.sum(num_prev), speed)
+                                duration = int(time.time() - start_time)
+                                self.time_info_bar.PrintInfo('Time running = %s, estimated total = %s' % (datetime.timedelta(seconds=duration), datetime.timedelta(seconds=duration+estimated_time)))
                                 last_update = new_time
                                 wx.YieldIfNeeded()
 
