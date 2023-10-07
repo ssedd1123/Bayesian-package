@@ -14,6 +14,8 @@ eacl row must corresponds to lower and upper limit of each variable
 def GenerateLatinHyperCube(num, var_range):
     coord = []
     for range_ in var_range:
+        # lower upper limit so the latin hyper cube won't goes into upper_limit + step size
+        range_[1] = (range_[1] + range_[0]/num)/(1 + 1./num)
         lower_limit, step_size = np.linspace(
             range_[0], range_[1], num=num, retstep=True
         )

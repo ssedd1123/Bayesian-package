@@ -1,0 +1,15 @@
+{
+     "TrainReportUpdateInterval": 0.1,
+     "PopUpWidth": 15,
+     "PopUpHeight": 12,
+     "OptionWindowWidth": 3.125,
+     "WindowsWidth": 13,
+     "WindowsHeight": 8,
+     "GridNCol": 100,
+     "GridNRow": 200,
+     "FileWidth": 2,
+     "ExpHeight": 1.25,
+     "MaxSpeedPerCPU": 400,
+     "GaugeWidth": 7,
+     "GaugeHeight": 4
+}

@@ -11,6 +11,7 @@ from matplotlib.figure import Figure
 from pubsub import pub
 from tables import exceptions
 from contextlib import contextmanager
+import json
 
 import Utilities.GradientDescent as gd
 from GUI.GridController.GridController import (GridController, PriorController,
@@ -24,9 +25,13 @@ from Utilities.MasterSlaveMP import ThreadsException
 
 
 class GUIController:
-    def __init__(self, parent, workenv, app):
+    def __init__(self, parent, workenv, app, config_file='GUI/config.json'):
+        # load config file
+        with open(config_file, 'r') as config:
+            self.config_data = json.load(config)
+
         self.workenv = workenv
-        self.view = GUIViewer(parent, app)
+        self.view = GUIViewer(parent, app, self.config_data)
         self.prior_model = self.view.prior_controller.model
         self.prior_view = self.view.prior_controller.view
 
@@ -102,6 +107,7 @@ class GUIController:
         # block repeated load chain prompt when some of the chained files has
         # their own list of chained files
         self.block_load_chain_prompt = False
+
 
     def CheckObj(self, func, obj, evt):
         orig_obj = obj
@@ -206,7 +212,7 @@ class GUIController:
 
     def TrainReport(self, obj, evt):
         if self.file_model.emulator_filename is not None:
-            fig = Figure((15, 12), 75)
+            fig = Figure((self.config_data['PopUpWidth'], self.config_data['PopUpHeight']), 75)
             frame = MatplotlibFrame(None, fig)
 
             try:
@@ -215,11 +221,11 @@ class GUIController:
                     None,
                     -1,
                     "Generating report",
-                    size=(300, -1),
+                    size=(wx.ScreenDC().GetPPI()[0]*self.config_data['OptionWindowWidth'], -1),
                     text_label="Training report generation in progress",
                     col_labels=[""],
                 )
-                PtsFraction = 0.1
+                PtsFraction = self.config_data['TrainReportUpdateInterval']
 
                 def gaugeUpdatePts(progress): return gauge.updateProgress(
                     progress * PtsFraction * 100
@@ -261,7 +267,9 @@ class GUIController:
                 filenames = file_
                 nevent = options["nevent"]
                 frame = CalculationFrame(
-                    None, -1, "Progress", self.workenv, nevent)
+                    None, -1, "Progress", self.workenv, nevent, 
+                    width=self.config_data['GaugeWidth'], height=self.config_data['GaugeHeight'], 
+                    max_speed_per_cpu=self.config_data['MaxSpeedPerCPU'])
                 frame.Show()
 
                 try:
@@ -334,7 +342,9 @@ class GUIController:
                 from GUI.Model import CalculationFrame
 
                 frame = CalculationFrame(
-                    None, -1, "Progress", self.workenv, nevent)
+                    None, -1, "Progress", self.workenv, nevent, 
+                    width=self.config_data['GaugeWidth'], height=self.config_data['GaugeHeight'], 
+                    max_speed_per_cpu=self.config_data['MaxSpeedPerCPU'])
                 frame.Show()
 
                 try:
@@ -399,7 +409,7 @@ class GUIController:
                     # dialog
                     return
             if not self.correlation_frame:
-                fig = Figure((15, 12), 75)
+                fig = Figure((self.config_data['PopUpWidth'], self.config_data['PopUpHeight']), 75)
                 self.correlation_frame = MatplotlibFrame(None, fig)
             self.correlation_frame.fig.clf()
             from Utilities.Utilities import PlotTrace
@@ -419,7 +429,7 @@ class GUIController:
     def Posterior(self, obj, evt):
         if self.file_model.emulator_filename is not None:
             if not self.correlation_frame:
-                fig = Figure((15, 12), 75)
+                fig = Figure((self.config_data['PopUpWidth'], self.config_data['PopUpHeight']), 75)
                 self.correlation_frame = MatplotlibFrame(None, fig)
             self.correlation_frame.fig.clf()
             from PlotPosterior import PlotOutput
@@ -438,7 +448,7 @@ class GUIController:
     def ShowDiagnosis(self, obj, evt):
         if self.file_model.trace_filename is not None:
             if not self.correlation_frame:
-                fig = Figure((15, 12), 75)
+                fig = Figure((self.config_data['PopUpWidth'], self.config_data['PopUpHeight']), 75)
                 self.correlation_frame = MatplotlibFrame(None, fig)
             self.correlation_frame.fig.clf()
             from PlotTrace import PlotTrace
@@ -459,7 +469,7 @@ class GUIController:
             None,
             -1,
             "Generating output posterior",
-            size=(300, -1),
+            size=(wx.ScreenDC().GetPPI()[0]*self.config_data['OptionWindowWidth'], -1),
             text_label="Output posterior generation in progress",
             col_labels=[""],
         )
@@ -591,11 +601,11 @@ class GUIController:
 
         if args["principalcomp"] is not None:
             gauge = TrainingProgressFrame(
-                args["principalcomp"], None, -1, "Training progress", size=(300, -1)
+                args["principalcomp"], None, -1, "Training progress", size=(wx.ScreenDC().GetPPI()[0]*self.config_data['OptionWindowWidth'], -1)
             )
         else:
             gauge = TrainingProgressFrame(
-                1, None, -1, "Training progress", size=(300, -1)
+                1, None, -1, "Training progress", size=(wx.ScreenDC().GetPPI()[0]*self.config_data['OptionWindowWidth'], -1)
             )
         def gaugeUpdate(step, progress, mag, nuggets, scales): return [
             gd.DefaultOutput(step, progress, mag, nuggets, scales),
@@ -737,15 +747,16 @@ class GUIController:
 
 
 class GUIViewer(wx.Frame):
-    def __init__(self, parent, app):
+    def __init__(self, parent, app, config_data):
+        self.config_data = config_data
         wx.Frame.__init__(
             self,
             parent,
             wx.NewId(),
             "Bayesian analysis GUI",
             size=wx.ScreenDC().GetPPI().Scale(
-                13,
-                8))  # 1000,400))
+                config_data['WindowsWidth'],
+                config_data['WindowsHeight']))  # 1000,400))
         self.app = app
         sys.excepthook = MyExceptionHook
 
@@ -758,7 +769,7 @@ class GUIViewer(wx.Frame):
         self.SetMenuBar(self.menubar)
 
         prior_panel = wx.Panel(notebook)
-        self.prior_controller = PriorController(prior_panel, 100)
+        self.prior_controller = PriorController(prior_panel, config_data['GridNCol'])
         prior_sizer = wx.BoxSizer(wx.VERTICAL)
         prior_sizer.Add(self.prior_controller.toolbar, 0, wx.EXPAND)
         prior_sizer.Add(self.prior_controller.view, 1, wx.EXPAND)
@@ -767,7 +778,7 @@ class GUIViewer(wx.Frame):
         notebook.AddPage(prior_panel, "Parameters prior")
 
         grid_panel = wx.Panel(notebook)
-        self.model_input_controller = SplitViewController(grid_panel)
+        self.model_input_controller = SplitViewController(grid_panel, config_data['GridNRow'], config_data['GridNCol'])
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.model_input_controller.view, 1, wx.EXPAND)
         # grid_panel.SetSizer(sizer)
@@ -775,7 +786,7 @@ class GUIViewer(wx.Frame):
 
         #exp_panel = wx.Panel(notebook)
         self.exp_controller = GridController(
-            grid_panel, 3, 100, size=(-1, 120))
+            grid_panel, 3, config_data['GridNCol'], size=(-1, wx.ScreenDC().GetPPI()[1]*config_data['ExpHeight']))
         self.exp_controller.model.data.index = ["Name", "Values", "Errors"]
         #exp_sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.exp_controller.toolbar, 0.1, wx.EXPAND)
@@ -787,7 +798,7 @@ class GUIViewer(wx.Frame):
 
         manual_emulation_panel = wx.Panel(notebook)
         self.manual_emulation_controller = SplitViewController(
-            manual_emulation_panel, 300, 100
+            manual_emulation_panel, config_data['GridNRow'], config_data['GridNCol']
         )
         self.manual_emulation_controller.right_view.SetDefaultCellBackgroundColour(
             "Grey")
@@ -820,7 +831,7 @@ class GUIViewer(wx.Frame):
         split_panel.SplitVertically(
             self.file_controller.file_view,
             notebook,
-            wx.ScreenDC().GetPPI()[0] * 2)
+            wx.ScreenDC().GetPPI()[0] * config_data['FileWidth'])
         #hsizer = wx.BoxSizer(wx.HORIZONTAL)
         #hsizer.Add(notebook, 1, wx.EXPAND | wx.EXPAND, 5)
         #hsizer.Add(self.file_controller.file_view, 0.2, wx.EXPAND, 0)

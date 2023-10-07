@@ -181,16 +181,18 @@ class CalculationFrame(wx.Frame):
             title,
             enviro,
             tot_per_rank=50000,
-            burnin=1000):
+            burnin=1000,
+            width=7,
+            height=4,
+            max_speed_per_cpu=800):
         self.enviro = enviro
         self.orig_stdout = sys.stdout
 
         """
     All parameters that need adjustment
     """
-        self.max_speed_per_cpu = 800
-        self.pixel_width = 700
-        self.pixel_height = 400
+        self.max_speed_per_cpu = max_speed_per_cpu
+        self.pixel_width, self.pixel_height = wx.ScreenDC().GetPPI().Scale(width, height)
         self.spacer_prop = 0.05
 
         self.tot_per_rank = tot_per_rank
