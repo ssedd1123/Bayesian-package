@@ -5,7 +5,16 @@ from pylab import acorr, mlab
 from matplotlib.widgets import Button
 from matplotlib.widgets import RadioButtons
 
-def PlotTrace(trace_filename, fig=None):
+def running_average(data, window_size):
+    # Define a simple averaging kernel
+    kernel = np.ones(window_size) / window_size
+
+    # Use numpy's convolve function to compute the running average
+    running_avg = np.convolve(data, kernel, mode='valid')
+
+    return running_avg
+
+def PlotTraceSteps(trace_filename, fig=None, trace_running_ave_size=0):
     # plot the result in a nice matrix of histograms
     id_to_model = None
     with pd.HDFStore(trace_filename, "r") as store:
@@ -27,7 +36,13 @@ def PlotTrace(trace_filename, fig=None):
     def drawTrace(pname):
         axes[0].clear()
         axes[1].clear()
-        axes[0].plot(trace.index[threadCP[0]:threadCP[1]], trace[pname][threadCP[0]:threadCP[1]])
+        tr = trace[pname][threadCP[0]:threadCP[1]]
+        id = trace.index[threadCP[0]:threadCP[1]]
+        axes[0].plot(id, tr)
+        window_size = trace_running_ave_size
+        if window_size > 1:
+            window_size = min(window_size, len(tr))
+            axes[0].plot(np.arange(window_size-1, len(tr)), running_average(tr, window_size))
         axes[0].set_ylabel(pname)
         axes[0].set_xlabel('trace')
         axes[1].acorr(trace[pname][threadCP[0]:threadCP[1]],  detrend=mlab.detrend_mean, maxlags=maxlags)

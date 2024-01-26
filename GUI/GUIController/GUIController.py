@@ -451,9 +451,9 @@ class GUIController:
                 fig = Figure((self.config_data['PopUpWidth'], self.config_data['PopUpHeight']), 75)
                 self.correlation_frame = MatplotlibFrame(None, fig)
             self.correlation_frame.fig.clf()
-            from PlotTrace import PlotTrace
+            from PlotTraceSteps import PlotTraceSteps
             try:
-                PlotTrace(self.file_model.trace_filename, self.correlation_frame.fig)
+                PlotTraceSteps(self.file_model.trace_filename, self.correlation_frame.fig, self.config_data['traceRunningWinSize'])
             except Exception as e:
                 raise e
             else:
