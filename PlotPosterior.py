@@ -8,7 +8,7 @@ import sys
 import time
 from multiprocessing import Pool
 
-from scipy.interpolate import InterpolatedUnivariateSpline
+from scipy.interpolate import InterpolatedUnivariateSpline, interp1d
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
@@ -25,7 +25,7 @@ one_sigma_confidence = 0.6827
 two_sigma_confidence = 0.9545
 
 
-def PlotOutput(filename, fig, n_samples=20000, trace_filename=None):
+def PlotOutput(filename, fig, n_samples=20000, trace_filename=None, discontVar=True):
     """
     Function to plot both the posterior and prior point
     if prior is chosen, it will chose points at random
@@ -118,10 +118,17 @@ def PlotOutput(filename, fig, n_samples=20000, trace_filename=None):
         korder = 2
     else:
         korder = 3
+
+    if discontVar:
+        # use step function if variables are discontineous
+        int_func = lambda x, y, **kwargs: interp1d(x, y, 'nearest', fill_value='extrapolate')
+    else:
+        int_func = InterpolatedUnivariateSpline
+
     prior_area = ax.fill_between(
         x_interpolate,
-        InterpolatedUnivariateSpline(X_fill, prior_interval[0], k=korder, ext=0)(x_interpolate),
-        InterpolatedUnivariateSpline(X_fill, prior_interval[1], k=korder, ext=0)(x_interpolate),
+        int_func(X_fill, prior_interval[0], k=korder, ext=0)(x_interpolate),
+        int_func(X_fill, prior_interval[1], k=korder, ext=0)(x_interpolate),
         alpha=1,
         color="skyblue",
         label=r"Prior region",
@@ -129,8 +136,8 @@ def PlotOutput(filename, fig, n_samples=20000, trace_filename=None):
     )
     ax.fill_between(
         x_interpolate,
-        InterpolatedUnivariateSpline(X_fill, posterior_interval[0], k=korder, ext=0)(x_interpolate),
-        InterpolatedUnivariateSpline(X_fill, posterior_interval[1], k=korder, ext=0)(x_interpolate),
+        int_func(X_fill, posterior_interval[0], k=korder, ext=0)(x_interpolate),
+        int_func(X_fill, posterior_interval[1], k=korder, ext=0)(x_interpolate),
         alpha=0.7,
         color="darkviolet",
         gid='post',
@@ -140,7 +147,7 @@ def PlotOutput(filename, fig, n_samples=20000, trace_filename=None):
     p2 = ax.fill(np.NaN, np.NaN, alpha=0.7, color="darkviolet")
     p1 = ax.plot(
         x_interpolate,
-        InterpolatedUnivariateSpline(X_fill, posterior_predictions, k=korder, ext=0)(x_interpolate),
+        int_func(X_fill, posterior_predictions, k=korder, ext=0)(x_interpolate),
         #label=r"Posterior mean value",
         linestyle="--",
         linewidth=4,
@@ -195,11 +202,11 @@ def PlotOutput(filename, fig, n_samples=20000, trace_filename=None):
     #            for collection in ax.collections:
     #                if collection.get_gid() == 'post':
     #                    collection.remove()
-    #            p1[0].set_ydata(InterpolatedUnivariateSpline(X_fill, posterior_predictions, k=korder, ext=0)(x_interpolate))
+    #            p1[0].set_ydata(int_func(X_fill, posterior_predictions, k=korder, ext=0)(x_interpolate))
     #            ax.fill_between(
     #                x_interpolate,
-    #                InterpolatedUnivariateSpline(X_fill, posterior_interval[0], k=korder, ext=0)(x_interpolate),
-    #                InterpolatedUnivariateSpline(X_fill, posterior_interval[1], k=korder, ext=0)(x_interpolate),
+    #                int_func(X_fill, posterior_interval[0], k=korder, ext=0)(x_interpolate),
+    #                int_func(X_fill, posterior_interval[1], k=korder, ext=0)(x_interpolate),
     #                alpha=0.7,
     #                color="darkviolet",
     #                gid='post',

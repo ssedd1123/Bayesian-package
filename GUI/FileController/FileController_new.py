@@ -30,14 +30,13 @@ class TreePanel(wx.Panel):
         self.add_btn.Bind(wx.EVT_BUTTON, self.on_add)
         self.remove_btn = wx.Button(self, -1, 'Remove', size=(50, 20))
         self.remove_btn.Bind(wx.EVT_BUTTON, lambda evt: self.remove_file(files=None, item=self.tree.GetFocusedItem()))
-        self.add_chain_btn = wx.Button(self, -1, 'Load chained', size=(50, 20))
-        self.add_chain_btn.Bind(wx.EVT_BUTTON, self.on_load_chain)
-        #self.add_chain_btn.Disable()
+        self.add_dir_btn = wx.Button(self, -1, 'Add Dir', size=(50, 20))
+        self.add_dir_btn.Bind(wx.EVT_BUTTON, self.on_add_dir)
 
         btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
         btn_sizer.Add(self.add_btn, 0.4)
         btn_sizer.Add(self.remove_btn, 0.4)
-        btn_sizer.Add(self.add_chain_btn, 0.4)
+        btn_sizer.Add(self.add_dir_btn, 0.4)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.tree, 1, wx.EXPAND)
@@ -62,6 +61,11 @@ class TreePanel(wx.Panel):
         item = self.find_file(filename)
         evt = wx.TreeEvent(wx.wxEVT_TREE_ITEM_ACTIVATED, self.tree, item)
         self.select_trace(evt)
+
+    def collapse(self, dirname):
+        item = self.find_file(dirname)
+        if not self._IsNodeAFile(item):
+            self.tree.Collapse(item)
 
     def select_trace(self, evt):
         item = evt.GetItem()
@@ -169,6 +173,21 @@ class TreePanel(wx.Panel):
         files = list(set(files))
         return files
 
+    @property
+    def list_dirnames(self):
+        items = self.tree.GetSelections()
+        dirs = []
+        for item in items:
+            if not self._IsNodeAFile(item):
+                dirs.append(self._GetFilename(item))
+        return dirs
+
+    def get_files_in_dir(self, dirname):
+        item = self.find_file(dirname)
+        visited = set()
+        return [self._GetFilename(i) for i in self._GetAllChildren(item, visited=visited)]
+
+
     def _GetAllChildren(self, root, no_metadata=True, visited=set()):
         if not root.IsOk():
             return []
@@ -195,6 +214,9 @@ class TreePanel(wx.Panel):
 
     def on_add(self, evt):
         pub.sendMessage("FileAdd")
+
+    def on_add_dir(self, evt):
+        pub.sendMessage("DirAdd")
 
     def add_meta_data(self, filename, metadata):
         node = self.find_file(filename)
@@ -442,6 +464,7 @@ class FileController:
         #self.display_view.display_file('test', 'test')
 
         pub.subscribe(self.add_file, 'FileAdd')
+        pub.subscribe(self.add_dir, 'DirAdd')
         pub.subscribe(self.add_meta_file, 'LoadChain')
         pub.subscribe(self._SyncDisplayData, 'traceFileChanged')
         pub.subscribe(self._SyncDisplayData, 'emulatorFileChanged')
@@ -457,16 +480,31 @@ class FileController:
         metadata = self.file_view.get_trace_metadata()
         self.add_file(metadata)
 
-    def add_file(self, filelist=None, exist_ok=False):
+    def add_dir(self):
+        self.add_file(None, False, True)
+
+    def add_file(self, filelist=None, exist_ok=False, add_dir=False):
         if filelist is None:
             # if there are emulator file, get the directory to it as default directory
             default_dir = ''
             if self.model.trace_filename is not None:
                 default_dir = os.path.dirname(self.model.trace_filename)
-            with wx.FileDialog(self.file_view, "Open file", defaultDir=default_dir, style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE) as fileDialog:
-                if fileDialog.ShowModal() == wx.ID_CANCEL:
-                    return
-                filelist = fileDialog.GetPaths()
+            if add_dir:
+                with wx.DirDialog(self.file_view, "Open Dir", defaultPath=default_dir, style=wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST) as dirDialog:
+                    if dirDialog.ShowModal() == wx.ID_CANCEL:
+                        return
+                    directory = dirDialog.GetPath()
+
+                    # get all files in all subdirectory
+                    filelist = []
+                    for path, subdirs, files in os.walk(directory):
+                        for name in files:
+                            filelist.append(os.path.join(path, name))
+            else:
+                with wx.FileDialog(self.file_view, "Open file", defaultDir=default_dir, style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE) as fileDialog:
+                    if fileDialog.ShowModal() == wx.ID_CANCEL:
+                        return
+                    filelist = fileDialog.GetPaths()
         else:
             if not isinstance(filelist, list):
                 filelist = [filelist]

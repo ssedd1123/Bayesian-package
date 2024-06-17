@@ -46,11 +46,14 @@ def GenerateTrace(
     emulators_list = []
     id_to_model_names = []
     parameters = []
+    pRanges = []
     for i, ename in enumerate(sorted(emulators.keys())):
       id_to_model_names.append(ename)
       emulators_list.append(emulators[ename])
       ind_parameters = []
+      ind_pRanges = []
       for name, row in prior.iterrows():
+          ind_pRanges.append(float(row['Max']) - float(row['Min']))
           if row["Type"] == "Uniform":
               ind_parameters.append(
                   pymc.Uniform(
@@ -72,6 +75,7 @@ def GenerateTrace(
                   )
               )
       parameters.append(ind_parameters)
+      pRanges.append(ind_pRanges)
 
     # transpose emulator_list
     emulators_list = list(map(list, zip(*emulators_list)))
@@ -107,6 +111,12 @@ def GenerateTrace(
         dbname=new_output_filename,
         db="hdf5",
         dbmode="w")
+
+    for prs, ps in zip(pRanges, parameters):
+        for pr, p in zip(prs, ps):
+            #mcmc.use_step_method(pymc.AdaptiveMetropolis, p)#, proposal_sd=0.5*pr)
+            mcmc.use_step_method(pymc.Metropolis, p, proposal_sd=pr)
+
 
     # sample from our posterior distribution 50,000 times, but
     # throw the first 20,000 samples out to ensure that we're only
@@ -243,7 +253,7 @@ if __name__ == "__main__":
 
     #comm = MPI.COMM_WORLD
     #size = comm.Get_size()
-    size = 1
+    size = 7
 
     work_environment = MasterSlave(None, ncores=size)#comm)
     parser = argparse.ArgumentParser(

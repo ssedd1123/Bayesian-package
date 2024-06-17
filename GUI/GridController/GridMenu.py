@@ -60,9 +60,8 @@ class GridPopupMenu(wx.Menu):
             self.redo,
         )
 
-
 class GridToolBar(wx.ToolBar):
-    def __init__(self, parent, **kwargs):
+    def __init__(self, parent, no_clear_all=False, **kwargs):
         super().__init__(parent, **kwargs)
         self.parent = parent
         undo_ico = wx.ArtProvider.GetBitmap(
@@ -77,9 +76,10 @@ class GridToolBar(wx.ToolBar):
         clear_ico = wx.ArtProvider.GetBitmap(
             wx.ART_CROSS_MARK, wx.ART_TOOLBAR, (16, 16))
         self.AddTool(wx.ID_CLEAR, "Clear Content", clear_ico, "")
-        delete_ico = wx.ArtProvider.GetBitmap(
-            wx.ART_DELETE, wx.ART_TOOLBAR, (16, 16))
-        self.AddTool(wx.ID_DELETE, "Clear All", delete_ico, "")
+        if not no_clear_all:
+            delete_ico = wx.ArtProvider.GetBitmap(
+                wx.ART_DELETE, wx.ART_TOOLBAR, (16, 16))
+            self.AddTool(wx.ID_DELETE, "Clear All", delete_ico, "")
         paste_ico = wx.ArtProvider.GetBitmap(
             wx.ART_PASTE, wx.ART_TOOLBAR, (16, 16))
         self.AddTool(wx.ID_PASTE, "Paste Special", paste_ico, "")
@@ -126,6 +126,10 @@ class GridToolBar(wx.ToolBar):
         self.EnableTool(wx.ID_UNDO, False)
         self.EnableTool(wx.ID_REDO, False)
         self.Realize()
+
+class GridToolBarNoClearAll(GridToolBar):
+    def __init__(self, parent, **kwargs):
+        super().__init__(parent, no_clear_all=True, **kwargs) 
 
 
 class PriorToolBar(GridToolBar):

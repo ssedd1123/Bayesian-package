@@ -10,7 +10,7 @@ import wx.grid as gridlib
 from pubsub import pub
 
 from GUI.GridController.GridData import GridData
-from GUI.GridController.GridMenu import GridPopupMenu, GridToolBar, PriorToolBar
+from GUI.GridController.GridMenu import GridPopupMenu, GridToolBar, GridToolBarNoClearAll, PriorToolBar
 from GUI.GridController.GridViewer import DataDirectionDialog, MyGrid, PasteSpecialDialog
 
 
@@ -376,18 +376,18 @@ class ScrollSync(wx.EvtHandler):
 
 
 class SplitViewController:
-    def __init__(self, parent, nrows=200, nlayers=100):
+    def __init__(self, parent, nrows=200, nlayers=100, no_clear_all=False):
         self.view = wx.SplitterWindow(parent)
         left_panel = wx.Panel(self.view)
         right_panel = wx.Panel(self.view)
-        self.controller_right = GridController(right_panel, nrows, nlayers)
+        self.controller_right = GridController(right_panel, nrows, nlayers, toolbar_type=GridToolBarNoClearAll if no_clear_all else GridToolBar)
         grid_sizer = wx.BoxSizer(wx.VERTICAL)
         grid_sizer.Add(self.controller_right.toolbar, 0, wx.EXPAND)
         grid_sizer.Add(self.controller_right.view, 1, wx.EXPAND)
         self.controller_right.view.SetRowLabelSize(5)
         right_panel.SetSizer(grid_sizer)
 
-        self.controller_left = GridController(left_panel, nrows, nlayers)
+        self.controller_left = GridController(left_panel, nrows, nlayers, toolbar_type=GridToolBarNoClearAll if no_clear_all else GridToolBar)
         grid_sizer = wx.BoxSizer(wx.VERTICAL)
         grid_sizer.Add(self.controller_left.toolbar, 0, wx.EXPAND)
         grid_sizer.Add(self.controller_left.view, 1, wx.EXPAND)
