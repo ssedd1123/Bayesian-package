@@ -33,8 +33,8 @@ class SelectOption(wx.Dialog):
         self.rbox = wx.RadioBox(
             panel,
             label="Methods for PCA components",
-            choices=["PCA Components", "PCA Fraction"],
-            majorDimension=1,
+            choices=["PCA Components", "No PCA", "PCA Fraction"],
+            majorDimension=2,
             style=wx.RA_SPECIFY_ROWS,
         )
         self.rbox_choice = "PCA Components"
@@ -82,6 +82,10 @@ class SelectOption(wx.Dialog):
     def OnRadioBox(self, evt):
         self.rbox_choice = self.rbox.GetStringSelection()
         self.title["PCA Components"].SetLabel(self.rbox_choice)
+        if self.rbox_choice == 'No PCA':
+            self.output["PCA Components"].Enable(False)
+        else:
+            self.output["PCA Components"].Enable(True)
 
     def OnClose(self, evt):
         if self.IsModal():
@@ -91,10 +95,14 @@ class SelectOption(wx.Dialog):
 
     def AdditionalData(self):
         # args['covariancefunc'] = self.Cov_func[self.combo_cov_func.GetSelection()]
-        args = {}
+        args = {'PCA': True}
         if self.rbox_choice == "PCA Fraction":
             args["principalcomp"] = None
             args["fraction"] = float(self.output["PCA Components"].GetValue())
+        elif self.rbox_choice == 'No PCA':
+            args["principalcomp"] = None
+            args["fraction"] = None
+            args["PCA"] = False
         else:
             args["principalcomp"] = int(
                 self.output["PCA Components"].GetValue())

@@ -144,6 +144,7 @@ def Training(
     maxsteps=1000,
     abs_output=False,
     gradthreshold=1e-5,
+    PCA=True,
     **kwargs
 ):
 
@@ -178,10 +179,10 @@ def Training(
         initialscale = np.full(len(parameter_names), initialscale[0])
 
     clf = pl.PipeLine(
+        ([("Normalize", pl.Normalize()), 
+          ("PCA", pl.PCA(principalcomp, fraction)), 
+          ("NormalizeNew", pl.Normalize(ignore_X=True)) ] if PCA else [("Normalize", pl.Normalize())]) +
         [
-            ("Normalize", pl.Normalize()),
-            ("PCA", pl.PCA(principalcomp, fraction)),
-            ("NormalizeNew", pl.Normalize(ignore_X=True)),
             (
                 "Emulator",
                 pl.MultEmulator(
