@@ -50,11 +50,14 @@ class Transformer:
             deg_free = Y.shape[1]
             predict_Y, cov = self.Predict(X)
             chisq = 0
-            for y, p_y, co in zip(Y, predict_Y, cov):
-                # var = np.diag(co)
-                # chisq += (np.square(y - p_y)/var).sum()
-                chisq += np.dot(y - p_y, np.linalg.solve(co, (y - p_y)).T)
-            return chisq / num_pts / deg_free
+            try:
+                for y, p_y, co in zip(Y, predict_Y, cov):
+                    # var = np.diag(co)
+                    # chisq += (np.square(y - p_y)/var).sum()
+                    chisq += np.dot(y - p_y, np.linalg.solve(co, (y - p_y)).T)
+                return chisq / num_pts / deg_free
+            except nnp.linalg.linalg.LinAlgError:
+                return 0 # if cov is singular (err is zero)
         else:
             return 0
 
@@ -206,8 +209,10 @@ class PCA(Transformer):
         self.cov = np.cov(Y.T)
         if not self.cov.shape:
             # you could be spllied with a 1 feature data set, in which cas self.cov is just a number
-            self.eigval = self.cov
+            self.eigval = np.atleast_2d(self.cov)
             self.eigvec = np.eye(1)
+            self.eigvalFull = self.eigval
+            self.eigvecFull = self.eigvec
             self.cov = self.cov.reshape(-1, 1)
         else:
             self.eigval, self.eigvec = np.linalg.eigh(self.cov)
