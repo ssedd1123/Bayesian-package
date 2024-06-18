@@ -30,7 +30,6 @@ def PlotClosureTest(fig, varNames, truths, predictions, prediction_errs):
     truths = np.atleast_2d(truths)
     predictions = np.atleast_2d(predictions)
     prediction_errs = np.atleast_2d(prediction_errs)
-
     assert truths.shape == predictions.shape, "Shape of truths and predictions are not identical!"
 
     nvar = predictions.shape[1]
@@ -65,9 +64,9 @@ def PlotClosureTestEmulator(filename, fig, truth_paras, truths):
     predictions = []
     prediction_errs = []
     for para in truth_paras:
-        result, cov = clf.Predict(para) 
-        predictions.append(np.squeeze(result))
-        prediction_errs.append(np.sqrt(np.diag(np.squeeze(cov))))
+        result, cov = clf.Predict(para)
+        predictions.append(np.atleast_1d(np.squeeze(result)))
+        prediction_errs.append(np.sqrt(np.diag(np.atleast_2d(np.squeeze(cov)))))
 
     PlotClosureTest(fig, para_name, truths, predictions, prediction_errs)
        

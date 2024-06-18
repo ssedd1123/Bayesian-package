@@ -111,11 +111,11 @@ def GenerateTrace(
         dbname=new_output_filename,
         db="hdf5",
         dbmode="w")
-
+    
     for prs, ps in zip(pRanges, parameters):
         for pr, p in zip(prs, ps):
-            #mcmc.use_step_method(pymc.AdaptiveMetropolis, p)#, proposal_sd=0.5*pr)
-            mcmc.use_step_method(pymc.Metropolis, p, proposal_sd=pr)
+            mcmc.use_step_method(pymc.AdaptiveMetropolis, p, shrink_if_necessary=True, cov=np.atleast_2d(np.square(0.5*pr)))
+            #mcmc.use_step_method(pymc.Metropolis, p, proposal_sd=0.5*pr)
 
 
     # sample from our posterior distribution 50,000 times, but
