@@ -185,19 +185,16 @@ class ClosureTestController(SplitViewController):
                     max_speed_per_cpu=self.config_data['MaxSpeedPerCPU'])
                 frame.Show()
 
-                try:
-                    frame.OnCalculate(
-                        {
-                            "config_file": filenames,
-                            "nsteps": nevent,
-                            "clear_trace": options["clear_trace"],
-                            "burnin": options["burnin"],
-                            "model_comp": options['model_comp']
-                        }
-                    )
-                    self.head_controller.view.file_controller.update_metadata(trace_file)
-                except ThreadsException as ex:
-                    wx.MessageBox(str(ex), 'Error', wx.OK | wx.ICON_ERROR)
+                frame.OnCalculate(
+                    {
+                        "config_file": filenames,
+                        "nsteps": nevent,
+                        "clear_trace": options["clear_trace"],
+                        "burnin": options["burnin"],
+                        "model_comp": options['model_comp']
+                    }
+                )
+                self.head_controller.view.file_controller.update_metadata(trace_file)
 
 
 
@@ -221,6 +218,7 @@ class ClosureTestController(SplitViewController):
             _, basename = os.path.split(file)
             # switch file for bayes
             self.head_controller.file_model.trace_filename = file
+            self.head_controller.file_model.emulate_filename = file
             # get all entries from closure_test
             closure_truth = self.right_model.GetData().to_numpy().astype('float')
             # will use the same fractional error as data for closure test
@@ -232,7 +230,7 @@ class ClosureTestController(SplitViewController):
                 new_dir = os.path.join(curr_path, '%s_%d' % (prefix, i))
                 os.makedirs(new_dir, exist_ok=True)
                 new_file = os.path.join(new_dir, basename)
-                shutil.copy2(self.head_controller.file_model.trace_filename, new_file)
+                shutil.copy2(file, new_file)
 
                 exp = pd.DataFrame.from_dict({"Values": truth, "Errors": np.abs(err_frac*truth)}, orient='index')
     

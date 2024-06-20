@@ -341,6 +341,7 @@ class CalculationFrame(wx.Frame):
                             speed = 0
                             self.info_bar.PrintInfo(
                                 'Error from worker %d' % idx)
+                            raise RuntimeError(result)
                         else:
                             num = re.findall(r"\d+\.?\d*", result)
                             last_num = int(num[1])
