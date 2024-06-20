@@ -17,10 +17,12 @@ import json
 import Utilities.GradientDescent as gd
 from GUI.GridController.GridController import (GridController, PriorController,
                                                SplitViewController)
+from GUI.GUIController.ClosureTestController import ClosureTestController
+from GUI.GUIController.EvalEmuController import EvalEmuController
+
 from GUI.FileController.FileController_new import FileController
 from GUI.FlexMessageBox import FlexMessageBox
 from GUI.MatplotlibFrame import MatplotlibFrame
-from Utilities.Utilities import GetTrainedEmulator
 from GUI.TrainingProgressFrame import TrainingProgressFrame
 from Utilities.MasterSlaveMP import ThreadsException
 
@@ -44,15 +46,10 @@ class GUIController:
         self.exp_view = self.view.exp_controller.view
         self.exp_model = self.view.exp_controller.model
 
-        self.emulator_input_model = self.view.manual_emulation_controller.left_model
-        self.emulator_input_view = self.view.manual_emulation_controller.left_view
-        self.emulator_output_model = self.view.manual_emulation_controller.right_model
-        self.emulator_output_view = self.view.manual_emulation_controller.right_view
-
-        self.closure_test_input_model =  self.view.closure_test_controller.left_model
-        self.closure_test_input_view =   self.view.closure_test_controller.left_view
-        self.closure_test_output_model = self.view.closure_test_controller.right_model
-        self.closure_test_output_view =  self.view.closure_test_controller.right_view
+        self.plugin_controllers = {}
+        for key, controller in self.view.plugins.items():
+            controller.SetHeadController(self)
+            self.plugin_controllers[key] = controller
 
         self.file_view = self.view.file_controller.file_view
         self.display_view = self.view.file_controller.display_view
@@ -82,17 +79,7 @@ class GUIController:
             self.CheckObj,
             "MenuBar_IndividualEmulate",
             func=self.IndividualEmulate)
-        pub.subscribe(
-            self.CheckObj,
-            "MenuBar_DirectoryEmulate",
-            func=self.DirectoryEmulate)
 
-        pub.subscribe(self.CheckObj, "MenuBar_EvalEmu", func=self.EvalEmu)
-        pub.subscribe(self.CheckObj, "MenuBar_EvalClosureTest", func=self.EvalClosureTest)
-        pub.subscribe(self.CheckObj, "MenuBar_GenClosureRand", func=self.GenClosureRand)
-        pub.subscribe(self.CheckObj, "MenuBar_PosteriorClosureTest", func=self.PosteriorClosureTest)
-
-        pub.subscribe(self.CheckObj, "MenuBar_GenClosureBayes", func=self.SaveForBayesClosure)
         pub.subscribe(self.CheckObj, "MenuBar_Report", func=self.TrainReport)
         pub.subscribe(
             self.CheckObj,
@@ -194,67 +181,7 @@ class GUIController:
             FlexMessageBox(description, self.view, title='Summary').Show()
 
 
-    def PosteriorClosureTest(self, obj, evt):
-        if self.file_model.trace_filename is None:
-            wx.MessageBox(
-                'No trace file is selected. Trace are loaded from highlighted directories with the same name. Please open one trace file with the right filename.',
-                'Error',
-                wx.OK | wx.ICON_ERROR)
-            return
-        trace_name = os.path.basename(self.file_model.trace_filename)
-
-        # get true parameters
-        para_table = self.closure_test_input_model.GetData()
-        para = para_table.astype(float).to_numpy()
-        par_names = list(para_table.columns.values)
-        if para.shape[0] == 0:
-            raise RuntimeError('No truth data is available on tab "Closure test"')
-
-        # verify number of highlighted directories = number of true parameters
-        dirs = self.file_model.list_dirnames
-        ordered_dir = []
-        prefix = None
-
-        # check if all highlighted directories share the same suffix
-        truths = []
-        predictions = []
-        prediction_errs = []
-        for i, truth  in enumerate(para):
-            suffix = '_%d' % i
-            for directory in dirs:
-                if directory.endswith(suffix):
-                    if prefix is None:
-                        prefix = directory[:-len(suffix)]
-                    elif prefix != directory[:-len(suffix)]:
-                        raise RuntimeError('Not all directories has the same prefix! Please only highlight the relavent directories')
-                    dirs.remove(directory)
-
-                    # find trace medium and C.I.
-                    with pd.HDFStore(os.path.join(directory, trace_name), 'r') as store:
-                        if 'trace' in store:
-                            trace = store['trace']
-                            # only select columns in prior
-                            y_range = trace[par_names].quantile([0.5-0.68/2, 0.5, 0.5+0.68/2])
-
-                            truths.append(truth)
-                            predictions.append(y_range.iloc[1].astype('float').to_numpy())
-                            prediction_errs.append([y_range.iloc[1].astype('float').to_numpy() - y_range.iloc[0].astype('float').to_numpy(),
-                                                    y_range.iloc[2].astype('float').to_numpy() - y_range.iloc[1].astype('float').to_numpy()])
-                    break
-
-        from PlotClosureTest import PlotClosureTest
-        if not self.correlation_frame:
-            fig = Figure((self.config_data['PopUpWidth'], self.config_data['PopUpHeight']), 75)
-            self.correlation_frame = MatplotlibFrame(None, fig)
-        self.correlation_frame.fig.clf()
-
-        PlotClosureTest(self.correlation_frame.fig, par_names, truths, predictions, prediction_errs)
-        self.correlation_frame.SetData()
-        self.correlation_frame.Show()
-
-
-
-    def _GenHyperCube(self, obj, evt, model, view, rand=False):
+    def GenHyperCube(self, obj, evt):
         prior = self.prior_model.GetData(drop_index=False)
         if prior.empty:
             raise RuntimeError('You need to fill up your parameter range')
@@ -278,22 +205,13 @@ class GUIController:
             ranges[:,0] = ranges[:, 0] - pad*span
             ranges[:,1] = ranges[:, 1] + pad*span
 
-            from Utilities.LatinHyperCube import GenerateLatinHyperCube, GenerateRandomLattice
+            from Utilities.LatinHyperCube import GenerateLatinHyperCube
 
-            if rand:
-                content = GenerateRandomLattice(NPts, ranges)
-            else:
-                content = GenerateLatinHyperCube(NPts, ranges)
+            content = GenerateLatinHyperCube(NPts, ranges)
             rows = np.arange(1, 1 + content.shape[0])
             cols = np.arange(0, content.shape[1])
-            model.SetValue(rows, cols, content)
-            view.ForceRefresh()
-
-    def GenHyperCube(self, obj, evt):
-        self._GenHyperCube(obj, evt, self.model_par_model, self.model_par_view)
-
-    def GenClosureRand(self, obj, evt):
-        self._GenHyperCube(obj, evt, self.closure_test_input_model, self.closure_test_input_view, True)
+            self.model_par_model.SetValue(rows, cols, content)
+            self.model_par_view.ForceRefresh()
 
 
     def TrainReport(self, obj, evt):
@@ -372,66 +290,6 @@ class GUIController:
                 except ThreadsException as ex:
                     wx.MessageBox(str(ex), 'Error', wx.OK | wx.ICON_ERROR)
 
-    def DirectoryEmulate(self, obj, evt):
-        # perform bayesian analysis on all files within a directory
-        dirs = self.file_model.list_dirnames
-        if len(dirs) == 0:
-            raise RuntimeError('No directory selected')
-        # check if all files in every directories are identical
-        files = None
-        for directory in dirs:
-            if files is None:
-                files = set(os.listdir(directory))
-            else:
-                if files != set(os.listdir(directory)):
-                    raise RuntimeError('Files in directory ' + directory + ' is different from the rest!.')
-
-        # print list of directories and files
-        string = "Directories to emulate:\n\n" + '\n'.join(dirs)
-        string = string + "\n\nChoose file where traces are saved."
-
-        dlg = wx.SingleChoiceDialog(self.view, string, "Trace selection", list(files))
-        if dlg.ShowModal() == wx.ID_OK:
-            trace_name = dlg.GetStringSelection()
-        dlg.Destroy()
-
-        # do analysis on each directory
-        from GUI.SelectEmulationOption import SelectEmulationOption
-        from GUI.Model import CalculationFrame
-
-        EmuOption = SelectEmulationOption(self.view, model_comp=False)
-        res = EmuOption.ShowModal()
-        if res == wx.ID_OK:
-            options = EmuOption.GetValue()
-            nevent = options["nevent"]
-
-            for directory in dirs:
-                filenames = [os.path.join(directory, file) for file in files]
-                # move trace name to the first element of the list
-                trace_file = os.path.join(directory, trace_name)
-                filenames.insert(0, filenames.pop(filenames.index(trace_file)))
-
-                frame = CalculationFrame(
-                    None, -1, "Progress on " + directory, self.workenv, nevent, 
-                    width=self.config_data['GaugeWidth'], height=self.config_data['GaugeHeight'], 
-                    max_speed_per_cpu=self.config_data['MaxSpeedPerCPU'])
-                frame.Show()
-
-                try:
-                    frame.OnCalculate(
-                        {
-                            "config_file": filenames,
-                            "nsteps": nevent,
-                            "clear_trace": options["clear_trace"],
-                            "burnin": options["burnin"],
-                            "model_comp": options['model_comp']
-                        }
-                    )
-                    self.view.file_controller.update_metadata(trace_file)
-                except ThreadsException as ex:
-                    wx.MessageBox(str(ex), 'Error', wx.OK | wx.ICON_ERROR)
-
-
     def Emulate(self, obj, evt, single_file=True):
         if self.file_model.trace_filename is None:
             wx.MessageBox(
@@ -502,58 +360,11 @@ class GUIController:
                         }
                     )
                     self.view.file_controller.update_metadata(self.file_model.trace_filename)
+                    for _, plugins in self.plugin_controllers.items():
+                        plugins.Save()
                     self.Correlation(None, None, False)
                 except ThreadsException as ex:
                     wx.MessageBox(str(ex), 'Error', wx.OK | wx.ICON_ERROR)
-
-    def EvalEmu(self, obj, evt):
-        data = self.emulator_input_model.GetData()
-        if data.shape[0] > 0:  # emulator_input contains more than the header
-            np_data = data.astype(float).to_numpy()
-            if self.file_model.emulator_filename is not None:
-                clf = GetTrainedEmulator(self.file_model.emulator_filename)[0]
-                for idx, row in enumerate(np_data):
-                    if not np.isnan(row).any():
-                        try:
-                            prediction, cov = clf.Predict(row)
-                        except Exception:
-                            continue
-                        prediction = np.atleast_1d(np.squeeze(prediction))
-                        dim = int(prediction.shape[0])
-                        cov = np.atleast_1d(np.squeeze(cov))
-                        self.emulator_output_model.ChangeValues(
-                            idx + 1,
-                            np.arange(dim),
-                            prediction,
-                            send_changed=False,
-                        )  # y-index add one to not overwrite header
-                        self.emulator_output_model.ChangeValues(
-                            idx + 1,
-                            np.arange(
-                                dim,
-                                2 * dim),
-                            np.sqrt(
-                                np.diag(cov)),
-                            send_changed=False,
-                        )
-                        self.view.Refresh()
-
-    def EvalClosureTest(self, obj, evt):
-        data = self.closure_test_input_model.GetData()
-        truths = self.closure_test_output_model.GetData()
-        if data.shape[0] > 0:  # emulator_input contains more than the header
-            data = data.astype(float).to_numpy()
-            truths = truths.astype(float).to_numpy()
-            if self.file_model.emulator_filename is not None:
-                from PlotClosureTest import PlotClosureTestEmulator
-                if not self.correlation_frame:
-                    fig = Figure((self.config_data['PopUpWidth'], self.config_data['PopUpHeight']), 75)
-                    self.correlation_frame = MatplotlibFrame(None, fig)
-                self.correlation_frame.fig.clf()
-
-                PlotClosureTestEmulator(self.file_model.trace_filename, self.correlation_frame.fig, data, truths)
-                self.correlation_frame.SetData()
-                self.correlation_frame.Show()
 
     def Correlation(self, obj, evt, ask_options=True):
         if self.file_model.trace_filename is not None:
@@ -576,7 +387,7 @@ class GUIController:
             from Utilities.Utilities import PlotTrace
 
             if kwargs["overlay_pt"]:
-                kwargs["mark_point"] = self.emulator_input_model.GetData()
+                kwargs["mark_point"] = self.plugin_controllers['Ask emulator'].left_model.GetData()
             del kwargs["overlay_pt"]
             kwargs['model_filename'] = self.file_model.emulator_filename
 
@@ -676,47 +487,9 @@ class GUIController:
                 self.view.prior_controller.SetModelName(model_name)
             else:
                 raise RuntimeError('Model values has changed. You must train the emulator again')
-                #wx.MessageBox(
-                #    "Model values has changed. You must train the emulator again",
-                #    "Error",
-                #    wx.OK | wx.ICON_ERROR,
-                #)
 
-    def SaveForBayesClosure(self, obj, evt, prefix=None):
-        # get all entries from closure_test
-        closure_truth = self.closure_test_output_model.GetData().to_numpy().astype('float')
-        # will use the same fractional error as data for closure test
-        exp = self.exp_model.GetData(drop_index=False).astype("float")
-        err_frac = exp.loc['Errors'].astype('float')/exp.loc['Values'].astype('float')
-
-        if prefix is None:
-            dlg = wx.TextEntryDialog(obj, 'Directory prefix for all closure files.', 'Directory name')
-            if dlg.ShowModal() == wx.ID_OK:
-                prefix = dlg.GetValue()
-                dlg.Destroy()
-            else:
-                dlg.Destroy()
-                return
-
-        orig = self.file_model.trace_filename
-        curr_path, basename = os.path.split(orig)
-        for i, truth in enumerate(closure_truth):
-            new_dir = os.path.join(curr_path, '%s_%d' % (prefix, i))
-            os.makedirs(new_dir, exist_ok=True)
-            new_file = os.path.join(new_dir, basename)
-            shutil.copy2(self.file_model.trace_filename, new_file)
-
-            exp = pd.DataFrame.from_dict({"Values": truth, "Errors": np.abs(err_frac*truth)}, orient='index')
-    
-            with pd.HDFStore(new_file, "a") as store:
-                from ChangeFileContent import ChangeFileContent
-                ChangeFileContent(store, None, exp, None)
-            
-            self.LoadFile(new_file)
-            self.file_view.collapse(new_dir)
-        self.file_view.select(orig)
-
-        
+        for _, plugins in self.plugin_controllers.items():
+            plugins.Save()
         
 
     def Save(self, obj, evt):
@@ -837,6 +610,9 @@ class GUIController:
             pub.unsubscribe(gaugeUpdate, "GradientProgress")
             gauge.Destroy()
 
+        for _, plugins in self.plugin_controllers.items():
+            plugins.SaveNew(outFile[0])
+
         #if self.file_model.emulator_filename is not None:
         #     if self.file_model.emulator_filename != outFile[0]:
         #    self.view.file_controller.remove_file_highlight_inplace(
@@ -897,6 +673,10 @@ class GUIController:
         self.model_obs_model.ResetUndo()
         self.exp_model.ResetUndo()
 
+        for _, plugins in self.plugin_controllers.items():
+            plugins.LoadFile(filename)
+ 
+
     def EmulatorCheck(self, obj, evt):
         if self.file_model.emulator_filename is not None:
             from GUI.EmulatorController.EmulatorViewer import \
@@ -909,24 +689,8 @@ class GUIController:
         rows = evt[0]
         cols = evt[1]
         if 0 in rows:
-            self._SyncHeaders2Ways(obj, self.prior_model, self.model_par_model, 
-                                  self.emulator_input_model, self.closure_test_input_model)
-            self._SyncHeaders2Ways(obj, self.exp_model, self.model_obs_model, self.closure_test_output_model)
-            # self._SyncHeaders2Ways(self.exp_model, self.exp_model, self.emulator_output_model)
-            value = (
-                self.exp_model.data.iloc[0]
-                .replace(r"^\s*$", np.nan, regex=True)
-                .dropna(how="all")
-            )
-            value = np.append(
-                value,
-                ["%s_Err" % val for val in value]
-                + [None for i in range(self.exp_model.data.shape[1])],
-            )
-            self.emulator_output_model.ChangeValues(
-                0, np.arange(value.shape[0]), value, send_changed=False
-            )  # Error is added to the header of emulator output
-
+            self._SyncHeaders2Ways(obj, self.prior_model, self.model_par_model) 
+            self._SyncHeaders2Ways(obj, self.exp_model, self.model_obs_model)
             self.view.Refresh()
 
     def _SyncHeaders2Ways(self, obj, *models): # model1, model2):
@@ -993,95 +757,13 @@ class GUIViewer(wx.Frame):
 
         # exp_panel.SetSizer(exp_sizer)
         #notebook.AddPage(exp_panel, "Experimental data")
+        plugin_lists = {'Ask emulator': EvalEmuController, 'Closure': ClosureTestController}
+        self.plugins = {}
 
-        manual_emulation_panel = wx.Panel(notebook)
-        self.manual_emulation_controller = SplitViewController(
-            manual_emulation_panel, config_data['GridNRow'], config_data['GridNCol'], no_clear_all=True
-        )
-        self.manual_emulation_controller.right_view.SetDefaultCellBackgroundColour(
-            "Grey")
-        # disable edition in all cells in this panel
-        # this panel is only meant to output data, not for editing
-        self.manual_emulation_controller.right_view.EnableEditing(False)
-        attr = gridlib.GridCellAttr()
-        # first row is reserved for header
-        attr.SetReadOnly(True)
-        attr.SetBackgroundColour("Grey")
-        self.manual_emulation_controller.left_view.SetRowAttr(0, attr)
-
-        EvalEmuButton = wx.Button(
-            manual_emulation_panel, -1, "Evaluate emulator")
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(EvalEmuButton)
-        EvalEmuButton.Bind(
-            wx.EVT_BUTTON,
-            lambda evt: pub.sendMessage("MenuBar_EvalEmu", obj=self, evt=evt),
-        )
-        sizer.Add(self.manual_emulation_controller.view, 1, wx.EXPAND)
-        manual_emulation_panel.SetSizer(sizer)
-        notebook.AddPage(manual_emulation_panel, "Ask emulator")
-
-        # panel for closure test
-        closure_test_panel = wx.Panel(notebook)
-        self.closure_test_controller = SplitViewController(
-            closure_test_panel, config_data['GridNRow'], config_data['GridNCol'], no_clear_all=True
-        )
-        # attr has to be duplicated to avoid reference counting error
-        # first row of both left and right panel are not multable
-        attr = gridlib.GridCellAttr()
-        # first row is reserved for header
-        attr.SetReadOnly(True)
-        attr.SetBackgroundColour("Grey")
-
-        self.closure_test_controller.left_view.SetRowAttr(0, attr)
-
-        # first row of both left and right panel are not multable
-        attr = gridlib.GridCellAttr()
-        # first row is reserved for header
-        attr.SetReadOnly(True)
-        attr.SetBackgroundColour("Grey")
-        self.closure_test_controller.right_view.SetRowAttr(0, attr)
-
-        button_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        GenHyperCubeButton = wx.Button(
-            closure_test_panel, -1, "Gen closure para")
-        button_sizer.Add(GenHyperCubeButton)
-        GenHyperCubeButton.Bind(
-            wx.EVT_BUTTON,
-            lambda evt: pub.sendMessage("MenuBar_GenClosureRand", obj=self, evt=evt)
-        )
-
-        EvalClosureButton = wx.Button(
-            closure_test_panel, -1, "Test")
-        button_sizer.Add(EvalClosureButton)
-        EvalClosureButton.Bind(
-            wx.EVT_BUTTON,
-            lambda evt: pub.sendMessage("MenuBar_EvalClosureTest", obj=self, evt=evt)
-        )
-
-        GenClosureBayesButton = wx.Button(
-            closure_test_panel, -1, "Gen closure Bayes")
-        button_sizer.Add(GenClosureBayesButton)
-        GenClosureBayesButton.Bind(
-            wx.EVT_BUTTON,
-            lambda evt: pub.sendMessage("MenuBar_GenClosureBayes", obj=self, evt=evt)
-        )
-
-        EvalClosureBayesButton = wx.Button(
-            closure_test_panel, -1, "Compare posterior with truth")
-        button_sizer.Add(EvalClosureBayesButton)
-        EvalClosureBayesButton.Bind(
-            wx.EVT_BUTTON,
-            lambda evt: pub.sendMessage("MenuBar_PosteriorClosureTest", obj=self, evt=evt)
-        )
-
-
-
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(button_sizer)
-        sizer.Add(self.closure_test_controller.view, 1, wx.EXPAND)
-        closure_test_panel.SetSizer(sizer) 
-        notebook.AddPage(closure_test_panel, "Closure test")
+        for key, controller_constructor in plugin_lists.items():
+            plugin_panel = wx.Panel(notebook)
+            self.plugins[key] = controller_constructor(plugin_panel, config_data)
+            notebook.AddPage(plugin_panel, key)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         self.file_controller = FileController(
