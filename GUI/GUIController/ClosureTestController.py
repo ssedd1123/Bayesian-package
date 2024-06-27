@@ -218,7 +218,7 @@ class ClosureTestController(SplitViewController):
             _, basename = os.path.split(file)
             # switch file for bayes
             self.head_controller.file_model.trace_filename = file
-            self.head_controller.file_model.emulate_filename = file
+            self.head_controller.file_model.emulator_filename = file
             # get all entries from closure_test
             closure_truth = self.right_model.GetData().to_numpy().astype('float')
             # will use the same fractional error as data for closure test
