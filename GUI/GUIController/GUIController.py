@@ -283,7 +283,9 @@ class GUIController:
                             "nsteps": nevent,
                             "clear_trace": options["clear_trace"],
                             "burnin": options["burnin"],
-                            "model_comp": options['model_comp']
+                            "model_comp": options['model_comp'],
+                            "adaptive": options['adaptive'],
+                            "step_sd_scale": options['step_sd_scale']
                         }
                     )
                     self.view.file_controller.update_metadata(file_)

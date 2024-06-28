@@ -36,7 +36,9 @@ def GenerateTrace(
         id_,
         iter,
         output_filename,
-        burnin=1000):
+        burnin=1000,
+        adaptive=False,
+        step_sd_scale=1):
     """
     The main function to generate pandas trace file after comparing the emulator with experimental value
     Uses pymc2 as it is found to be faster
@@ -114,8 +116,10 @@ def GenerateTrace(
     
     for prs, ps in zip(pRanges, parameters):
         for pr, p in zip(prs, ps):
-            mcmc.use_step_method(pymc.AdaptiveMetropolis, p, shrink_if_necessary=True, cov=np.atleast_2d(np.square(0.5*pr)))
-            #mcmc.use_step_method(pymc.Metropolis, p, proposal_sd=0.5*pr)
+            if adaptive:
+                mcmc.use_step_method(pymc.AdaptiveMetropolis, p, shrink_if_necessary=False, cov=np.atleast_2d(np.square(step_sd_scale*pr)))
+            else:
+                mcmc.use_step_method(pymc.Metropolis, p, proposal_sd=step_sd_scale*pr)
 
 
     # sample from our posterior distribution 50,000 times, but
@@ -127,7 +131,7 @@ def GenerateTrace(
     return new_output_filename, id_to_model_names  # pd.DataFrame.from_dict(trace_dict)
 
 
-def MCMCParallel(config_file, dirpath=None, nevents=10000, burnin=1000, model_comp=False):
+def MCMCParallel(config_file, dirpath=None, nevents=10000, burnin=1000, model_comp=False, adaptive=False, step_sd_scale=1):
     if isinstance(config_file, str):
         config_file = [config_file]
 
@@ -172,6 +176,8 @@ def MCMCParallel(config_file, dirpath=None, nevents=10000, burnin=1000, model_co
         nevents,
         os.path.join(dirpath, "temp"),
         burnin,
+        adaptive,
+        step_sd_scale
     )
     return result
 

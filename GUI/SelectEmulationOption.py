@@ -11,6 +11,7 @@ class SelectEmulationOption(wx.Dialog):
         content = {
             "nevent": ("Events per core", 10000),
             "burnin": ("Burn in size", 1000),
+            "step_sd_scale": ("MCMC step scale", 1),
         }
         self.values = {}
 
@@ -29,6 +30,10 @@ class SelectEmulationOption(wx.Dialog):
         if not model_comp:
             self.model_comp.Disable()
         sizer.Add(self.model_comp)
+
+        self.adaptive = wx.CheckBox(self, label="Adaptive Metropolis?")
+        sizer.Add(self.adaptive)
+
         self.button = wx.Button(self, wx.ID_OK, "Submit")
         sizer.Add(self.button)
         self.SetSizer(sizer)
@@ -48,6 +53,8 @@ class SelectEmulationOption(wx.Dialog):
             except Exception as e:
                 print("Cannot cast result to integers")
                 print(e, flush=True)
+        result['step_sd_scale'] = float(self.values['step_sd_scale'].GetValue())
         result["clear_trace"] = self.clear_trace.GetValue()
         result["model_comp"] = self.model_comp.GetValue()
+        result["adaptive"] = self.adaptive.GetValue()
         return result
