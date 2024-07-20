@@ -56,13 +56,13 @@ def GenerateTrace(
       ind_pRanges = []
       for name, row in prior.iterrows():
           ind_pRanges.append(float(row['Max']) - float(row['Min']))
-          if row["Type"] == "Uniform":
+          if row["Type"] == "Uniform" or row["Type"] == 'Uniform with mean':
               ind_parameters.append(
                   pymc.Uniform(
                       name if i == 0 else '%s_%d' % (name, i),
                       float(row["Min"]),
                       float(row["Max"]),
-                      value=0.5 * (float(row["Min"]) + float(row["Max"])),
+                      value=float(row['Mean']) if row['Type'] == 'Uniform with mean' else 0.5 * (float(row["Min"]) + float(row["Max"])),
                   )
               )
           else:
