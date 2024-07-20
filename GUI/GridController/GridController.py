@@ -276,7 +276,7 @@ class PriorController(GridController):
         self.ncols = ncols
         super().__init__(parent, nrows, ncols, toolbar_type=PriorToolBar, **kwargs)
 
-        var_types = ["Uniform", "Gaussian"]
+        var_types = ["Uniform", "Uniform with mean", "Gaussian"]
         self.model.data.index = ["Name", "Type", "Min", "Max", "Mean", "SD"]
         for i in range(ncols):
             choice_editor = gridlib.GridCellChoiceEditor(var_types)
@@ -309,19 +309,24 @@ class PriorController(GridController):
                     self.view.SetReadOnly(i, col, False)
                     self.view.SetCellBackgroundColour(i, col, "White")
                     self.view.SetCellTextColour(i, col, "Black")
+            def setStatus(i, j, readOnly):
+                bkcolor = "Grey" if readOnly else "White"
+                textcolor = "Grey" if readOnly else "Black"
+                self.view.SetReadOnly(i, j, readOnly)
+                self.view.SetCellBackgroundColour(i, j, bkcolor)
+                self.view.SetCellTextColour(i, j, textcolor)
+
             for col in range(self.ncols):
-                if self.model.GetValue(1, col) != "Gaussian":
-                    readOnly = True
-                    bkcolor = "Grey"
-                    textcolor = "Grey"
+                if self.model.GetValue(1, col) == "Uniform":
+                    setStatus(4, col, True)
+                    setStatus(5, col, True)
+                elif self.model.GetValue(1, col) == "Uniform with mean":
+                    setStatus(4, col, False)
+                    setStatus(5, col, True)
                 else:
-                    readOnly = False
-                    bkcolor = "White"
-                    textcolor = "Black"
-                for i in range(4, self.nrows):
-                    self.view.SetReadOnly(i, col, readOnly)
-                    self.view.SetCellBackgroundColour(i, col, bkcolor)
-                    self.view.SetCellTextColour(i, col, textcolor)
+                    setStatus(4, col, False)
+                    setStatus(5, col, False)
+
 
                     # self.model.SetValue(i, col, None)
         self.view.Refresh()
