@@ -100,8 +100,9 @@ class ClosureTestController(SplitViewController):
             return # save nothing if there's nothing in the grid
 
         with pd.HDFStore(filename, 'a') as store:
-            attrs = store.get_storer('PriorAndConfig').attrs
-            attrs['ClosureData'] = [closure_x, closure_y]
+            config = store.get_storer('PriorAndConfig').attrs.my_attribute
+            config['ClosureData'] = [closure_x, closure_y]
+            store.get_storer('PriorAndConfig').attrs.my_attribute = config
 
 
     def _SyncHeaders(self, obj, evt):
@@ -128,12 +129,21 @@ class ClosureTestController(SplitViewController):
         self.controller_right.ClearAllButHeader()
 
 
+        warnOutdated = False
         if self.head_controller.file_model.emulator_filename is not None:
             with pd.HDFStore(self.head_controller.file_model.emulator_filename, 'a') as store:
                 attrs = store.get_storer('PriorAndConfig').attrs
+                data = None
                 if 'ClosureData' in attrs:
-                    self.left_model.SetData(attrs['ClosureData'][0])
-                    self.right_model.SetData(attrs['ClosureData'][1])
+                    data = attrs['ClosureData']
+                    warnOutdated = True
+                elif 'ClosureData' in attrs.my_attribute:
+                    data = attrs.my_attribute['ClosureData']
+                if data is not None:
+                    self.left_model.SetData(data[0])
+                    self.right_model.SetData(data[1])
+        if warnOutdated:
+            raise RuntimeError('The closure data is saved in old format! Click the "save" button to update it to new format. The updated file cannot be read by old version of Bayesian analysis!')
     
     def Save(self):
         assert self.head_controller.file_model.emulator_filename is not None, 'Emulator filename cannot be None'
@@ -221,22 +231,32 @@ class ClosureTestController(SplitViewController):
             self.head_controller.file_model.emulator_filename = file
             # get all entries from closure_test
             closure_truth = self.right_model.GetData().to_numpy().astype('float')
+            para_truth = self.left_model.GetData().to_numpy().astype('float')
+
             # will use the same fractional error as data for closure test
-            exp = self.head_controller.exp_model.GetData(drop_index=False).astype("float")
-            err_frac = exp.loc['Errors'].astype('float')/exp.loc['Values'].astype('float')
+            exp = self.head_controller.exp_model.GetData(drop_index=False)
+            err = exp.loc['Errors'].astype('float')
+            err_frac = err/exp.loc['Values'].astype('float')
+            prior = self.head_controller.prior_model.GetData(drop_index=False)
 
 
-            for i, truth in enumerate(closure_truth):
+            for i, (truth, para) in enumerate(zip(closure_truth, para_truth)):
                 new_dir = os.path.join(curr_path, '%s_%d' % (prefix, i))
                 os.makedirs(new_dir, exist_ok=True)
                 new_file = os.path.join(new_dir, basename)
                 shutil.copy2(file, new_file)
 
-                exp = pd.DataFrame.from_dict({"Values": truth, "Errors": np.abs(err_frac*truth)}, orient='index')
+                # prevent error from being zero when truth is zero
+                err_truth = np.maximum(err, np.abs(err_frac*truth))
+                exp = pd.DataFrame.from_dict({"Values": np.random.normal(truth, err_truth), "Errors": err_truth}, orient='index')
     
                 with pd.HDFStore(new_file, "a") as store:
                     from ChangeFileContent import ChangeFileContent
-                    ChangeFileContent(store, None, exp, None)
+                    # if random variable is of type "Uniform with mean", the mean will be the true value as hint for MCMC
+                    id = prior.loc['Type'] == 'Uniform with mean'
+                    if 'Mean' in prior.index:
+                        prior.loc['Mean'][id] = para[id]
+                    ChangeFileContent(store, prior, exp, None)
                 
                 self.head_controller.LoadFile(new_file)
 

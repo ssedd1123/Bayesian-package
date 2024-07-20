@@ -317,15 +317,15 @@ class PriorController(GridController):
                 self.view.SetCellTextColour(i, j, textcolor)
 
             for col in range(self.ncols):
-                if self.model.GetValue(1, col) == "Uniform":
-                    setStatus(4, col, True)
-                    setStatus(5, col, True)
+                if self.model.GetValue(1, col) == "Gaussian":
+                    setStatus(4, col, False)
+                    setStatus(5, col, False)
                 elif self.model.GetValue(1, col) == "Uniform with mean":
                     setStatus(4, col, False)
                     setStatus(5, col, True)
                 else:
-                    setStatus(4, col, False)
-                    setStatus(5, col, False)
+                    setStatus(4, col, True)
+                    setStatus(5, col, True)
 
 
                     # self.model.SetValue(i, col, None)
