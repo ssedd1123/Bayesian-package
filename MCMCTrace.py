@@ -259,7 +259,7 @@ if __name__ == "__main__":
 
     #comm = MPI.COMM_WORLD
     #size = comm.Get_size()
-    size = 7
+    size = 5
 
     work_environment = MasterSlave(None, ncores=size)#comm)
     parser = argparse.ArgumentParser(
@@ -273,13 +273,16 @@ if __name__ == "__main__":
     )
     parser.add_argument("-n", type=int, help="Number of events", required=True)
     parser.add_argument("-c", action='store_true', help="Enable model comparison")
+    parser.add_argument("-b", type=int, help="burn in")
+    parser.add_argument("-s", type=float, help="MCMC step scale")
     parser.add_argument('-p', '--plot', action='store_true', help='Use this if you want to plot posterior immediatly after trace generation')
 
     args = vars(parser.parse_args())
 
     #MCMCParallel(**{"config_file": args['inputs'], "nevents": args['n'], "model_comp": args['c']})
     work_environment.Submit(
-        MCMCParallel, **{"config_file": args['inputs'], "nevents": args['n'], "model_comp": args['c']})
+        MCMCParallel, **{"config_file": args['inputs'], "nevents": args['n'], "model_comp": args['c'],
+                         "burnin": args['b'], "step_sd_scale": args['s']})
     refresh_rate = 0.2
     refresh_interval = refresh_rate * size
     # some stdio must be discarded for MPI network efficiency
