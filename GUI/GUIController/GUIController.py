@@ -20,7 +20,7 @@ from GUI.GridController.GridController import (GridController, PriorController,
 from GUI.GUIController.ClosureTestController import ClosureTestController
 from GUI.GUIController.EvalEmuController import EvalEmuController
 
-from GUI.FileController.FileController_new import FileController
+from GUI.FileController.FileController import FileController
 from GUI.FlexMessageBox import FlexMessageBox
 from GUI.MatplotlibFrame import MatplotlibFrame
 from GUI.TrainingProgressFrame import TrainingProgressFrame
