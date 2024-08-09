@@ -1,12 +1,12 @@
 import sys
 import wx
 
-from Utilities.MasterSlaveMP import MasterSlave
+from Utilities.ControllerDeviceMP import ControllerDevice
 from GUI.GUIController.GUIController import GUIController
 
 def main():
     size = int(sys.argv[1])
-    work_environment = MasterSlave(None, ncores=size)
+    work_environment = ControllerDevice(None, ncores=size)
 
     # gd.UseDefaultOutput()
     app = wx.App(0)

@@ -12,5 +12,6 @@
      "MaxSpeedPerCPU": 400,
      "GaugeWidth": 7,
      "GaugeHeight": 4,
-     "traceRunningWinSize": 3000 
+     "traceRunningWinSize": 3000,
+     "MinPanelSize": 20
 }

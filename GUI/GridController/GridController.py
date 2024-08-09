@@ -381,8 +381,9 @@ class ScrollSync(wx.EvtHandler):
 
 
 class SplitViewController:
-    def __init__(self, parent, nrows=200, nlayers=100, no_clear_all=False):
+    def __init__(self, parent, nrows=200, nlayers=100, no_clear_all=False, min_size=20):
         self.view = wx.SplitterWindow(parent)
+        self.view.SetMinimumPaneSize(min_size)
         left_panel = wx.Panel(self.view)
         right_panel = wx.Panel(self.view)
         self.controller_right = GridController(right_panel, nrows, nlayers, toolbar_type=GridToolBarNoClearAll if no_clear_all else GridToolBar)

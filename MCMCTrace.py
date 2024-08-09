@@ -255,13 +255,13 @@ def Merging(config_file, list_of_traces, clear_trace=False):
 
 if __name__ == "__main__":
     #from mpi4py import MPI
-    from Utilities.MasterSlaveMP import MasterSlave, ThreadsException
+    from Utilities.ControllerDeviceMP import ControllerDevice, ThreadsException
 
     #comm = MPI.COMM_WORLD
     #size = comm.Get_size()
     size = 5
 
-    work_environment = MasterSlave(None, ncores=size)#comm)
+    work_environment = ControllerDevice(None, ncores=size)#comm)
     parser = argparse.ArgumentParser(
         description="This script will choose an optimal set of hyperparameters by minizing loss function")
     parser.add_argument(

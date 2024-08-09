@@ -18,7 +18,7 @@ import wx
 import wx.lib.agw.speedmeter as SM
 #from mpi4py import MPI
 
-from Utilities.MasterSlaveMP import tags
+from Utilities.ControllerDeviceMP import tags
 
 matplotlib.use("WXAgg")
 
@@ -311,7 +311,7 @@ class CalculationFrame(wx.Frame):
             config_txt = [os.path.basename(config) for config in config_txt]
             self.time_info_bar.PrintInfo('Time running = %s, estimated total = %s' % (datetime.timedelta(0), 'TBD'))
             self.info_bar.PrintInfo(
-                "%d workers are working" %
+                "%d worker(s) are working" %
                 self.enviro.nworking
             )
 
@@ -324,19 +324,21 @@ class CalculationFrame(wx.Frame):
             last_update = start_time
 
             try:
+                completed_worker = []
                 while self.enviro.IsRunning(
                         self.refresh_rate / 10):  # self.refresh_rate):
                     source, result, tag = self.enviro.stdout
-                    idx = source - 1
+                    idx = source
                     new_time = time.time()
                     if tag == tags.NOTHING:
                         speed = None
                     else:
                         if tag == tags.END:
                             speed = 0
+                            completed_worker.append(str(idx))
                             self.info_bar.PrintInfo(
-                                "%d workers are still working. Worker %d completed" %
-                                (self.enviro.nworking, idx))
+                                "%d worker(s) are still working. Worker(s) %s completed" %
+                                (self.enviro.nworking, ' '.join(completed_worker)))
                         elif tag == tags.ERROR:
                             speed = 0
                             self.info_bar.PrintInfo(
@@ -423,7 +425,7 @@ class MyApp(wx.App):  # , wx.lib.mixins.inspection.InspectionMixin):
 #        "nsteps": 10000,
 #    }
 #
-#    work_environment = MasterSlave(comm)
+#    work_environment = ControllerDevice(comm)
 #
 #    app = MyApp(size=size, enviro=work_environment, args=kargs)
 #    app.MainLoop()

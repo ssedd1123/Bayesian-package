@@ -8,7 +8,7 @@ from GUI.GridController.GridController import SplitViewController
 
 class EvalEmuController(SplitViewController):
     def __init__(self, panel, config_data):
-        super().__init__(panel, config_data['GridNRow'], config_data['GridNCol'], no_clear_all=True)
+        super().__init__(panel, config_data['GridNRow'], config_data['GridNCol'], no_clear_all=True, min_size=config_data['MinPanelSize'])
 
         self.right_view.SetDefaultCellBackgroundColour(
             "Grey")

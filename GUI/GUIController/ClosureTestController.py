@@ -14,7 +14,7 @@ from GUI.GridController.GridController import SplitViewController
 
 class ClosureTestController(SplitViewController):
     def __init__(self, panel, config_data):
-        super().__init__(panel, config_data['GridNRow'], config_data['GridNCol'], no_clear_all=True)
+        super().__init__(panel, config_data['GridNRow'], config_data['GridNCol'], no_clear_all=True, min_size=config_data['MinPanelSize'])
         self.config_data = config_data
         # attr has to be duplicated to avoid reference counting error
         # first row of both left and right panel are not multable
@@ -246,9 +246,8 @@ class ClosureTestController(SplitViewController):
                 new_file = os.path.join(new_dir, basename)
                 shutil.copy2(file, new_file)
 
-                # prevent error from being zero when truth is zero
-                err_truth = np.maximum(err, np.abs(err_frac*truth))
-                exp = pd.DataFrame.from_dict({"Values": np.random.normal(truth, err_truth), "Errors": err_truth}, orient='index')
+                err_truth = np.abs(err_frac*truth)
+                exp = pd.DataFrame.from_dict({"Values": truth, "Errors": err_truth}, orient='index')
     
                 with pd.HDFStore(new_file, "a") as store:
                     from ChangeFileContent import ChangeFileContent

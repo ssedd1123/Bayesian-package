@@ -118,7 +118,7 @@ class Process(mp.Process):
         return not self.calculation_ended
 
 
-class MasterSlave:
+class ControllerDevice:
     def __init__(self, comm, refresh_interval=5, ncores=5):
         self.process = []
         self.refresh_interval = refresh_interval
@@ -207,7 +207,7 @@ def func(a, b):
 
 if __name__ == '__main__':
 
-    mslave = MasterSlave(None,0.5,2)
+    mslave = ControllerDevice(None,0.5,2)
     #mslave.RefreshSmear(0.5)
     mslave.Submit(func=func, a=2, b=3)     
     while mslave.IsRunning():

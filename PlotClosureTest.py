@@ -36,7 +36,7 @@ def PlotClosureTest(fig, varNames, truths, predictions, prediction_errs):
     assert nvar == len(varNames), 'Number of observable names and predicted observable are not identical!'
     # plot the result
     ncol = min(5, nvar)
-    nrow = max(1, int(nvar/ncol) + 1)
+    nrow = max(1, math.ceil(nvar/ncol))
     axes = fig.subplots(nrow, ncol)
 
     for ax, varName, true, pred, err in zip(axes.flat, varNames, truths.T, predictions.T, prediction_errs.T):

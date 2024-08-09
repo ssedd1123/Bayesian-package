@@ -14,7 +14,7 @@ import numpy as np
 import wx
 import wx.lib.agw.speedmeter as SM
 from mpi4py import MPI
-from Utilities.MasterSlaveMP import tags
+from Utilities.ControllerDeviceMP import tags
 
 MPI.pickle.__init__(dill.dumps, dill.loads)
 
@@ -90,7 +90,7 @@ class OutputPipe(object):
             self.comm.send(self.last_sentence, tag=tags.IO, dest=self.root)
 
 
-class MasterSlave(object):
+class ControllerDevice(object):
     def __init__(self, comm, refresh_interval=5):
         self.comm = comm
         self.rank = comm.Get_rank()

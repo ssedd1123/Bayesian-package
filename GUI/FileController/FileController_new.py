@@ -67,6 +67,19 @@ class TreePanel(wx.Panel):
         if not self._IsNodeAFile(item):
             self.tree.Collapse(item)
 
+    def collapseAll(self, filename):
+        # collapse all directory AND sub directory beneath them
+        node = self.find_file(filename)
+        def _collapseAll(self, node):
+            if self.tree.GetChildrenCount(node) > 0:
+                item, cookie = self.tree.GetFirstChild(node)
+                while item.IsOk():
+                    _collapseAll(self, item)
+                    self.tree.Collapse(item)
+                    item, cookie = self.tree.GetNextChild(node, cookie)
+        _collapseAll(self, node)
+
+
     def select_trace(self, evt):
         item = evt.GetItem()
         while not self.tree.GetItemData(item).text_is_data:
@@ -546,6 +559,13 @@ class FileController:
 
         if last_filename is not None:
             self.model.select(last_filename)
+
+        # if add directory, collapse the added directory
+        if len(filelist) > 0:
+            self.file_view.collapseAll(directory)
+        else:
+            raise ValueError('No file is added! Check if the directory is empty!')
+
 
 
     def update_metadata(self, filename):

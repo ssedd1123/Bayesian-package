@@ -24,7 +24,7 @@ from GUI.FileController.FileController_new import FileController
 from GUI.FlexMessageBox import FlexMessageBox
 from GUI.MatplotlibFrame import MatplotlibFrame
 from GUI.TrainingProgressFrame import TrainingProgressFrame
-from Utilities.MasterSlaveMP import ThreadsException
+from Utilities.ControllerDeviceMP import ThreadsException
 
 
 class GUIController:
@@ -726,6 +726,7 @@ class GUIViewer(wx.Frame):
 
         panel = wx.Panel(self)
         split_panel = wx.SplitterWindow(panel)
+        split_panel.SetMinimumPaneSize(self.config_data['MinPanelSize'])
         notebook = wx.Notebook(split_panel)
         from GUI.GUIController.GUIMenu import GUIMenuBar
 
@@ -742,7 +743,7 @@ class GUIViewer(wx.Frame):
         notebook.AddPage(prior_panel, "Parameters prior")
 
         grid_panel = wx.Panel(notebook)
-        self.model_input_controller = SplitViewController(grid_panel, config_data['GridNRow'], config_data['GridNCol'])
+        self.model_input_controller = SplitViewController(grid_panel, config_data['GridNRow'], config_data['GridNCol'], min_size=config_data['MinPanelSize'])
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.model_input_controller.view, 1, wx.EXPAND)
         # grid_panel.SetSizer(sizer)
@@ -819,12 +820,12 @@ def MyExceptionHook(etype, value, trace):
 
 def main():
     from mpi4py import MPI
-    from Utilities.MasterSlave import MasterSlave
+    from Utilities.ControllerDevice import ControllerDevice
 
     comm = MPI.COMM_WORLD
     size = comm.Get_size()
 
-    work_environment = MasterSlave(comm)
+    work_environment = ControllerDevice(comm)
 
     # gd.UseDefaultOutput()
     app = wx.App(0)
