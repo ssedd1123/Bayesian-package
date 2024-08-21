@@ -38,13 +38,13 @@ def ChangeFileContent(store, prior, exp, model_name=None):
 
 if __name__ == "__main__":
 
-    parser = argparser.ArgumentParser(
+    parser = argparse.ArgumentParser(
         description="This script changes the prior and experimental values of an already trained config file")
     parser.add_argument(
         "store",
         help="Location of the already existing config file")
-    parser.add_argument("prior", help="Location of parameter priors")
-    parser.add_argument("exp", help="Location of the experimental result")
+    parser.add_argument("--prior", help="Location of parameter priors", default=None)
+    parser.add_argument("--exp", help="Location of the experimental result", default=None)
 
     args = vars(parser.parse_args())
     ChangeFileContent(**args)
