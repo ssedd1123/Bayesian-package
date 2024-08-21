@@ -497,6 +497,7 @@ class FileController:
         self.add_file(None, False, True)
 
     def add_file(self, filelist=None, exist_ok=False, add_dir=False):
+        directory = None
         if filelist is None:
             # if there are emulator file, get the directory to it as default directory
             default_dir = ''
@@ -561,10 +562,11 @@ class FileController:
             self.model.select(last_filename)
 
         # if add directory, collapse the added directory
-        if len(filelist) > 0:
-            self.file_view.collapseAll(directory)
-        else:
-            raise ValueError('No file is added! Check if the directory is empty!')
+        if directory is not None:
+            if len(filelist) > 0:
+                self.file_view.collapseAll(directory)
+            else:
+                raise ValueError('No file is added! Check if the directory is empty!')
 
 
 
