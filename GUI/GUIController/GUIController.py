@@ -55,7 +55,7 @@ class GUIController:
         self.display_view = self.view.file_controller.display_view
         self.file_model = self.view.file_controller.model
 
-        self.correlation_frame = None
+        self.posterior_frame = None
 
         pub.subscribe(self._SyncHeaders, "Data_Changed")
         pub.subscribe(self.CheckObj, "MenuBar_Check", func=self.EmulatorCheck)
@@ -83,9 +83,9 @@ class GUIController:
         pub.subscribe(self.CheckObj, "MenuBar_Report", func=self.TrainReport)
         pub.subscribe(
             self.CheckObj,
-            "MenuBar_Correlation",
-            func=self.Correlation)
-        pub.subscribe(self.CheckObj, "MenuBar_Posterior", func=self.Posterior)
+            "MenuBar_Posterior",
+            func=self.Posterior)
+        pub.subscribe(self.CheckObj, "MenuBar_Prediction", func=self.Prediction)
         pub.subscribe(
             self.CheckObj,
             "MenuBar_TraceSummary",
@@ -364,11 +364,11 @@ class GUIController:
                     self.view.file_controller.update_metadata(self.file_model.trace_filename)
                     for _, plugins in self.plugin_controllers.items():
                         plugins.Save()
-                    self.Correlation(None, None, False)
+                    self.Posterior(None, None, False)
                 except ThreadsException as ex:
                     wx.MessageBox(str(ex), 'Error', wx.OK | wx.ICON_ERROR)
 
-    def Correlation(self, obj, evt, ask_options=True):
+    def Posterior(self, obj, evt, ask_options=True):
         if self.file_model.trace_filename is not None:
             kwargs = {"overlay_pt": False}
             if ask_options:
@@ -379,13 +379,13 @@ class GUIController:
                 if res == wx.ID_OK:
                     kwargs = options.GetValue()
                 else:
-                    # don't show correlation if the user close the option
+                    # don't show posterior if the user close the option
                     # dialog
                     return
-            if not self.correlation_frame:
+            if not self.posterior_frame:
                 fig = Figure((self.config_data['PopUpWidth'], self.config_data['PopUpHeight']), 75)
-                self.correlation_frame = MatplotlibFrame(None, fig)
-            self.correlation_frame.fig.clf()
+                self.posterior_frame = MatplotlibFrame(None, fig)
+            self.posterior_frame.fig.clf()
             from Utilities.Utilities import PlotTrace
 
             if kwargs["overlay_pt"]:
@@ -395,48 +395,57 @@ class GUIController:
 
             PlotTrace(
                 self.file_model.trace_filename,
-                self.correlation_frame.fig,
+                self.posterior_frame.fig,
                 **kwargs)
-            self.correlation_frame.SetData()
-            self.correlation_frame.Show()
+            self.posterior_frame.SetData()
+            self.posterior_frame.Show()
 
-    def Posterior(self, obj, evt):
+    def Prediction(self, obj, evt):
         if self.file_model.emulator_filename is not None:
-            if not self.correlation_frame:
-                fig = Figure((self.config_data['PopUpWidth'], self.config_data['PopUpHeight']), 75)
-                self.correlation_frame = MatplotlibFrame(None, fig)
-            self.correlation_frame.fig.clf()
-            from PlotPosterior import PlotOutput
+            from GUI.SelectPredictionOption import SelectPredictionOption
 
-            dlg = wx.MessageDialog(self.view, 'Are variables dis-continuous?', 'Question', wx.YES_NO | wx.ICON_QUESTION)
-            result = dlg.ShowModal()
+            dlg = SelectPredictionOption(self.view)
+            res = dlg.ShowModal()
+            if res == wx.ID_OK:
+                discontVar, CIType = dlg.GetValue()
+            else:
+                # don't show prediction if the user close the option dialog                # dialog
+                return
+
+
+            if not self.posterior_frame:
+                fig = Figure((self.config_data['PopUpWidth'], self.config_data['PopUpHeight']), 75)
+                self.posterior_frame = MatplotlibFrame(None, fig)
+            self.posterior_frame.fig.clf()
+            from PlotPrediction import PlotOutput
 
             try:
                 btn = PlotOutput(
                     self.file_model.emulator_filename,
-                    self.correlation_frame.fig,
+                    self.posterior_frame.fig,
                     trace_filename=self.file_model.trace_filename,
-                    discontVar=result == wx.ID_YES)
+                    discontVar=discontVar,
+                    CIType=CIType)
             except Exception as e:
                 raise e
             else:
-                self.correlation_frame.SetData()
-                self.correlation_frame.Show()
+                self.posterior_frame.SetData()
+                self.posterior_frame.Show()
 
     def ShowDiagnosis(self, obj, evt):
         if self.file_model.trace_filename is not None:
-            if not self.correlation_frame:
+            if not self.posterior_frame:
                 fig = Figure((self.config_data['PopUpWidth'], self.config_data['PopUpHeight']), 75)
-                self.correlation_frame = MatplotlibFrame(None, fig)
-            self.correlation_frame.fig.clf()
+                self.posterior_frame = MatplotlibFrame(None, fig)
+            self.posterior_frame.fig.clf()
             from PlotTraceSteps import PlotTraceSteps
             try:
-                PlotTraceSteps(self.file_model.trace_filename, self.correlation_frame.fig, self.config_data['traceRunningWinSize'])
+                PlotTraceSteps(self.file_model.trace_filename, self.posterior_frame.fig, self.config_data['traceRunningWinSize'])
             except Exception as e:
                 raise e
             else:
-                self.correlation_frame.SetData()
-                self.correlation_frame.Show()
+                self.posterior_frame.SetData()
+                self.posterior_frame.Show()
         else:
             raise RuntimeError('No trace loaded.')
 

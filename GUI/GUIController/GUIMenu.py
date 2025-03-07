@@ -26,8 +26,8 @@ class GUIMenuBar(wx.MenuBar):
         EvalEmuItem = emulatorMenu.Append(-1, "Eval emulator", "")
 
         plotMenu = wx.Menu()
+        PlotPredictionItem = plotMenu.Append(-1, "Plot prediction", "")
         PlotPosteriorItem = plotMenu.Append(-1, "Plot posterior", "")
-        PlotCorrelationItem = plotMenu.Append(-1, "Plot correlation", "")
         TrainReportItem = plotMenu.Append(-1, "Training report", "")
         TraceSummaryItem = plotMenu.Append(-1, "Trace summary", "")
         TraceDiagnosisItem = plotMenu.Append(-1, "Trace Diagnosis", "")
@@ -107,18 +107,18 @@ class GUIMenuBar(wx.MenuBar):
         self.Bind(
             wx.EVT_MENU,
             lambda evt: pub.sendMessage(
-                "MenuBar_Posterior",
+                "MenuBar_Prediction",
                 obj=self,
                 evt=evt),
-            PlotPosteriorItem,
+            PlotPredictionItem,
         )
         self.Bind(
             wx.EVT_MENU,
             lambda evt: pub.sendMessage(
-                "MenuBar_Correlation",
+                "MenuBar_Posterior",
                 obj=self,
                 evt=evt),
-            PlotCorrelationItem,
+            PlotPosteriorItem,
         )
         self.Bind(
             wx.EVT_MENU,

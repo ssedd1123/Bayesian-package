@@ -25,7 +25,7 @@ one_sigma_confidence = 0.6827
 two_sigma_confidence = 0.9545
 
 
-def PlotOutput(filename, fig, n_samples=20000, trace_filename=None, discontVar=True):
+def PlotOutput(filename, fig, n_samples=20000, trace_filename=None, discontVar=True, CIType='mean'):
     """
     Function to plot both the posterior and prior point
     if prior is chosen, it will chose points at random
@@ -59,7 +59,7 @@ def PlotOutput(filename, fig, n_samples=20000, trace_filename=None, discontVar=T
     steps = 0
     nsteps = 2 # two steps process, one for prior and one for posterior
 
-    def PosteriorCalculate(trace, model_Y, clf, confidence=two_sigma_confidence, id_=None):
+    def PosteriorCalculate(trace, model_Y, clf, confidence=two_sigma_confidence, CIType='Mean', id_=None):
         # subdivide trace to 20 subdivistions for progress report purposes
         nonlocal steps
 
@@ -75,8 +75,12 @@ def PlotOutput(filename, fig, n_samples=20000, trace_filename=None, discontVar=T
         dfs = np.array_split(trace, n_progress_divisions, axis=0)
         for index, df in enumerate(dfs):
             par = df[para_name].values
-            result, _ = clf.Predict(par)
-            posterior_predictions.append(result)
+            result, cov = clf.Predict(par)
+            if CIType == 'Mean':
+                posterior_predictions.append(result)
+            else:
+                for r, c in zip(result, cov): 
+                    posterior_predictions.append(np.random.multivariate_normal(r, c))
 
             steps = steps + 1
             pub.sendMessage(
@@ -102,8 +106,8 @@ def PlotOutput(filename, fig, n_samples=20000, trace_filename=None, discontVar=T
 
     try:
         pub.sendMessage('Posterior_Drawing')
-        X_fill, posterior_interval, posterior_predictions = PosteriorCalculate(trace, model_Y, clf, id_=id_)
-        X_fill, prior_interval, _ = PosteriorCalculate(prior_trace, model_Y, clf, confidence=0.9999)
+        X_fill, posterior_interval, posterior_predictions = PosteriorCalculate(trace, model_Y, clf, CIType=CIType, id_=id_)
+        X_fill, prior_interval, _ = PosteriorCalculate(prior_trace, model_Y, clf, confidence=0.9999, CIType='Mean')
     except Exception as e:
         raise e
     finally:
@@ -178,7 +182,7 @@ def PlotOutput(filename, fig, n_samples=20000, trace_filename=None, discontVar=T
     fig.subplots_adjust(left=0.1)
     fig.subplots_adjust(top=0.95)
     fig.subplots_adjust(right=0.95)
-    ax.legend([(p2[0], p1[0]), prior_area, exp_plot], [r"Posterior $2 \sigma$ region", r"Prior region", "Experimental results"], fontsize=20)
+    ax.legend([(p2[0], p1[0]), prior_area, exp_plot], [r"Posterior $2 \sigma$ %s region" % CIType, r"Prior region", "Experimental results"], fontsize=20)
 
 
     #if id_to_model is not None:
