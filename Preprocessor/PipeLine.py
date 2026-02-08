@@ -44,6 +44,24 @@ class Transformer:
         v = Y - np.mean(Y, axis=0)
         return 1 - ((u * u).sum() / (v * v).sum())
 
+    def RSq(self, X, Y):
+        num_pts = X.shape[0]
+        if num_pts > 0:
+            deg_free = Y.shape[1]
+            predict_Y, _ = self.Predict(X)
+            Rsq = 0
+            try:
+                for y, p_y in zip(Y, predict_Y):
+                    Rsq += (np.square(y - p_y)).sum()
+                    #chisq += np.dot(y - p_y, np.linalg.solve(co, (y - p_y)).T)
+                return Rsq / num_pts / deg_free
+            except nnp.linalg.linalg.LinAlgError:
+                return 0 # if cov is singular (err is zero)
+        else:
+            return 0
+
+
+
     def ChiSq(self, X, Y):
         num_pts = X.shape[0]
         if num_pts > 0:
@@ -52,9 +70,9 @@ class Transformer:
             chisq = 0
             try:
                 for y, p_y, co in zip(Y, predict_Y, cov):
-                    # var = np.diag(co)
-                    # chisq += (np.square(y - p_y)/var).sum()
-                    chisq += np.dot(y - p_y, np.linalg.solve(co, (y - p_y)).T)
+                    var = np.diag(co)
+                    chisq += (np.square(y - p_y)/var).sum()
+                    #chisq += np.dot(y - p_y, np.linalg.solve(co, (y - p_y)).T)
                 return chisq / num_pts / deg_free
             except nnp.linalg.linalg.LinAlgError:
                 return 0 # if cov is singular (err is zero)

@@ -106,7 +106,7 @@ def PlotOutput(filename, fig, n_samples=20000, trace_filename=None, discontVar=T
 
     try:
         pub.sendMessage('Posterior_Drawing')
-        X_fill, posterior_interval, posterior_predictions = PosteriorCalculate(trace, model_Y, clf, CIType=CIType, id_=id_)
+        X_fill, posterior_interval, posterior_predictions = PosteriorCalculate(trace, model_Y, clf, CIType=CIType, id_=id_, confidence=one_sigma_confidence)
         X_fill, prior_interval, _ = PosteriorCalculate(prior_trace, model_Y, clf, confidence=0.9999, CIType='Mean')
     except Exception as e:
         raise e
@@ -119,7 +119,7 @@ def PlotOutput(filename, fig, n_samples=20000, trace_filename=None, discontVar=T
     if num_obs == 1:
         korder = 1
     elif num_obs <= 3:
-        korder = 2
+        korder = num_obs - 1
     else:
         korder = 3
 
@@ -182,7 +182,7 @@ def PlotOutput(filename, fig, n_samples=20000, trace_filename=None, discontVar=T
     fig.subplots_adjust(left=0.1)
     fig.subplots_adjust(top=0.95)
     fig.subplots_adjust(right=0.95)
-    ax.legend([(p2[0], p1[0]), prior_area, exp_plot], [r"Posterior $2 \sigma$ %s region" % CIType, r"Prior region", "Experimental results"], fontsize=20)
+    ax.legend([(p2[0], p1[0]), prior_area, exp_plot], [r"Posterior $1 \sigma$ %s region" % CIType, r"Prior region", "Experimental results"], fontsize=20)
 
 
     #if id_to_model is not None:

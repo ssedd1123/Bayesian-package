@@ -630,6 +630,7 @@ class GUIController:
         #        self.file_model.emulator_filename)
         self.view.file_controller.add_file(outFile[0], exist_ok=True)
         self.LoadFile()
+        self.file_model.emulator_filename = outFile[0]
 
         if args['TestData'] > 0:
             with pd.HDFStore(outFile[0], "a") as store:
