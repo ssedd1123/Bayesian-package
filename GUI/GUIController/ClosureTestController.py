@@ -108,7 +108,7 @@ class ClosureTestController(SplitViewController):
     def _SyncHeaders(self, obj, evt):
         # Remember, headers cannot be changed in this plugin
         self._SyncHeadersFrom(obj, [self.head_controller.prior_model, self.head_controller.model_par_model], self.left_model)
-        self._SyncHeadersFrom(obj, [self.head_controller.exp_model, self.head_controller.model_obs_model], self.right_model)
+        self._SyncHeadersWithErrColFrom(obj, [self.head_controller.exp_model, self.head_controller.model_obs_model], self.right_model)
 
 
     def _SyncHeadersFrom(self, obj, source_models, dest): # model1, model2):
@@ -120,6 +120,19 @@ class ClosureTestController(SplitViewController):
             0,
             np.arange(
                 value.shape[0]),
+            value,
+            send_changed=False)
+
+    def _SyncHeadersWithErrColFrom(self, obj, source_models, dest): # model1, model2):
+        # value = obj.data.iloc[0].replace(r'^\s*$', np.nan, regex=True).dropna(how='all')
+        if obj not in source_models:
+            return
+        value = obj.data.iloc[0].replace(r"^\s*$", np.nan, regex=True).dropna(how='all')
+        value = np.append(value, ['%s_Err' % val for val in value])
+        ncol = value.shape[0]
+        dest.ChangeValues(
+            0,
+            np.arange(ncol),
             value,
             send_changed=False)
 
@@ -246,8 +259,8 @@ class ClosureTestController(SplitViewController):
                 new_file = os.path.join(new_dir, basename)
                 shutil.copy2(file, new_file)
 
-                err_truth = np.abs(err_frac*truth)
-                exp = pd.DataFrame.from_dict({"Values": truth, "Errors": err_truth}, orient='index')
+                nobs = truth.shape[0]//2
+                exp = pd.DataFrame.from_dict({"Values": truth[:nobs], "Errors": truth[nobs:]}, orient='index')
     
                 with pd.HDFStore(new_file, "a") as store:
                     from ChangeFileContent import ChangeFileContent

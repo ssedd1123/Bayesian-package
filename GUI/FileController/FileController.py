@@ -249,7 +249,7 @@ class TreePanel(wx.Panel):
             if len(path_component) <= 2:
                 return orig_path
             else:
-                return os.path.join('...', path_component[-2], path_component[-1])
+                return os.path.join('<path>', path_component[-2], path_component[-1])
     
         for data in metadata:
             item = self.tree.AppendItem(node, shorten_path(data), data=NodeData(False, data))

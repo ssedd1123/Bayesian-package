@@ -56,13 +56,13 @@ class SelectOption(wx.Dialog):
 
         for (name, default_value) in list_textctrl:
             box_new = wx.BoxSizer(wx.HORIZONTAL)
-            text = wx.StaticText(panel, -1, name)
+            text = wx.StaticText(panel, -1, name, size=(120, 30))
             box_new.Add(text, 1, wx.EXPAND, 5)
             textbox = wx.TextCtrl(panel, -1, default_value)
             box_new.Add(textbox, 1, wx.EXPAND, 5)
             self.title[name] = text
             self.output[name] = textbox
-            box.Add(box_new)
+            box.Add(box_new, flag=wx.EXPAND)
 
         box_submit = wx.BoxSizer(wx.HORIZONTAL)
         self.submit = wx.Button(panel, wx.ID_OK, "Submit")
@@ -72,7 +72,7 @@ class SelectOption(wx.Dialog):
         panel.SetSizer(box)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(panel)
+        sizer.Add(panel, flag=wx.EXPAND)
         self.SetSizer(sizer)
         self.Fit()
 
@@ -111,8 +111,9 @@ class SelectOption(wx.Dialog):
             self.output["Initial scale"].GetValue(), dtype=np.float, sep=","
         )
         args["initialnugget"] = float(self.output["Initial nugget"].GetValue())
-        args["scalerate"] = float(
-            self.output["Scale learning rate"].GetValue())
+        args["scalerate"] = np.fromstring(
+            self.output["Scale learning rate"].GetValue(), dtype=np.float, sep=','
+        )
         args["nuggetrate"] = float(
             self.output["Nugget learning rate"].GetValue())
         args["maxsteps"] = int(self.output["Maximum iterations"].GetValue())

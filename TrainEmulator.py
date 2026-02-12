@@ -33,16 +33,27 @@ def TrainingCurve(fig, config_file):
     history_para = args[7].fillna(method="ffill")
 
     clf.Fit(model_X, model_Y)
-    axes = fig.subplots(1, 2)
-    NumberOfPts(axes[0], clf, model_X, model_Y, training_idx, validation_idx)
+    axes = fig.subplots(2, 2)
+    NumberOfPts(axes[0, 0], clf, model_X, model_Y, training_idx, validation_idx)
     NumberOfSteps(
-        axes[1],
+        axes[0, 1],
         clf,
         model_X,
         model_Y,
         training_idx,
         validation_idx,
         history_para)
+    NumberOfSteps(
+        axes[1, 0],
+        clf,
+        model_X,
+        model_Y,
+        training_idx,
+        validation_idx,
+        history_para,
+        False)
+
+
 
 
 def NumberOfPts(ax, clf, model_X, model_Y, training_idx, validation_idx):
@@ -79,7 +90,7 @@ def NumberOfPts(ax, clf, model_X, model_Y, training_idx, validation_idx):
 
 
 def NumberOfSteps(
-    ax, clf, model_X, model_Y, training_idx, validation_idx, history_para
+    ax, clf, model_X, model_Y, training_idx, validation_idx, history_para, chi_sq=True
 ):
     training_scores = []
     validation_scores = []
@@ -88,11 +99,17 @@ def NumberOfSteps(
     training_Y = model_Y[training_idx]
     validation_X = model_X[validation_idx]
     validation_Y = model_Y[validation_idx]
+    total = history_para.shape[0]
+    # only plot 100 points to save time
+    max_steps_plotted = 100
+    interval = max(1, int(total/max_steps_plotted))
+    history_para = history_para.iloc[::interval] 
+    steps = []
     for idx, para in history_para.iterrows():
+        steps.append(idx)
         pub.sendMessage(
             "NumberOfStepsProgress",
-            progress=idx /
-            history_para.shape[0])
+            progress=idx / total)
         nuggets = []
         scales = []
         for idemu, emulator in enumerate(clf["Emulator"].emulators):
@@ -111,21 +128,26 @@ def NumberOfSteps(
         clf.Fit(training_X, training_Y)
         # training_scores.append(clf.Score(training_X, training_Y))
         # validation_scores.append(clf.Score(validation_X, validation_Y))
-        training_scores.append(clf.ChiSq(training_X, training_Y))
-        validation_scores.append(clf.ChiSq(validation_X, validation_Y))
+        if chi_sq:
+            training_scores.append(clf.ChiSq(training_X, training_Y))
+            validation_scores.append(clf.ChiSq(validation_X, validation_Y))
+        else:
+            training_scores.append(clf.RSq(training_X, training_Y))
+            validation_scores.append(clf.RSq(validation_X, validation_Y))
+
 
     ax.plot(
-        range(history_para.shape[0]),
+        steps,
         training_scores,
-        label=r"Training $\chi^2$/deg. free",
+        label=r"Training $\chi^2$/deg. free" if chi_sq else r"Training $R^2$/deg. free",
     )
     ax.plot(
-        range(history_para.shape[0]),
+        steps,
         validation_scores,
-        label=r"Validation $\chi^2$/deg. free",
+        label=r"Validation $\chi^2$/deg. free" if chi_sq else r"Training $R^2$/deg. free",
     )
     ax.set_xlabel("Number of ephoes")
-    ax.set_ylabel(r"$\chi^2$/deg. free")
+    ax.set_ylabel(r"$\chi^2$/deg. free" if chi_sq else r"$R^2$/deg. free")
     ax.legend()
 
 
