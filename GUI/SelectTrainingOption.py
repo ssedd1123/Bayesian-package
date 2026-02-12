@@ -12,7 +12,7 @@ class SelectOption(wx.Dialog):
             self,
             None,
             title="Training options",
-            style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER,
+            style=wx.DEFAULT_DIALOG_STYLE,
         )
         panel = wx.Panel(self)
         box = wx.BoxSizer(wx.VERTICAL)
@@ -24,8 +24,8 @@ class SelectOption(wx.Dialog):
         self.Cov_func = ["ARD", "RBF"]
         self.combo_cov_func = wx.Choice(panel, choices=self.Cov_func)
         self.combo_cov_func.SetSelection(0)
-        box1.Add(cblbl, 1, wx.EXPAND | wx.ALIGN_LEFT | wx.ALL, 5)
-        box1.Add(self.combo_cov_func, 1, wx.EXPAND | wx.ALIGN_LEFT | wx.ALL, 5)
+        box1.Add(cblbl, 1, wx.EXPAND, 5)
+        box1.Add(self.combo_cov_func, 1, wx.EXPAND, 5)
         box.Add(box1)
 
         # radio box for 2 different ways of choosing number of PCA components
@@ -38,7 +38,7 @@ class SelectOption(wx.Dialog):
             style=wx.RA_SPECIFY_ROWS,
         )
         self.rbox_choice = "PCA Components"
-        box2.Add(self.rbox, 1, wx.EXPAND | wx.ALIGN_CENTRE | wx.ALL, 5)
+        box2.Add(self.rbox, 1, wx.EXPAND, 5)
         box.Add(box2)
 
         list_textctrl = [
@@ -57,9 +57,9 @@ class SelectOption(wx.Dialog):
         for (name, default_value) in list_textctrl:
             box_new = wx.BoxSizer(wx.HORIZONTAL)
             text = wx.StaticText(panel, -1, name)
-            box_new.Add(text, 1, wx.EXPAND | wx.ALIGN_LEFT | wx.ALL, 5)
+            box_new.Add(text, 1, wx.EXPAND, 5)
             textbox = wx.TextCtrl(panel, -1, default_value)
-            box_new.Add(textbox, 1, wx.EXPAND | wx.ALIGN_LEFT | wx.ALL, 5)
+            box_new.Add(textbox, 1, wx.EXPAND, 5)
             self.title[name] = text
             self.output[name] = textbox
             box.Add(box_new)

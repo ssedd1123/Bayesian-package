@@ -33,7 +33,7 @@ class TrainingProgressFrame(wx.Frame):
             titleSizer.Add(
                 wx.StaticText(self, label=text_label),
                 0,
-                wx.ALIGN_CENTER | wx.EXPAND | wx.ALL,
+                wx.ALIGN_CENTER |  wx.ALL,
                 10,
             )
         else:
@@ -42,7 +42,7 @@ class TrainingProgressFrame(wx.Frame):
                     self,
                     label="Training progress of emulators on each PCA component"),
                 0,
-                wx.ALIGN_CENTER | wx.EXPAND | wx.ALL,
+                wx.ALIGN_CENTER |  wx.ALL,
                 10,
             )
 
