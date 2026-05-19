@@ -10,7 +10,11 @@ This is a gaussian emulator and Baysiean analysis with PyMC <br />
      $> conda update --all
      $> conda activate
  ```
- 3. Go to /path/to/Bayesian-package and create the virtual environment.
+ 3. Set the channel priority to flexible (required before using the environment yml files, otherwise the solver may fail or produce an unusable env):
+ ```
+     $> conda config --set channel_priority flexible
+ ```
+ 4. Go to /path/to/Bayesian-package and create the virtual environment.
 
     On Linux/Windows:
  ```
@@ -22,11 +26,11 @@ This is a gaussian emulator and Baysiean analysis with PyMC <br />
  ```
      $> CONDA_SUBDIR=osx-64 conda env create --name <env_name> --file=environmentMac.yml
  ```
- 4. Activate the environment:
+ 5. Activate the environment:
  ```
      $> conda activate <env_name>
  ```
- 5. Start the program.
+ 6. Start the program.
 
     On Linux/Windows:
  ```
@@ -39,7 +43,7 @@ This is a gaussian emulator and Baysiean analysis with PyMC <br />
     $> pythonw -m GUI.GUIController.GUIControllerMP <number-of-cores>
  ```
 
-IF the script refuses to use more than one core despite <number-of-cores> > 1, try to restart the terminal after step 3. Sometimes the installation of conda messes up the CPU affinity. Restarting after installation usually fixes it.
+IF the script refuses to use more than one core despite <number-of-cores> > 1, try to restart the terminal after step 4. Sometimes the installation of conda messes up the CPU affinity. Restarting after installation usually fixes it.
 
 If not, use
 ```
