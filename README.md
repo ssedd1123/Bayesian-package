@@ -17,7 +17,7 @@ This is a gaussian emulator and Baysiean analysis with PyMC <br />
      $> conda env create --name <env_name> --file=environmentCrossPlatform.yml
  ```
 
-    On Mac, `environmentCrossPlatform.yml` does NOT work — use `environmentMac.yml` instead, and prefix the command with `CONDA_SUBDIR=osx-64` so the correct platform packages are selected (without it, packages will fail to install):
+ On Mac, `environmentCrossPlatform.yml` does NOT work — use `environmentMac.yml` instead, and prefix the command with `CONDA_SUBDIR=osx-64` so the correct platform packages are selected (without it, packages will fail to install):
 
  ```
      $> CONDA_SUBDIR=osx-64 conda env create --name <env_name> --file=environmentMac.yml
@@ -33,7 +33,7 @@ This is a gaussian emulator and Baysiean analysis with PyMC <br />
     $> python -m GUI.GUIController.GUIControllerMP <number-of-cores>
  ```
 
-    On Mac, you must use `pythonw` instead of `python` (the regular `python` will not work for the GUI):
+ On Mac, you must use `pythonw` instead of `python` (the regular `python` will not work for the GUI):
 
  ```
     $> pythonw -m GUI.GUIController.GUIControllerMP <number-of-cores>
