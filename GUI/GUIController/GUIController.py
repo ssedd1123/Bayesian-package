@@ -563,6 +563,9 @@ class GUIController:
             )
             result = dlg.ShowModal()
             outFile = dlg.GetPaths()
+            if not outFile:
+                outFile = [dlg.GetPath()] # GetPaths doesn't work on Mac
+
             dlg.Destroy()
 
             if (

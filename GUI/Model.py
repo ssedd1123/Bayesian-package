@@ -234,7 +234,7 @@ class CalculationFrame(wx.Frame):
         self.speedmeter = EvtSpeedMeter(
             enviro.nworkers,
             self.max_speed_per_cpu,
-            parent=self,
+            parent=self.panel,
             agwStyle=SM.SM_DRAW_HAND
             | SM.SM_DRAW_SECTORS
             | SM.SM_DRAW_MIDDLE_TEXT
@@ -247,7 +247,7 @@ class CalculationFrame(wx.Frame):
         width = 0.5 * (self.pixel_width - 3 * self.hspacer) / \
             wx.ScreenDC().GetPPI()[0]
         height = 0.9 * self.pixel_height / wx.ScreenDC().GetPPI()[0]
-        self.progress_bar = ProgressBar(self.tot, width, height, self)
+        self.progress_bar = ProgressBar(self.tot, width, height, self.panel)
 
         MatPlotSizer = wx.BoxSizer(wx.HORIZONTAL)
         MatPlotSizer.Add(self.progress_bar, 1, wx.EXPAND)
